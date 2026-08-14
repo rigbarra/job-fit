@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  job-fit:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: job-fit-app
+    volumes:
+      - ../data:/app/data
+      - ../config:/app/config
+      - ../src:/app/src
+      - ../templates:/app/templates
+      - ../tests:/app/tests
+    env_file:
+      - ../.env
+    restart: "no"

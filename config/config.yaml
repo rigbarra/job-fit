@@ -1,0 +1,27 @@
+# Configuración general del pipeline de búsqueda de empleo
+
+# Filtros de búsqueda para scraping
+search_filters:
+  keywords:
+    - "Analytics Engineer"
+    - "Data Engineer"
+    - "Ingeniero de Datos"
+  locations:
+    - "Remote"
+    - "Remoto"
+    - "Chile"
+    - "Santiago"
+  limit_per_source: 20
+
+# Umbrales de clasificación de coincidencia (Match Score)
+match_thresholds:
+  tier_1_high: 85        # >= 85% -> Postulación Directa (sin retoque de CV)
+  tier_2_medium: 60      # 60% a 84% -> Requiere Retoque de CV
+  # < 60% es Tier 3 -> Descarte
+
+# Fuentes activas de scraping
+sources:
+  remotive: true         # API REST, muy estable
+  indeed: true           # Scraping HTML público, estable con throttling
+  adzuna: false          # Requiere registrarse para obtener API Key
+  linkedin: false        # Best-effort (desactivado por defecto)

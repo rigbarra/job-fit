@@ -1,0 +1,47 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+data/db/*.db
+data/db/*.db-journal
+data/db/*.db-shm
+data/db/*.db-wal
+
+# Generated output files
+data/generated_cvs/*.pdf
+data/generated_cvs/*.tex
+data/raw/*
+
+# Local Environment Variables
+.env
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+
+# Python distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Pytest / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# LaTeX intermediate build files
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
