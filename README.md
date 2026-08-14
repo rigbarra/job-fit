@@ -2,28 +2,35 @@
 
 Sistema autónomo de ingesta, evaluación de compatibilidad (match score) y adaptación personalizada de CV en formato LaTeX para ofertas laborales técnicas (Analytics / Data Engineer), operando bajo una arquitectura de costo mínimo basada en Python, SQLite y LLMs gratuitos (OpenRouter).
 
-Actualmente, el proyecto se encuentra al finalizar la **Fase 2: Inteligencia**, con pre-filtrado algorítmico local implementado.
+Actualmente, el proyecto cuenta con sus **4 Fases Completadas** y operativas de punta a punta.
 
 ---
 
 ## 📋 Características Implementadas
 
 ### Fase 1 — Fundación ✅
-- **Ingesta Multi-fuente:** Scrapers implementados para Remotive (API REST pública) e Indeed (scraping con `curl_cffi` para evadir bloqueos básicos).
+- **Ingesta Multi-fuente:** Scrapers implementados para Remotive (API REST pública) e Indeed (scraping con `curl_cffi` para evadir bloqueos básicos y circuit breaker).
 - **Deduplicación Previa:** Hashing SHA-256 de las URLs de vacantes para evitar procesamiento y llamadas de API repetidas.
 - **Persistencia Local:** Base de datos relacional ultraliviana usando SQLite y ORM mediante `SQLModel`.
 - **Estructura Modular:** Clean architecture (`src/scraper`, `src/database`, `src/agent`, etc.).
 - **Suite de Pruebas:** Pruebas unitarias con base de datos en memoria (`sqlite://`).
 
 ### Fase 2 — Inteligencia ✅
-- **Pre-Filtrado Algorítmico Local:** Descarte automático de vacantes irrelevantes por palabras clave en título y descripción, sin consumir tokens de IA.
-- **Evaluación LLM vía OpenRouter:** Análisis de compatibilidad usando modelos gratuitos con control de cuotas (RPM + límite diario + backoff exponencial ante 429).
-- **Perfil Real del Candidato:** CVs integrados en español e inglés (LaTeX + Markdown) con contexto de empresas e industrias.
+- **Pre-Filtrado Algorítmico Local:** Descarte automático y local de vacantes irrelevantes por palabras clave en título y descripción, ahorrando ~80% de llamadas al LLM.
+- **Evaluación LLM vía OpenRouter:** Análisis ATS de compatibilidad usando modelos gratuitos (`openrouter/free`) con control estricto de cuotas (RPM + límite diario + backoff exponencial ante 429).
+- **Perfil Real del Candidato:** CVs integrados en español e inglés (LaTeX + Markdown) con contexto enriquecido de empresas e industrias en `config/profile.yaml`.
 - **Clasificación por Tiers:** Score automático con umbrales configurables (Tier 1 ≥85%, Tier 2 ≥60%, Tier 3 <60%).
 
-### Pendientes
-- **Fase 3 — CV Engine:** Generación dinámica de PDFs personalizados con Jinja2 + LaTeX.
-- **Fase 4 — Notificaciones:** Despacho de alertas y PDFs adjuntos vía Discord Webhooks.
+### Fase 3 — CV Engine ✅
+- **Plantillas Dinámicas Jinja2:** Soporte bilingüe (`templates/cv/cv_base_es.tex` y `cv_base_en.tex`) con delimitadores personalizados compatibles con TeX.
+- **Sanitización LaTeX:** Escapado automático de caracteres especiales (`%`, `&`, `$`, `#`, `_`, comillas) generados por el LLM.
+- **Compilador Aislado:** Compilación de PDFs con `pdflatex` en directorio temporal y archivado en `data/generated_cvs/` junto con su archivo `.tex`.
+- **Snapshots:** Persistencia del historial de PDFs generados en la tabla `CVSnapshot`.
+
+### Fase 4 — Notificaciones y Cierre ✅
+- **Discord Notifier:** Alertas enriquecidas con Embeds codificados por color (Verde = Tier 1, Dorado = Tier 2), métricas de match y justificación ATS.
+- **Upload Multipart:** Adjunto automático del archivo PDF del CV personalizado directamente en el mensaje de Discord.
+- **CI/CD Automatizado:** Pipeline de GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) con TeX Live, linter `ruff`, formateador `black` y suite completa de pruebas en `pytest`.
 
 ---
 
