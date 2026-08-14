@@ -1,0 +1,17 @@
+% --- Sub-plantilla modular: Experiencia Profesional ---
+\section*{Experiencia Profesional}
+
+\BLOCK{ for exp in experiences }
+\noindent
+\textbf{\VAR{exp.role}} \hfill \VAR{exp.period} \\
+\small \textit{\VAR{exp.company}} \hfill \small \VAR{exp.location}
+\begin{itemize}
+\BLOCK{ for bullet in exp.bullets }
+    \item \VAR{bullet}
+\BLOCK{ endfor }
+\end{itemize}
+\BLOCK{ if not loop.last }
+
+\companygap
+\BLOCK{ endif }
+\BLOCK{ endfor }

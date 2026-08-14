@@ -1,6 +1,6 @@
-import pytest
-from src.scraper.remotive import RemotiveScraper
 from src.scraper.indeed import IndeedScraper
+from src.scraper.remotive import RemotiveScraper
+
 
 def test_remotive_scraper(mocker):
     """Prueba unitaria de RemotiveScraper usando mocks de red."""
@@ -19,17 +19,17 @@ def test_remotive_scraper(mocker):
                 "salary": "$4000 - $6000 USD",
                 "job_type": "full_time",
                 "publication_date": "2026-08-14T09:00:00",
-                "description": "We need a dbt specialist."
+                "description": "We need a dbt specialist.",
             }
-        ]
+        ],
     }
-    
+
     # Inyectar mock en la llamada requests.get de RemotiveScraper
     mocker.patch("src.scraper.remotive.requests.get", return_value=mock_response)
-    
+
     scraper = RemotiveScraper()
     jobs = scraper.fetch_jobs(keywords=["Analytics Engineer"], locations=["Chile"], limit=5)
-    
+
     # 2. Aserciones de datos extraídos y mapeados
     assert len(jobs) == 1
     job = jobs[0]
@@ -40,6 +40,7 @@ def test_remotive_scraper(mocker):
     assert job.job_type == "full_time"
     assert job.source == "remotive"
     assert job.description == "We need a dbt specialist."
+
 
 def test_indeed_scraper(mocker):
     """Prueba unitaria de IndeedScraper simulando búsqueda y descarga de descripción."""
@@ -69,7 +70,7 @@ def test_indeed_scraper(mocker):
       <body></body>
     </html>
     """
-    
+
     # HTML simulado de la página de detalles de vacante
     mock_detail_html = """
     <html>
@@ -80,28 +81,28 @@ def test_indeed_scraper(mocker):
       </body>
     </html>
     """
-    
+
     mock_search_res = mocker.Mock()
     mock_search_res.status_code = 200
     mock_search_res.text = mock_search_html
-    
+
     mock_detail_res = mocker.Mock()
     mock_detail_res.status_code = 200
     mock_detail_res.text = mock_detail_html
-    
+
     # Mock de deduplicación para que no salte el filtro de duplicados
     mocker.patch("src.scraper.indeed.is_duplicate", return_value=False)
-    
+
     # Mockear las llamadas secuenciales de requests.get (1° búsqueda, 2° detalle descripción)
     mock_get = mocker.patch("src.scraper.indeed.requests.get")
     mock_get.side_effect = [mock_search_res, mock_detail_res]
-    
+
     # Mockear time.sleep para que las pruebas corran instantáneamente
     mocker.patch("time.sleep")
-    
+
     scraper = IndeedScraper()
     jobs = scraper.fetch_jobs(keywords=["Lead Data Engineer"], locations=["Remote"], limit=1)
-    
+
     # 2. Aserciones
     assert len(jobs) == 1
     job = jobs[0]

@@ -5,17 +5,17 @@ Contiene utilidades de transformación y normalización de textos generados por 
 
 import json
 import logging
-from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-def parse_adapted_bullets(bullets_json_or_dict: Optional[str | Dict[str, str]]) -> Dict[str, str]:
+
+def parse_adapted_bullets(bullets_json_or_dict: str | dict[str, str] | None) -> dict[str, str]:
     """
     Normaliza y parsea el diccionario de viñetas adaptadas desde una cadena JSON o dict.
-    
+
     Args:
         bullets_json_or_dict: Cadena JSON o dict con mapeo original -> adaptado.
-        
+
     Returns:
         Dict[str, str]: Diccionario normalizado.
     """
@@ -30,6 +30,7 @@ def parse_adapted_bullets(bullets_json_or_dict: Optional[str | Dict[str, str]]) 
     except Exception as e:
         logger.warning(f"Error parseando adapted_bullets: {e}")
     return {}
+
 
 def format_bullet_diff(original: str, adapted: str) -> str:
     """

@@ -1,28 +1,29 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+
 
 # Esquema de salida JSON estructurada para la evaluación del LLM
 class MatchEvaluation(BaseModel):
     score: float = Field(
-        ..., 
-        description="Puntuación de compatibilidad de 0.0 a 100.0 calculada estrictamente según habilidades y requisitos."
+        ...,
+        description="Puntuación de compatibilidad de 0.0 a 100.0 calculada estrictamente según habilidades y requisitos.",
     )
     rationale: str = Field(
-        ..., 
-        description="Justificación detallada de la puntuación elegida, destacando puntos fuertes y débiles."
+        ...,
+        description="Justificación detallada de la puntuación elegida, destacando puntos fuertes y débiles.",
     )
-    missing_keywords: List[str] = Field(
-        ..., 
-        description="Lista de palabras clave, herramientas, librerías o metodologías requeridas por el empleo que el candidato NO posee o tiene muy débiles."
+    missing_keywords: list[str] = Field(
+        ...,
+        description="Lista de palabras clave, herramientas, librerías o metodologías requeridas por el empleo que el candidato NO posee o tiene muy débiles.",
     )
-    adapted_summary: Optional[str] = Field(
-        None, 
-        description="Resumen profesional adaptado e inyectado con palabras clave del puesto. Generar únicamente si el score está entre 60.0 y 84.0. De lo contrario, dejar en null."
+    adapted_summary: str | None = Field(
+        None,
+        description="Resumen profesional adaptado e inyectado con palabras clave del puesto. Generar únicamente si el score está entre 60.0 y 84.0. De lo contrario, dejar en null.",
     )
-    adapted_bullets: Optional[Dict[str, str]] = Field(
-        None, 
-        description="Mapeo de textos originales (clave) a sus versiones reescritas optimizadas con palabras clave (valor). Solo si el score está entre 60.0 y 84.0. De lo contrario, dejar en null. NUNCA inventar proyectos o roles nuevos; reescribir basándose únicamente en los datos provistos."
+    adapted_bullets: dict[str, str] | None = Field(
+        None,
+        description="Mapeo de textos originales (clave) a sus versiones reescritas optimizadas con palabras clave (valor). Solo si el score está entre 60.0 y 84.0. De lo contrario, dejar en null. NUNCA inventar proyectos o roles nuevos; reescribir basándose únicamente en los datos provistos.",
     )
+
 
 SYSTEM_PROMPT = """
 Eres un experto en Sistemas de Seguimiento de Candidatos (ATS) y reclutador técnico especializado en perfiles de Data/Analytics (Data Engineers, Analytics Engineers, Data Scientists).

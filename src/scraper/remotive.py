@@ -1,24 +1,25 @@
-from typing import List, Optional
-from datetime import datetime
 import logging
+from datetime import datetime
+
 from curl_cffi import requests
 
-from src.scraper.base import BaseScraper
 from src.database.models import Job
+from src.scraper.base import BaseScraper
 
 logger = logging.getLogger(__name__)
+
 
 class RemotiveScraper(BaseScraper):
     def __init__(self):
         super().__init__(name="remotive")
         self.api_url = "https://remotive.com/api/remote-jobs"
 
-    def fetch_jobs(self, keywords: List[str], locations: List[str], limit: int = 20) -> List[Job]:
+    def fetch_jobs(self, keywords: list[str], locations: list[str], limit: int = 20) -> list[Job]:
         """
         Extrae vacantes desde la API REST pública de Remotive.
         Al ser una API pública y estable, es nuestra fuente principal sin costo.
         """
-        jobs_found: List[Job] = []
+        jobs_found: list[Job] = []
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
@@ -26,31 +27,30 @@ class RemotiveScraper(BaseScraper):
         # La API de Remotive recomienda no hacer peticiones demasiado rápido.
         # Hacemos una petición por cada keyword.
         for keyword in keywords:
-            params = {
-                "search": keyword,
-                "limit": limit
-            }
+            params = {"search": keyword, "limit": limit}
             try:
                 logger.info(f"Remotive: Buscando '{keyword}'...")
                 response = requests.get(
-                    self.api_url, 
-                    params=params, 
+                    self.api_url,
+                    params=params,
                     headers=headers,
                     impersonate="chrome120",
-                    timeout=15
+                    timeout=15,
                 )
-                
+
                 if response.status_code != 200:
-                    logger.error(f"Remotive API retornó código {response.status_code} para keyword '{keyword}'")
+                    logger.error(
+                        f"Remotive API retornó código {response.status_code} para keyword '{keyword}'"
+                    )
                     continue
-                
+
                 payload = response.json()
                 raw_jobs = payload.get("jobs", [])
-                
+
                 for rj in raw_jobs:
                     # Filtrado básico por ubicación geográfica requerida por la empresa
                     req_location = rj.get("candidate_required_location", "").lower()
-                    
+
                     # Si especificamos ubicaciones en la configuración (ej: "Chile"),
                     # filtramos las vacantes que no sean "Worldwide" o no coincidan.
                     location_matched = False
@@ -59,13 +59,17 @@ class RemotiveScraper(BaseScraper):
                     else:
                         for loc in locations:
                             loc_lower = loc.lower()
-                            if loc_lower in req_location or "worldwide" in req_location or req_location == "":
+                            if (
+                                loc_lower in req_location
+                                or "worldwide" in req_location
+                                or req_location == ""
+                            ):
                                 location_matched = True
                                 break
-                    
+
                     if not location_matched:
                         continue
-                    
+
                     # Convertir fecha de publicación
                     posted_at = None
                     pub_date_str = rj.get("publication_date")
@@ -75,7 +79,7 @@ class RemotiveScraper(BaseScraper):
                             posted_at = datetime.fromisoformat(pub_date_str)
                         except ValueError:
                             pass
-                    
+
                     # Crear modelo Job de SQLModel
                     job = Job(
                         title=rj.get("title", ""),
@@ -86,17 +90,17 @@ class RemotiveScraper(BaseScraper):
                         source=self.name,
                         salary=rj.get("salary") or None,
                         job_type=rj.get("job_type") or None,
-                        posted_at=posted_at
+                        posted_at=posted_at,
                     )
                     jobs_found.append(job)
-                    
+
                     if len(jobs_found) >= limit:
                         break
-                        
+
             except Exception as e:
                 logger.exception(f"Error consultando Remotive para keyword '{keyword}': {e}")
-                
+
             if len(jobs_found) >= limit:
                 break
-                
+
         return jobs_found[:limit]

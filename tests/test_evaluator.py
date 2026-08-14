@@ -1,7 +1,8 @@
-import pytest
 import json
-from src.database.models import Job
+
 from src.agent.evaluator import evaluate_job
+from src.database.models import Job
+
 
 def test_evaluate_job_tier_2(mocker):
     """Verifica la evaluación del LLM para un match de nivel Tier 2 (retoque) con OpenRouter."""
@@ -13,9 +14,9 @@ def test_evaluate_job_tier_2(mocker):
         location="Remote",
         description="Requerimos experiencia en dbt, Python y Airflow.",
         url="https://example.com/job/99",
-        source="test"
+        source="test",
     )
-    
+
     mock_json_response = {
         "score": 75.0,
         "rationale": "El candidato tiene buena base en Python y dbt, pero le falta Airflow.",
@@ -23,38 +24,38 @@ def test_evaluate_job_tier_2(mocker):
         "adapted_summary": "Analytics Engineer con experiencia en Snowflake y dbt...",
         "adapted_bullets": {
             "Liderazgo en la migración de pipelines legacy": "Liderazgo en la migración de pipelines orquestados con Airflow"
-        }
+        },
     }
-    
+
     # 2. Configurar mock de curl_cffi.requests.post para OpenRouter
     mock_response = mocker.Mock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
-        "choices": [
-            {
-                "message": {
-                    "content": json.dumps(mock_json_response, ensure_ascii=False)
-                }
-            }
-        ]
+        "choices": [{"message": {"content": json.dumps(mock_json_response, ensure_ascii=False)}}]
     }
-    
+
     # Mockear requests.post en evaluator
     mocker.patch("src.agent.evaluator.requests.post", return_value=mock_response)
-    
+
     # 3. Ejecutar la evaluación
     match_result = evaluate_job(job)
-    
+
     # 4. Aserciones
     assert match_result.job_id == 99
     assert match_result.score == 75.0
     assert match_result.tier == 2  # Coincide con rango 60-84
     assert "Airflow" in match_result.rationale
     assert json.loads(match_result.missing_keywords) == ["Airflow"]
-    assert match_result.adapted_summary == "Analytics Engineer con experiencia en Snowflake y dbt..."
-    
+    assert (
+        match_result.adapted_summary == "Analytics Engineer con experiencia en Snowflake y dbt..."
+    )
+
     adapted_bullets = json.loads(match_result.adapted_bullets)
-    assert adapted_bullets["Liderazgo en la migración de pipelines legacy"] == "Liderazgo en la migración de pipelines orquestados con Airflow"
+    assert (
+        adapted_bullets["Liderazgo en la migración de pipelines legacy"]
+        == "Liderazgo en la migración de pipelines orquestados con Airflow"
+    )
+
 
 def test_evaluate_job_tier_3(mocker):
     """Verifica la evaluación del LLM para un descarte (Tier 3) con OpenRouter."""
@@ -65,33 +66,27 @@ def test_evaluate_job_tier_3(mocker):
         location="Remote",
         description="Senior Java backend microservices architect.",
         url="https://example.com/job/100",
-        source="test"
+        source="test",
     )
-    
+
     mock_json_response = {
         "score": 25.0,
         "rationale": "El perfil del candidato está enfocado en Data/Analytics y no tiene experiencia en Java ni microservicios.",
         "missing_keywords": ["Java", "Spring Boot", "Microservicios"],
         "adapted_summary": None,
-        "adapted_bullets": None
+        "adapted_bullets": None,
     }
-    
+
     mock_response = mocker.Mock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
-        "choices": [
-            {
-                "message": {
-                    "content": json.dumps(mock_json_response, ensure_ascii=False)
-                }
-            }
-        ]
+        "choices": [{"message": {"content": json.dumps(mock_json_response, ensure_ascii=False)}}]
     }
-    
+
     mocker.patch("src.agent.evaluator.requests.post", return_value=mock_response)
-    
+
     match_result = evaluate_job(job)
-    
+
     assert match_result.score == 25.0
     assert match_result.tier == 3
     assert match_result.adapted_summary is None

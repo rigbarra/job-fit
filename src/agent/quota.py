@@ -1,15 +1,18 @@
-import time
-import random
 import logging
-from typing import Callable, Any
+import random
+import time
+from collections.abc import Callable
+from typing import Any
+
 from config.settings import settings
 from src.database.repository import get_match_results_count_today
 
 logger = logging.getLogger(__name__)
 
+
 class RateLimitError(Exception):
     """Excepción lanzada cuando la API del LLM retorna un error 429 (Too Many Requests)."""
-    pass
+
 
 class LLMQuotaManager:
     # Rastreo en memoria de llamadas en el último minuto de la ejecución actual
@@ -35,20 +38,22 @@ class LLMQuotaManager:
         """Enfuerza el límite de peticiones por minuto (RPM) de forma local."""
         max_rpm = settings.llm_max_calls_per_minute
         now = time.time()
-        
+
         # Mantener solo las marcas de tiempo dentro de los últimos 60 segundos
         cls._last_calls = [t for t in cls._last_calls if now - t < 60]
-        
+
         if len(cls._last_calls) >= max_rpm:
             # Calcular tiempo de espera para que expire el registro más antiguo
             sleep_time = 60.0 - (now - cls._last_calls[0]) + 0.5  # Margen de seguridad
             if sleep_time > 0:
-                logger.warning(f"Límite de RPM alcanzado ({max_rpm} req/min). Esperando {sleep_time:.2f} segundos...")
+                logger.warning(
+                    f"Límite de RPM alcanzado ({max_rpm} req/min). Esperando {sleep_time:.2f} segundos..."
+                )
                 time.sleep(sleep_time)
                 # Actualizar el listado después del sleep
                 now = time.time()
                 cls._last_calls = [t for t in cls._last_calls if now - t < 60]
-        
+
         # Registrar llamada actual
         cls._last_calls.append(time.time())
 
@@ -61,10 +66,10 @@ class LLMQuotaManager:
         # 1. Validar cuota diaria antes de enviar peticiones
         if not cls.check_daily_quota():
             raise RuntimeError("Cuota diaria de llamadas de la API de OpenRouter agotada.")
-            
+
         # 2. Controlar RPM localmente
         cls.enforce_rpm()
-        
+
         # 3. Intentar ejecución de la llamada
         retries = 0
         while True:
@@ -74,14 +79,18 @@ class LLMQuotaManager:
                 # Error 429
                 retries += 1
                 if retries > max_retries:
-                    logger.error(f"LLM API: Se superó el máximo de reintentos ({max_retries}) tras RateLimitError.")
+                    logger.error(
+                        f"LLM API: Se superó el máximo de reintentos ({max_retries}) tras RateLimitError."
+                    )
                     raise e
-                
+
                 # Backoff exponencial: 2^retries + ruido aleatorio de jitter (0 a 1 segundo)
-                sleep_time = (2 ** retries) + random.uniform(0.0, 1.0)
-                logger.warning(f"LLM API: Error 429 (Rate Limit). Reintentando ({retries}/{max_retries}) en {sleep_time:.2f}s...")
+                sleep_time = (2**retries) + random.uniform(0.0, 1.0)
+                logger.warning(
+                    f"LLM API: Error 429 (Rate Limit). Reintentando ({retries}/{max_retries}) en {sleep_time:.2f}s..."
+                )
                 time.sleep(sleep_time)
-                
+
             except Exception as e:
                 logger.error(f"Error inesperado en llamada de LLM: {e}")
                 raise e

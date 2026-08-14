@@ -1,0 +1,13 @@
+% --- Sub-plantilla modular: Educación ---
+\section*{Educación}
+
+\BLOCK{ for edu in education }
+\noindent
+\textbf{\VAR{edu.degree}} \hfill \VAR{edu.period} \\
+\small \VAR{edu.school} \hfill \small \VAR{edu.location}
+\BLOCK{ if not loop.last }
+
+\vspace{6pt}
+
+\BLOCK{ endif }
+\BLOCK{ endfor }

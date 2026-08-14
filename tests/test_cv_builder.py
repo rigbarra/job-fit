@@ -1,24 +1,34 @@
 import os
 import shutil
+
 import pytest
+
+from src.cv_engine.builder import build_cv_tex, escape_latex
+from src.cv_engine.compiler import (
+    compile_tex_to_pdf,
+    detect_job_language,
+    generate_cv_for_job,
+)
 from src.database.models import Job, MatchResult
-from src.cv_engine.builder import escape_latex, build_cv_tex
-from src.cv_engine.compiler import compile_tex_to_pdf, generate_cv_for_job, detect_job_language
+
 
 def test_escape_latex():
     """Valida el escape correcto de caracteres reservados de LaTeX."""
-    raw_text = "Experienced in 100% cloud platforms (AWS & GCP) with $100k budgets for data_pipeline #1."
+    raw_text = (
+        "Experienced in 100% cloud platforms (AWS & GCP) with $100k budgets for data_pipeline #1."
+    )
     escaped = escape_latex(raw_text)
-    
+
     assert r"100\%" in escaped
     assert r"AWS \& GCP" in escaped
     assert r"\$100k" in escaped
     assert r"data\_pipeline" in escaped
     assert r"\#1" in escaped
-    
+
     # Comprobar que no se doble-escapa si ya está escapado
     already_escaped = r"Valid \& escaped \% text"
     assert escape_latex(already_escaped) == already_escaped
+
 
 def test_detect_job_language():
     """Valida la detección heurística del idioma de la vacante."""
@@ -28,7 +38,7 @@ def test_detect_job_language():
         location="Remote",
         description="Looking for an experienced engineer with 5+ years of requirements and skills in SQL.",
         url="https://example.com/en",
-        source="test"
+        source="test",
     )
     assert detect_job_language(job_en) == "en"
 
@@ -38,9 +48,10 @@ def test_detect_job_language():
         location="Santiago, Chile",
         description="Buscamos un profesional con experiencia y habilidades en modelado de datos y desarrollo.",
         url="https://example.com/es",
-        source="test"
+        source="test",
     )
     assert detect_job_language(job_es) == "es"
+
 
 def test_build_cv_tex_base():
     """Valida la generación de código LaTeX para CV base (Tier 1)."""
@@ -56,12 +67,13 @@ def test_build_cv_tex_base():
     assert "Professional Summary" in tex_en
     assert "Banco Estado" in tex_en
 
+
 def test_build_cv_tex_tier_2_adapted():
     """Valida la inyección de resumen y viñetas adaptadas para Tier 2."""
     adapted_summary_text = "Ingeniero especializado con alto dominio de Airflow, Snowflake y dbt..."
     adapted_bullet_original = "Spearheaded the migration and remodeling of legacy data flows"
     adapted_bullet_replacement = "Spearheaded the migration of data flows towards Redshift using Airflow for automated orchestration"
-    
+
     match_result = MatchResult(
         job_id=1,
         score=75.0,
@@ -69,31 +81,33 @@ def test_build_cv_tex_tier_2_adapted():
         rationale="Match moderado con retoque.",
         missing_keywords='["Airflow"]',
         adapted_summary=adapted_summary_text,
-        adapted_bullets=f'{{"{adapted_bullet_original}": "{adapted_bullet_replacement}"}}'
+        adapted_bullets=f'{{"{adapted_bullet_original}": "{adapted_bullet_replacement}"}}',
     )
-    
+
     tex_result = build_cv_tex(match_result=match_result, language="es")
-    
+
     # Debe contener el resumen adaptado
     assert adapted_summary_text in tex_result
     # Debe contener la viñeta adaptada
     assert adapted_bullet_replacement in tex_result
+
 
 @pytest.mark.skipif(not shutil.which("pdflatex"), reason="pdflatex no está instalado en el sistema")
 def test_compile_tex_to_pdf_real(tmp_path):
     """Valida la compilación física de un PDF con pdflatex si está disponible."""
     tex_content = build_cv_tex(match_result=None, language="es")
     output_pdf = tmp_path / "test_cv.pdf"
-    
+
     pdf_path = compile_tex_to_pdf(tex_content, str(output_pdf))
-    
+
     assert os.path.exists(pdf_path)
     assert os.path.getsize(pdf_path) > 1000  # Archivo PDF válido (> 1KB)
+
 
 def test_generate_cv_for_job(tmp_path, monkeypatch):
     """Valida el pipeline completo de generación de CV y registro de CVSnapshot."""
     monkeypatch.setattr("config.settings.settings.output_pdf_dir", str(tmp_path))
-    
+
     job = Job(
         id=42,
         title="Analytics Engineer",
@@ -101,18 +115,13 @@ def test_generate_cv_for_job(tmp_path, monkeypatch):
         location="Remote",
         description="Requerimos experiencia en dbt y SQL.",
         url="https://example.com/job/42",
-        source="test"
+        source="test",
     )
-    
+
     match_result = MatchResult(
-        id=1,
-        job_id=42,
-        score=88.0,
-        tier=1,
-        rationale="Match excelente.",
-        missing_keywords="[]"
+        id=1, job_id=42, score=88.0, tier=1, rationale="Match excelente.", missing_keywords="[]"
     )
-    
+
     if shutil.which("pdflatex"):
         snapshot = generate_cv_for_job(job, match_result, language="es")
         assert snapshot.job_id == 42
