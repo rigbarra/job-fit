@@ -1,0 +1,81 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[left=1.25cm, top=1.2cm, right=1.25cm, bottom=1.2cm]{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+% --- Tipografía Corporativa y Moderna ---
+\usepackage{mathpazo} 
+\usepackage[scaled=0.95]{helvet}
+
+% --- Style Configuration ---
+\titleformat{\section}{\large\bfseries\uppercase}{}{0pt}{}[\titlerule]
+\titlespacing{\section}{0pt}{16pt}{8pt}
+
+% --- Control de Espaciados Automatizado ---
+\setlength{\parskip}{4pt}
+\setlist[itemize]{leftmargin=1.3em, itemsep=2pt, parsep=0pt, topsep=2pt, partopsep=0pt}
+
+% Comando personalizado para separar las experiencias laborales de forma limpia
+\newcommand{\companygap}{\vspace{12pt}}
+
+\begin{document}
+
+% --- HEADER ---
+\begin{center}
+    {\Huge \textbf{Rigoberto Barra}} \\
+    \vspace{3pt}
+    {\large \textbf{Analytics Engineer \textbar{} Data Engineer}} \\
+    \vspace{3pt}
+    Viña del Mar, Chile \textbar{} +56-996974170 \textbar{} \href{mailto:rigbarra@outlook.com}{rigbarra@outlook.com} \textbar{} \href{https://www.linkedin.com/in/rigbarra}{linkedin.com/in/rigbarra}
+\end{center}
+
+% --- PROFESSIONAL SUMMARY ---
+\section*{Resumen Profesional}
+\VAR{summary}
+
+% --- TECHNICAL SKILLS ---
+\section*{Habilidades Técnicas}
+\begin{itemize}
+    \item \textbf{Data Engineering \& Modeling:} SQL (Joins complejos, CTEs, Window Functions), Python (Pandas, Polars), DuckDB, dbt, Dagster, Docker.
+    \item \textbf{Cloud \& Big Data Stack:} AWS (Lambda, Step Functions, Glue, Athena, S3, Redshift, IAM), GCP (BigQuery).
+    \item \textbf{BI, Analytics \& Visualization:} Power BI (DAX), Apache Superset, Quarto, Figma (UX Layouts).
+    \item \textbf{Data Quality \& Governance:} Git (GitHub), Testing (Pytest), CI/CD Pipelines (GitHub Actions).
+\end{itemize}
+
+% --- PROFESSIONAL EXPERIENCE ---
+\section*{Experiencia Profesional}
+
+\BLOCK{ for exp in experiences }
+\noindent
+\textbf{\VAR{exp.role}} \hfill \VAR{exp.period} \\
+\small \textit{\VAR{exp.company}} \hfill \small \VAR{exp.location}
+\begin{itemize}
+\BLOCK{ for bullet in exp.bullets }
+    \item \VAR{bullet}
+\BLOCK{ endfor }
+\end{itemize}
+\BLOCK{ if not loop.last }
+
+\companygap
+\BLOCK{ endif }
+\BLOCK{ endfor }
+
+% --- EDUCATION ---
+\section*{Educación}
+
+\BLOCK{ for edu in education }
+\noindent
+\textbf{\VAR{edu.degree}} \hfill \VAR{edu.period} \\
+\small \VAR{edu.school} \hfill \small \VAR{edu.location}
+\BLOCK{ if not loop.last }
+
+\vspace{6pt}
+
+\BLOCK{ endif }
+\BLOCK{ endfor }
+
+\end{document}

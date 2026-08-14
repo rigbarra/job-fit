@@ -135,6 +135,15 @@ def main():
                         save_match_result(match_result)
                         evaluated_count += 1
                         logger.info(f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM. Score: {match_result.score:.1f}% -> Tier {match_result.tier}")
+                        
+                        # 3. Si es Tier 1 (Postulación directa) o Tier 2 (Match con retoque), compilar PDF a medida
+                        if match_result.tier in (1, 2):
+                            from src.cv_engine.compiler import generate_cv_for_job
+                            try:
+                                snapshot = generate_cv_for_job(job, match_result)
+                                logger.info(f"📄 CV PDF generado exitosamente: {snapshot.pdf_path}")
+                            except Exception as ce:
+                                logger.error(f"Error generando CV en PDF para vacante {job.id}: {ce}")
                     except Exception as ee:
                         logger.error(f"Error evaluando vacante {job.id} ({job.title}): {ee}")
 

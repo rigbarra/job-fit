@@ -36,7 +36,7 @@
 
 % --- PROFESSIONAL SUMMARY ---
 \section*{Professional Summary}
-Industrial Engineer with 10+ years of experience acting as a strategic bridge between technical and business units. Specialized in designing scalable data architectures and high-impact analytical products using the Modern Data Stack (SQL, Python, AWS Serverless, dbt, Power BI). Proven track record in aligning technical execution with business strategy, leading cloud migrations and large-scale automation projects. Holds Postgraduate Diplomas in Data Science (PUC) and Business Intelligence (U. de Chile). Professional English (B2+) backed by 2 years of living and working experience in Dublin, Ireland.
+\VAR{summary}
 
 % --- TECHNICAL SKILLS ---
 \section*{Technical Skills}
@@ -50,89 +50,37 @@ Industrial Engineer with 10+ years of experience acting as a strategic bridge be
 % --- PROFESSIONAL EXPERIENCE ---
 \section*{Professional Experience}
 
+\BLOCK{ for exp in experiences }
 \noindent
-\textbf{Data Engineer Specialist (Project-based / Fixed-term Contract)} \textbar{} \textit{Banco Estado} \hfill Mar 2026 – Jun 2026 \\
-\footnotesize\textcolor{gray}{Chile’s largest state-owned bank (+13M customers)} \hfill \small Santiago, Chile
+\textbf{\VAR{exp.role}} \textbar{} \textit{\VAR{exp.company}} \hfill \VAR{exp.period} \\
+\BLOCK{ if exp.company_description }
+\footnotesize\textcolor{gray}{\VAR{exp.company_description}} \hfill \small \VAR{exp.location}
+\BLOCK{ else }
+\hfill \small \VAR{exp.location}
+\BLOCK{ endif }
 \begin{itemize}
-    \item \textbf{Architected and deployed} serverless ETL pipelines using AWS (Lambda, Glue, Step Functions, Athena) under a Medallion architecture (Bronze, Silver, Gold layers) to automate critical financial information for the Accounting department, seamlessly integrating an internal Data Lake and external APIs.
-    \item \textbf{Led the design and modeling of the analytical ecosystem}, encompassing user experience (UX) wireframing in Figma alongside the development of advanced dashboards and semantic layers in Power BI for accounting managers.
-    \item \textbf{Enforced robust data quality and resilience} by implementing comprehensive automated test suites with PyTest to verify and certify transformation logic prior to code deployment.
-    \item \textbf{Accelerated development velocity} and code refactoring through AI-assisted workflows (LLMs), while establishing comprehensive data cataloging and technical documentation generated via Quarto (HTML).
+\BLOCK{ for bullet in exp.bullets }
+    \item \VAR{bullet}
+\BLOCK{ endfor }
 \end{itemize}
+\BLOCK{ if not loop.last }
 
 \companygap 
-\noindent
-\textbf{Data Engineer} \textbar{} \textit{Fortis Abroad} \hfill Jan 2025 – Sep 2025 \\
-\footnotesize\textcolor{gray}{Global education \& logistics consultancy} \hfill \small Dublin, Ireland
-\begin{itemize}
-    \item \textbf{Designed and implemented} a local relational data architecture using DuckDB and dbt to centralize, transform, and model fragmented multi-region academic streams, pricing structures, and currency conversions into a Single Source of Truth (SSOT).
-    \item \textbf{Orchestrated} end-to-end pipelines via local Dagster setups, automating daily operational data ingestion from external APIs, file dependency handling, and Python transformation script execution.
-    \item \textbf{Designed and automated} an interactive quoting tool and operational dashboards via Quarto, generating dynamic embedded HTML applications that drastically reduced sales team turnaround times while operating 100\% in an English-speaking environment.
-\end{itemize}
-
-\companygap
-\noindent
-\textbf{Analytics Engineer} \textbar{} \textit{CHEK} \hfill Nov 2022 – Jul 2023 \\
-\footnotesize\textcolor{gray}{Top-tier FinTech \& Digital Wallet (+1M users)} \hfill \small Santiago, Chile
-\begin{itemize}
-    \item \textbf{Spearheaded the migration} and remodeling of legacy data flows from SAS to AWS Redshift, enabling real-time analytical capabilities across the business.
-    \item \textbf{Designed and deployed} a comprehensive Customer 360 Architecture (+100 attributes), accelerating executive KPI delivery for strategic decision-making by 50\%.
-    \item \textbf{Boosted digital wallet adoption by 15\%} and improved ROI by 10\% through Python-based customer segmentation models and rigorous A/B testing.
-    \item \textbf{Drove cross-functional collaboration} with commercial teams to co-design analytics-driven user activation and personalized marketing campaigns.
-\end{itemize}
-
-\companygap
-\noindent
-\textbf{Customer Intelligence Manager} \textbar{} \textit{SMU (Unimarc)} \hfill Jun 2021 – Sep 2022 \\
-\footnotesize\textcolor{gray}{Chile’s 3rd largest retailer (500+ stores)} \hfill \small Santiago, Chile
-\begin{itemize}
-    \item \textbf{Orchestrated transactional data unification} via Python and R pipelines, successfully establishing a Single Source of Truth (SSOT) for the entire organization. 
-    \item \textbf{Developed and implemented} an incremental value framework (Lift) for Unipay cardholders, driving a 40\% increase in average spend for segmented vs. control groups.
-    \item \textbf{Led the technical design} of A/B Testing methodologies, increasing user engagement by 12\% by aligning data architecture with commercial conversion targets.
-    \item \textbf{Owned technical delivery quality} and developed critical behavioral indicators for executive stakeholders in the group's credit division.
-\end{itemize}
-
-\companygap
-\noindent
-\textbf{Senior Churn Analyst} \textbar{} \textit{DIRECTV (AT\&T)} \hfill Dec 2017 – May 2021 \\
-\footnotesize\textcolor{gray}{Leading LatAm satellite TV provider} \hfill \small Santiago, Chile
-\begin{itemize}
-    \item \textbf{Built a Payment Behavior Scoring model} that automated ``non-intervention'' strategies, yielding a 40\% reduction in call center workload.
-    \item \textbf{Defined analytical standards} for the Southern Cone region (CL, AR, PE, UY) under Agile frameworks, scaling propensity models and iterative reporting across markets.
-\end{itemize}
-
-\companygap
-\noindent
-\textbf{Business Intelligence Analyst} \hfill Mar 2015 – Dic 2017 \\
-\small \textit{VTR (Liberty Global)} \hfill \small Santiago, Chile
-\begin{itemize}
-    \item \textbf{Developed a GIS data ecosystem} in Power BI to drive commercial and operational strategies based on location-aware KPIs.
-    \item \textbf{Audited technical processes} through SQL and SPSS Modeler, successfully eliminating 12.000 redundant monthly customer calls.
-\end{itemize}
+\BLOCK{ endif }
+\BLOCK{ endfor }
 
 % --- EDUCATION ---
 \section*{Education}
 
+\BLOCK{ for edu in education }
 \noindent
-\textbf{General English Course} \hfill 2023 – 2025 \\
-\small ISI Dublin English School \hfill \small Dublin, Ireland
+\textbf{\VAR{edu.degree}} \hfill \VAR{edu.period} \\
+\small \VAR{edu.school} \hfill \small \VAR{edu.location}
+\BLOCK{ if not loop.last }
 
 \vspace{6pt}
 
-\noindent
-\textbf{Postgraduate Diploma in Data Science} \hfill 2021 \\
-\small Pontificia Universidad Católica de Chile \hfill \small Santiago, Chile
-
-\vspace{6pt}
-
-\noindent
-\textbf{Postgraduate Diploma in Business Intelligence} \hfill 2018 \\
-\small Universidad de Chile \hfill \small Santiago, Chile
-
-\vspace{6pt}
-
-\noindent
-\textbf{B.S. in Industrial Engineering} \hfill 2008 – 2014 \\
-\small Universidad del Bío-Bío \hfill \small Concepción, Chile
+\BLOCK{ endif }
+\BLOCK{ endfor }
 
 \end{document}

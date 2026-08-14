@@ -45,3 +45,7 @@ htmlcov/
 *.synctex.gz
 *.fls
 *.fdb_latexmk
+
+# Temporary files
+tmp/
+
