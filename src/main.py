@@ -92,12 +92,12 @@ def main():
     pending_jobs = get_pending_jobs()
     logger.info(f"Detectadas {len(pending_jobs)} vacantes pendientes de evaluación por el LLM.")
     
-    api_key_configured = settings.gemini_api_key and settings.gemini_api_key != "tu_api_key_gratuita_aqui"
+    api_key_configured = settings.openrouter_api_key and settings.openrouter_api_key != "tu_api_key_de_openrouter_aqui"
     
     evaluated_count = 0
     if pending_jobs:
         if not api_key_configured:
-            logger.warning("Gemini API: Saltando fase de evaluación porque GEMINI_API_KEY no está configurada con una llave válida en el archivo .env.")
+            logger.warning("OpenRouter API: Saltando fase de evaluación porque OPENROUTER_API_KEY no está configurada con una llave válida en el archivo .env.")
         else:
             # Importar el evaluador de forma tardía para evitar errores de API al inicio
             from src.agent.evaluator import evaluate_job

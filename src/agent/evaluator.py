@@ -1,27 +1,24 @@
 import os
 import json
 import logging
-import yaml
 from typing import Optional
-import google.generativeai as genai
+from curl_cffi import requests
 
 from config.settings import settings
 from src.database.models import Job, MatchResult
 from src.agent.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, MatchEvaluation
-from src.agent.quota import GeminiQuotaManager
+from src.agent.quota import LLMQuotaManager, RateLimitError
 
 logger = logging.getLogger(__name__)
 
-# Configurar API de Gemini
-if settings.gemini_api_key and settings.gemini_api_key != "tu_api_key_gratuita_aqui":
-    genai.configure(api_key=settings.gemini_api_key)
-else:
-    logger.warning("Gemini API: GEMINI_API_KEY no está configurada o usa el valor por defecto. Las llamadas de LLM fallarán si no se usa mock.")
+# Validar clave de API de OpenRouter
+if not settings.openrouter_api_key or settings.openrouter_api_key == "tu_api_key_de_openrouter_aqui":
+    logger.warning("OpenRouter API: OPENROUTER_API_KEY no está configurada o usa el valor de ejemplo. Las llamadas reales de LLM fallarán.")
 
 def evaluate_job(job: Job, profile_path: Optional[str] = None) -> MatchResult:
     """
     Evalúa la compatibilidad de una vacante frente al perfil del candidato
-    usando la API de Gemini (Free Tier) y controlando cuotas.
+    usando la API de OpenRouter (Llama 3.3 70B o similar) y controlando cuotas.
     """
     # 1. Cargar el perfil del candidato
     if not profile_path:
@@ -29,7 +26,6 @@ def evaluate_job(job: Job, profile_path: Optional[str] = None) -> MatchResult:
         
     try:
         with open(profile_path, "r", encoding="utf-8") as f:
-            # Mantener el texto original en formato YAML para pasarlo al LLM
             profile_text = f.read()
     except Exception as e:
         logger.error(f"No se pudo cargar el perfil del candidato en {profile_path}: {e}")
@@ -41,50 +37,81 @@ def evaluate_job(job: Job, profile_path: Optional[str] = None) -> MatchResult:
         job_description=job.description
     )
 
-    # 3. Configurar el modelo de generación
-    model = genai.GenerativeModel(
-        model_name=settings.gemini_model,
-        system_instruction=SYSTEM_PROMPT
-    )
+    # 3. Definir la función que hará el request HTTP POST a OpenRouter
+    def _make_openrouter_call():
+        headers = {
+            "Authorization": f"Bearer {settings.openrouter_api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/rigbarra/job-fit",
+            "X-Title": "Job Fit"
+        }
+        
+        # Payload OpenAI-compatible para OpenRouter, especificando formato JSON
+        payload = {
+            "model": settings.openrouter_model,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt}
+            ],
+            "response_format": {
+                "type": "json_object"
+            },
+            "temperature": 0.1
+        }
+        
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
+            
+            if response.status_code == 429:
+                raise RateLimitError("OpenRouter API: 429 Too Many Requests")
+            elif response.status_code != 200:
+                raise RuntimeError(f"OpenRouter API retornó error {response.status_code}: {response.text}")
+                
+            return response.json()
+            
+        except Exception as err:
+            if isinstance(err, RateLimitError):
+                raise err
+            raise RuntimeError(f"Error de red/conexión con OpenRouter: {err}")
 
-    # 4. Definir la función que ejecutará la llamada (para envolverla con reintentos)
-    def _make_gemini_call():
-        return model.generate_content(
-            user_prompt,
-            generation_config={
-                "response_mime_type": "application/json",
-                "response_schema": MatchEvaluation,
-                "temperature": 0.1  # Baja temperatura para consistencia
-            }
-        )
-
-    logger.info(f"Gemini: Iniciando evaluación de la vacante '{job.title}' @ '{job.company}'...")
+    logger.info(f"OpenRouter: Evaluando vacante '{job.title}' @ '{job.company}' usando el modelo '{settings.openrouter_model}'...")
     
-    # 5. Ejecutar llamada con retry y control de RPM/cuota diaria
-    response = GeminiQuotaManager.call_with_retry(_make_gemini_call)
+    # 4. Ejecutar llamada con retry y control de RPM/cuotas
+    response_data = LLMQuotaManager.call_with_retry(_make_openrouter_call)
     
-    # 6. Parsear y validar el JSON devuelto según el esquema Pydantic
+    # 5. Obtener texto del JSON del completions payload
     try:
-        evaluation = MatchEvaluation.model_validate_json(response.text)
-    except Exception as e:
-        logger.error(f"Gemini: Error de validación de esquema en la respuesta JSON: {e}")
-        logger.debug(f"Respuesta errónea del LLM: {response.text}")
-        raise ValueError(f"La respuesta del LLM no coincide con la estructura requerida: {e}")
+        content_text = response_data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError) as e:
+        logger.error(f"OpenRouter: Payload de respuesta inesperado: {response_data}")
+        raise ValueError(f"Respuesta inesperada de OpenRouter: {e}")
 
-    # 7. Determinar Tier en base a la puntuación
+    # 6. Parsear y validar según el esquema Pydantic
+    try:
+        evaluation = MatchEvaluation.model_validate_json(content_text)
+    except Exception as e:
+        logger.error(f"OpenRouter: Error de validación de esquema en la respuesta JSON: {e}")
+        logger.debug(f"Texto JSON crudo recibido: {content_text}")
+        raise ValueError(f"La respuesta de OpenRouter no cumple con el esquema requerido: {e}")
+
+    # 7. Clasificar en Tiers según score
     score = evaluation.score
     if score >= 85.0:
-        tier = 1  # Match Alto
+        tier = 1
     elif score >= 60.0:
-        tier = 2  # Match Medio (con retoques)
+        tier = 2
     else:
-        tier = 3  # Descarte
+        tier = 3
 
-    # Convertir listas y dicts a JSON string para guardar en BD de forma estructurada
     missing_keywords_json = json.dumps(evaluation.missing_keywords, ensure_ascii=False)
     adapted_bullets_json = json.dumps(evaluation.adapted_bullets, ensure_ascii=False) if evaluation.adapted_bullets else None
 
-    # 8. Retornar el modelo de base de datos MatchResult armado
+    # 8. Retornar MatchResult
     return MatchResult(
         job_id=job.id,
         score=score,

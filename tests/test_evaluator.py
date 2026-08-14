@@ -4,7 +4,7 @@ from src.database.models import Job
 from src.agent.evaluator import evaluate_job
 
 def test_evaluate_job_tier_2(mocker):
-    """Verifica la evaluación del LLM para un match de nivel Tier 2 (retoque)."""
+    """Verifica la evaluación del LLM para un match de nivel Tier 2 (retoque) con OpenRouter."""
     # 1. Crear datos de entrada simulados
     job = Job(
         id=99,
@@ -16,7 +16,6 @@ def test_evaluate_job_tier_2(mocker):
         source="test"
     )
     
-    # JSON que emula la respuesta estructurada de Gemini
     mock_json_response = {
         "score": 75.0,
         "rationale": "El candidato tiene buena base en Python y dbt, pero le falta Airflow.",
@@ -27,15 +26,21 @@ def test_evaluate_job_tier_2(mocker):
         }
     }
     
-    # 2. Configurar mocks del SDK de Google Generative AI
+    # 2. Configurar mock de curl_cffi.requests.post para OpenRouter
     mock_response = mocker.Mock()
-    mock_response.text = json.dumps(mock_json_response, ensure_ascii=False)
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(mock_json_response, ensure_ascii=False)
+                }
+            }
+        ]
+    }
     
-    mock_model = mocker.Mock()
-    mock_model.generate_content.return_value = mock_response
-    
-    # Mockear la creación de GenerativeModel
-    mocker.patch("google.generativeai.GenerativeModel", return_value=mock_model)
+    # Mockear requests.post en evaluator
+    mocker.patch("src.agent.evaluator.requests.post", return_value=mock_response)
     
     # 3. Ejecutar la evaluación
     match_result = evaluate_job(job)
@@ -52,7 +57,7 @@ def test_evaluate_job_tier_2(mocker):
     assert adapted_bullets["Liderazgo en la migración de pipelines legacy"] == "Liderazgo en la migración de pipelines orquestados con Airflow"
 
 def test_evaluate_job_tier_3(mocker):
-    """Verifica la evaluación del LLM para un descarte (Tier 3)."""
+    """Verifica la evaluación del LLM para un descarte (Tier 3) con OpenRouter."""
     job = Job(
         id=100,
         title="Senior Java Developer",
@@ -72,12 +77,18 @@ def test_evaluate_job_tier_3(mocker):
     }
     
     mock_response = mocker.Mock()
-    mock_response.text = json.dumps(mock_json_response, ensure_ascii=False)
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(mock_json_response, ensure_ascii=False)
+                }
+            }
+        ]
+    }
     
-    mock_model = mocker.Mock()
-    mock_model.generate_content.return_value = mock_response
-    
-    mocker.patch("google.generativeai.GenerativeModel", return_value=mock_model)
+    mocker.patch("src.agent.evaluator.requests.post", return_value=mock_response)
     
     match_result = evaluate_job(job)
     
