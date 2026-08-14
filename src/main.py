@@ -96,23 +96,47 @@ def main():
     
     evaluated_count = 0
     if pending_jobs:
-        if not api_key_configured:
-            logger.warning("OpenRouter API: Saltando fase de evaluación porque OPENROUTER_API_KEY no está configurada con una llave válida en el archivo .env.")
-        else:
-            # Importar el evaluador de forma tardía para evitar errores de API al inicio
-            from src.agent.evaluator import evaluate_job
-            from src.database.repository import save_match_result
-            
-            for job in pending_jobs:
-                try:
-                    # Ejecutar evaluación mediante LLM
-                    match_result = evaluate_job(job)
-                    # Persistir resultado en base de datos
-                    save_match_result(match_result)
-                    evaluated_count += 1
-                    logger.info(f"Vacante '{job.title}' @ '{job.company}' evaluada con éxito. Score: {match_result.score:.1f}% -> Tier {match_result.tier}")
-                except Exception as ee:
-                    logger.error(f"Error evaluando vacante {job.id} ({job.title}): {ee}")
+        # Importar el filtro de forma tardía
+        from src.agent.filter import should_evaluate_job
+        from src.database.models import MatchResult
+        from src.database.repository import save_match_result
+        
+        filtered_pending_jobs = []
+        for job in pending_jobs:
+            try:
+                # 1. Pre-filtrado algorítmico local (Ahorro de tokens)
+                passed, reason = should_evaluate_job(job)
+                
+                if not passed:
+                    # Registrar descarte inmediato en BD sin coste de API
+                    auto_discard = MatchResult(
+                        job_id=job.id,
+                        score=10.0,
+                        tier=3,
+                        rationale=reason,
+                        missing_keywords="[]"
+                    )
+                    save_match_result(auto_discard)
+                    logger.info(f"Vacante '{job.title}' @ '{job.company}': DESCARTADA localmente (Algoritmo).")
+                else:
+                    filtered_pending_jobs.append(job)
+            except Exception as fe:
+                logger.error(f"Error en pre-filtrado de vacante {job.id}: {fe}")
+                
+        # 2. Ejecutar evaluación mediante LLM solo para las vacantes que superaron el filtro
+        if filtered_pending_jobs:
+            if not api_key_configured:
+                logger.warning(f"OpenRouter API: Hay {len(filtered_pending_jobs)} vacantes pre-filtradas con alto potencial, pero se salta la fase LLM porque OPENROUTER_API_KEY no está configurada.")
+            else:
+                from src.agent.evaluator import evaluate_job
+                for job in filtered_pending_jobs:
+                    try:
+                        match_result = evaluate_job(job)
+                        save_match_result(match_result)
+                        evaluated_count += 1
+                        logger.info(f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM. Score: {match_result.score:.1f}% -> Tier {match_result.tier}")
+                    except Exception as ee:
+                        logger.error(f"Error evaluando vacante {job.id} ({job.title}): {ee}")
 
     # 6. Imprimir métricas finales de ejecución
     remaining_pending = get_pending_jobs()

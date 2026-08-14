@@ -1,0 +1,138 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[left=1.25cm, top=1.2cm, right=1.25cm, bottom=1.2cm]{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+% --- Tipografía Corporativa y Moderna ---
+\usepackage{mathpazo} 
+\usepackage[scaled=0.95]{helvet}
+
+% --- Style Configuration ---
+\titleformat{\section}{\large\bfseries\uppercase}{}{0pt}{}[\titlerule]
+\titlespacing{\section}{0pt}{16pt}{8pt}
+
+% --- Control de Espaciados Automatizado ---
+\setlength{\parskip}{4pt}
+\setlist[itemize]{leftmargin=1.3em, itemsep=2pt, parsep=0pt, topsep=2pt, partopsep=0pt}
+
+% Comando personalizado para separar las experiencias laborales de forma limpia
+\newcommand{\companygap}{\vspace{12pt}}
+
+\begin{document}
+
+% --- HEADER ---
+\begin{center}
+    {\Huge \textbf{Rigoberto Barra}} \\
+    \vspace{3pt}
+    {\large \textbf{Analytics Engineer \textbar{} Data Engineer (AWS Serverless Specialist)}} \\
+    \vspace{3pt}
+    \small Viña del Mar, Chile (Open to Relocation \& Remote) \\ 
+    +56-996974170 \textbar{} \href{mailto:rigbarra@outlook.com}{rigbarra@outlook.com} \textbar{} \href{https://www.linkedin.com/in/rigbarra}{linkedin.com/in/rigbarra}
+\end{center}
+
+% --- PROFESSIONAL SUMMARY ---
+\section*{Professional Summary}
+Industrial Engineer with 10+ years of experience acting as a strategic bridge between technical and business units. Specialized in designing scalable data architectures and high-impact analytical products using the Modern Data Stack (SQL, Python, AWS Serverless, dbt, Power BI). Proven track record in aligning technical execution with business strategy, leading cloud migrations and large-scale automation projects. Holds Postgraduate Diplomas in Data Science (PUC) and Business Intelligence (U. de Chile). Professional English (B2+) backed by 2 years of living and working experience in Dublin, Ireland.
+
+% --- TECHNICAL SKILLS ---
+\section*{Technical Skills}
+\begin{itemize}
+    \item \textbf{Data Engineering \& Modeling:} SQL (Complex Joins, CTEs, Window Functions), Python (Pandas, Polars), DuckDB, dbt, Dagster, Docker.
+    \item \textbf{Cloud \& Big Data Stack:} AWS (Lambda, Step Functions, Glue, Athena, S3, Redshift, IAM), GCP (BigQuery).
+    \item \textbf{BI, Analytics \& Visualization:} Power BI (DAX), Apache Superset, Quarto, Figma (UX Layouts).
+    \item \textbf{Data Quality \& Governance:} Git (GitHub), Testing (Pytest), CI/CD Pipelines (GitHub Actions).
+\end{itemize}
+
+% --- PROFESSIONAL EXPERIENCE ---
+\section*{Professional Experience}
+
+\noindent
+\textbf{Data Engineer Specialist (Project-based / Fixed-term Contract)} \textbar{} \textit{Banco Estado} \hfill Mar 2026 – Jun 2026 \\
+\footnotesize\textcolor{gray}{Chile’s largest state-owned bank (+13M customers)} \hfill \small Santiago, Chile
+\begin{itemize}
+    \item \textbf{Architected and deployed} serverless ETL pipelines using AWS (Lambda, Glue, Step Functions, Athena) under a Medallion architecture (Bronze, Silver, Gold layers) to automate critical financial information for the Accounting department, seamlessly integrating an internal Data Lake and external APIs.
+    \item \textbf{Led the design and modeling of the analytical ecosystem}, encompassing user experience (UX) wireframing in Figma alongside the development of advanced dashboards and semantic layers in Power BI for accounting managers.
+    \item \textbf{Enforced robust data quality and resilience} by implementing comprehensive automated test suites with PyTest to verify and certify transformation logic prior to code deployment.
+    \item \textbf{Accelerated development velocity} and code refactoring through AI-assisted workflows (LLMs), while establishing comprehensive data cataloging and technical documentation generated via Quarto (HTML).
+\end{itemize}
+
+\companygap 
+\noindent
+\textbf{Data Engineer} \textbar{} \textit{Fortis Abroad} \hfill Jan 2025 – Sep 2025 \\
+\footnotesize\textcolor{gray}{Global education \& logistics consultancy} \hfill \small Dublin, Ireland
+\begin{itemize}
+    \item \textbf{Designed and implemented} a local relational data architecture using DuckDB and dbt to centralize, transform, and model fragmented multi-region academic streams, pricing structures, and currency conversions into a Single Source of Truth (SSOT).
+    \item \textbf{Orchestrated} end-to-end pipelines via local Dagster setups, automating daily operational data ingestion from external APIs, file dependency handling, and Python transformation script execution.
+    \item \textbf{Designed and automated} an interactive quoting tool and operational dashboards via Quarto, generating dynamic embedded HTML applications that drastically reduced sales team turnaround times while operating 100\% in an English-speaking environment.
+\end{itemize}
+
+\companygap
+\noindent
+\textbf{Analytics Engineer} \textbar{} \textit{CHEK} \hfill Nov 2022 – Jul 2023 \\
+\footnotesize\textcolor{gray}{Top-tier FinTech \& Digital Wallet (+1M users)} \hfill \small Santiago, Chile
+\begin{itemize}
+    \item \textbf{Spearheaded the migration} and remodeling of legacy data flows from SAS to AWS Redshift, enabling real-time analytical capabilities across the business.
+    \item \textbf{Designed and deployed} a comprehensive Customer 360 Architecture (+100 attributes), accelerating executive KPI delivery for strategic decision-making by 50\%.
+    \item \textbf{Boosted digital wallet adoption by 15\%} and improved ROI by 10\% through Python-based customer segmentation models and rigorous A/B testing.
+    \item \textbf{Drove cross-functional collaboration} with commercial teams to co-design analytics-driven user activation and personalized marketing campaigns.
+\end{itemize}
+
+\companygap
+\noindent
+\textbf{Customer Intelligence Manager} \textbar{} \textit{SMU (Unimarc)} \hfill Jun 2021 – Sep 2022 \\
+\footnotesize\textcolor{gray}{Chile’s 3rd largest retailer (500+ stores)} \hfill \small Santiago, Chile
+\begin{itemize}
+    \item \textbf{Orchestrated transactional data unification} via Python and R pipelines, successfully establishing a Single Source of Truth (SSOT) for the entire organization. 
+    \item \textbf{Developed and implemented} an incremental value framework (Lift) for Unipay cardholders, driving a 40\% increase in average spend for segmented vs. control groups.
+    \item \textbf{Led the technical design} of A/B Testing methodologies, increasing user engagement by 12\% by aligning data architecture with commercial conversion targets.
+    \item \textbf{Owned technical delivery quality} and developed critical behavioral indicators for executive stakeholders in the group's credit division.
+\end{itemize}
+
+\companygap
+\noindent
+\textbf{Senior Churn Analyst} \textbar{} \textit{DIRECTV (AT\&T)} \hfill Dec 2017 – May 2021 \\
+\footnotesize\textcolor{gray}{Leading LatAm satellite TV provider} \hfill \small Santiago, Chile
+\begin{itemize}
+    \item \textbf{Built a Payment Behavior Scoring model} that automated ``non-intervention'' strategies, yielding a 40\% reduction in call center workload.
+    \item \textbf{Defined analytical standards} for the Southern Cone region (CL, AR, PE, UY) under Agile frameworks, scaling propensity models and iterative reporting across markets.
+\end{itemize}
+
+\companygap
+\noindent
+\textbf{Business Intelligence Analyst} \hfill Mar 2015 – Dic 2017 \\
+\small \textit{VTR (Liberty Global)} \hfill \small Santiago, Chile
+\begin{itemize}
+    \item \textbf{Developed a GIS data ecosystem} in Power BI to drive commercial and operational strategies based on location-aware KPIs.
+    \item \textbf{Audited technical processes} through SQL and SPSS Modeler, successfully eliminating 12.000 redundant monthly customer calls.
+\end{itemize}
+
+% --- EDUCATION ---
+\section*{Education}
+
+\noindent
+\textbf{General English Course} \hfill 2023 – 2025 \\
+\small ISI Dublin English School \hfill \small Dublin, Ireland
+
+\vspace{6pt}
+
+\noindent
+\textbf{Postgraduate Diploma in Data Science} \hfill 2021 \\
+\small Pontificia Universidad Católica de Chile \hfill \small Santiago, Chile
+
+\vspace{6pt}
+
+\noindent
+\textbf{Postgraduate Diploma in Business Intelligence} \hfill 2018 \\
+\small Universidad de Chile \hfill \small Santiago, Chile
+
+\vspace{6pt}
+
+\noindent
+\textbf{B.S. in Industrial Engineering} \hfill 2008 – 2014 \\
+\small Universidad del Bío-Bío \hfill \small Concepción, Chile
+
+\end{document}

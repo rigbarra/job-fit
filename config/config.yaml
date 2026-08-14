@@ -32,3 +32,21 @@ rate_limiting:
   max_delay_seconds: 10.0 # Tiempo máximo de espera entre llamadas
   max_errors_before_circuit_break: 1 # Detener inmediatamente el scraper si detecta 403 o 429
 
+# Filtro Algorítmico Local (Ahorro de Tokens del LLM)
+algorithmic_filter:
+  enabled: true
+  title_keywords_any:
+    - "data"
+    - "analytics"
+    - "bi"
+    - "dbt"
+    - "etl"
+    - "pipeline"
+    - "intelligence"
+    - "datos"
+    - "analista"
+    - "ingeniero"
+  description_keywords_all:
+    - "sql"
+
+
