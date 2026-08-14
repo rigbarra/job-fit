@@ -16,14 +16,19 @@ from src.database.repository import is_duplicate
 logger = logging.getLogger(__name__)
 
 class IndeedScraper(BaseScraper):
-    def __init__(self):
+    def __init__(self, rate_limit_config: Optional[dict] = None):
         super().__init__(name="indeed")
         self.base_url = "https://www.indeed.com"
+        self.rate_config = rate_limit_config or {
+            "min_delay_seconds": 5.0,
+            "max_delay_seconds": 10.0,
+            "max_errors_before_circuit_break": 1
+        }
 
     def fetch_jobs(self, keywords: List[str], locations: List[str], limit: int = 20) -> List[Job]:
         """
         Extrae vacantes de Indeed emulando TLS de Chrome con curl_cffi y
-        parseando el JSON embebido en la página.
+        parseando el JSON embebido en la página, con circuit breaker de bloqueos.
         """
         jobs_found: List[Job] = []
         headers = {
@@ -32,12 +37,20 @@ class IndeedScraper(BaseScraper):
             "Accept-Encoding": "gzip, deflate, br",
             "Connection": "keep-alive"
         }
+        
+        consecutive_blocks = 0
+        max_blocks = self.rate_config.get("max_errors_before_circuit_break", 1)
 
-        # Iteramos por keywords y localizaciones para ampliar el espectro de búsqueda
+        # Iteramos por keywords y localizaciones
         for keyword in keywords:
             for location in locations:
                 if len(jobs_found) >= limit:
                     break
+                
+                # Si el circuit breaker se activó, abortamos todo el scraper
+                if consecutive_blocks >= max_blocks:
+                    logger.critical("Indeed: Circuit Breaker activado. Abortando búsqueda para evitar blacklist de IP.")
+                    return jobs_found
 
                 query_params = {
                     "q": keyword,
@@ -45,14 +58,12 @@ class IndeedScraper(BaseScraper):
                     "from": "searchOnHP",
                 }
                 
-                # Codificar manualmente para evitar problemas de formato
                 query_string = urllib.parse.urlencode(query_params)
                 search_url = f"{self.base_url}/jobs?{query_string}"
                 
                 try:
                     logger.info(f"Indeed: Buscando '{keyword}' en '{location}'...")
                     
-                    # Usamos curl_cffi con impersonación de Chrome 120
                     response = requests.get(
                         search_url,
                         headers=headers,
@@ -60,36 +71,22 @@ class IndeedScraper(BaseScraper):
                         timeout=20
                     )
                     
-                    if response.status_code == 403:
-                        logger.error("Indeed: Acceso bloqueado (403 Forbidden). Cloudflare ha bloqueado la petición.")
+                    if response.status_code in [403, 429]:
+                        consecutive_blocks += 1
+                        logger.error(f"Indeed: Acceso bloqueado ({response.status_code}).")
                         continue
                     elif response.status_code != 200:
                         logger.error(f"Indeed: Error {response.status_code} al consultar búsqueda.")
                         continue
+                    
+                    # Si la respuesta es exitosa, reiniciamos el contador de bloqueos
+                    consecutive_blocks = 0
 
-                    # Extraer el modelo de datos Mosaic embebido en la página
-                    # Contiene toda la información de los resultados en JSON
                     pattern = r'window\.mosaic\.providerData\["mosaic-provider-jobcards"\]\s*=\s*(\{.+?\});'
                     match = re.search(pattern, response.text, re.DOTALL)
                     
-                    if not match:
-                        logger.warning("Indeed: No se encontró el blob JSON 'mosaic-provider-jobcards'.")
-                        # Intentar fallback alternativo de regex
-                        alt_pattern = r'window\.mosaic\.providerData\s*=\s*(\{.+?\});'
-                        alt_match = re.search(alt_pattern, response.text, re.DOTALL)
-                        if alt_match:
-                            try:
-                                provider_data = json.loads(alt_match.group(1))
-                                raw_results = (provider_data
-                                               .get("mosaic-provider-jobcards", {})
-                                               .get("metaData", {})
-                                               .get("mosaicProviderJobCardsModel", {})
-                                               .get("results", []))
-                            except Exception:
-                                raw_results = []
-                        else:
-                            raw_results = []
-                    else:
+                    raw_results = []
+                    if match:
                         try:
                             data = json.loads(match.group(1))
                             raw_results = (data
@@ -98,15 +95,17 @@ class IndeedScraper(BaseScraper):
                                            .get("results", []))
                         except Exception as je:
                             logger.error(f"Indeed: Error parseando JSON de Mosaic: {je}")
-                            raw_results = []
 
                     logger.info(f"Indeed: Encontrados {len(raw_results)} resultados en la página.")
 
                     for job_data in raw_results:
                         if len(jobs_found) >= limit:
                             break
+                        
+                        if consecutive_blocks >= max_blocks:
+                            logger.critical("Indeed: Circuit Breaker activado en medio de descarga de detalles. Abortando.")
+                            return jobs_found
 
-                        # Extraer Job Key (jk) único de Indeed
                         jk = job_data.get("jk")
                         if not jk:
                             continue
@@ -119,17 +118,44 @@ class IndeedScraper(BaseScraper):
                             continue
 
                         # Throttling antes de descargar descripción detallada
-                        time.sleep(random.uniform(2.5, 4.5))
+                        delay = random.uniform(
+                            self.rate_config.get("min_delay_seconds", 5.0),
+                            self.rate_config.get("max_delay_seconds", 10.0)
+                        )
+                        logger.info(f"Indeed: Esperando {delay:.2f} segundos antes de consultar descripción...")
+                        time.sleep(delay)
 
                         # 2. Descargar la descripción completa del puesto
-                        job_desc = self._fetch_job_description(job_url, headers)
+                        try:
+                            desc_response = requests.get(
+                                job_url,
+                                headers=headers,
+                                impersonate="chrome120",
+                                timeout=15
+                            )
+                            
+                            if desc_response.status_code in [403, 429]:
+                                consecutive_blocks += 1
+                                logger.error(f"Indeed: Bloqueo detectado al bajar descripción ({desc_response.status_code}).")
+                                continue
+                            
+                            if desc_response.status_code != 200:
+                                continue
+                            
+                            soup = BeautifulSoup(desc_response.text, "html.parser")
+                            desc_div = soup.find(id="jobDescriptionText")
+                            job_desc = desc_div.get_text(separator="\n").strip() if desc_div else None
+                            
+                        except Exception as de:
+                            logger.error(f"Indeed: Error de conexión bajando descripción: {de}")
+                            continue
+
                         if not job_desc:
-                            logger.warning(f"Indeed: No se pudo obtener la descripción para '{jk}'")
                             continue
 
                         # Obtener fecha de publicación
                         posted_at = None
-                        pub_date_ms = job_data.get("pubDate")  # epoch en ms
+                        pub_date_ms = job_data.get("pubDate")
                         if pub_date_ms:
                             try:
                                 posted_at = datetime.fromtimestamp(pub_date_ms / 1000.0)
@@ -160,35 +186,10 @@ class IndeedScraper(BaseScraper):
                     logger.exception(f"Indeed: Error durante scraping: {e}")
                 
                 # Esperar entre queries de búsqueda
-                time.sleep(random.uniform(4.0, 7.0))
+                search_delay = random.uniform(
+                    self.rate_config.get("min_delay_seconds", 5.0) * 1.5,
+                    self.rate_config.get("max_delay_seconds", 10.0) * 1.5
+                )
+                time.sleep(search_delay)
 
         return jobs_found[:limit]
-
-    def _fetch_job_description(self, url: str, headers: dict) -> Optional[str]:
-        """Descarga una vacante y extrae el texto limpio de la descripción."""
-        try:
-            response = requests.get(
-                url,
-                headers=headers,
-                impersonate="chrome120",
-                timeout=15
-            )
-            if response.status_code != 200:
-                return None
-
-            soup = BeautifulSoup(response.text, "html.parser")
-            
-            # Selectores comunes en Indeed para la descripción del puesto
-            desc_div = soup.find(id="jobDescriptionText")
-            if desc_div:
-                return desc_div.get_text(separator="\n").strip()
-            
-            # Fallback en caso de que cambie el ID
-            fallback_div = soup.find(class_="jobsearch-JobComponent-description")
-            if fallback_div:
-                return fallback_div.get_text(separator="\n").strip()
-                
-            return None
-        except Exception as e:
-            logger.error(f"Indeed: Error descargando descripción {url}: {e}")
-            return None

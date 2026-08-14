@@ -54,13 +54,14 @@ def main():
     limit = search_filters.get("limit_per_source", 20)
     
     active_sources = config.get("sources", {})
+    rate_limiting = config.get("rate_limiting", {})
     
     # 3. Inicializar Scrapers
     scrapers = []
     if active_sources.get("remotive", True):
         scrapers.append(RemotiveScraper())
     if active_sources.get("indeed", False):
-        scrapers.append(IndeedScraper())
+        scrapers.append(IndeedScraper(rate_limit_config=rate_limiting))
         
     logger.info(f"Scrapers activos: {[s.name for s in scrapers]}")
     logger.info(f"Parámetros de búsqueda: Keywords={keywords}, Locations={locations}, Límite={limit}")
