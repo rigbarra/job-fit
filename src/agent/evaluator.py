@@ -11,15 +11,14 @@ from src.agent.quota import LLMQuotaManager, RateLimitError
 
 logger = logging.getLogger(__name__)
 
-# Validar clave de API de OpenRouter
-if not settings.openrouter_api_key or settings.openrouter_api_key == "tu_api_key_de_openrouter_aqui":
-    logger.warning("OpenRouter API: OPENROUTER_API_KEY no está configurada o usa el valor de ejemplo. Las llamadas reales de LLM fallarán.")
-
 def evaluate_job(job: Job, profile_path: Optional[str] = None) -> MatchResult:
     """
     Evalúa la compatibilidad de una vacante frente al perfil del candidato
-    usando la API de OpenRouter (Llama 3.3 70B o similar) y controlando cuotas.
+    usando la API de OpenRouter y controlando cuotas.
     """
+    # Validar clave de API antes de proceder
+    if not settings.openrouter_api_key or settings.openrouter_api_key == "tu_api_key_de_openrouter_aqui":
+        raise RuntimeError("OpenRouter API: OPENROUTER_API_KEY no está configurada. Configúrala en el archivo .env.")
     # 1. Cargar el perfil del candidato
     if not profile_path:
         profile_path = os.path.join(settings.project_root, "config", "profile.yaml")

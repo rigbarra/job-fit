@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 
-# Esquema de salida estructurada garantizada por Gemini API
+# Esquema de salida JSON estructurada para la evaluación del LLM
 class MatchEvaluation(BaseModel):
     score: float = Field(
         ..., 

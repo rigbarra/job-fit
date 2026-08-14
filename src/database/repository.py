@@ -76,10 +76,10 @@ def save_cv_snapshot(snapshot: CVSnapshot) -> CVSnapshot:
 def get_match_results_count_today() -> int:
     """Obtiene el número de evaluaciones (MatchResult) realizadas el día de hoy."""
     from sqlalchemy import func
-    from datetime import datetime, time
+    from datetime import datetime, time, timezone
     
     # Inicio del día de hoy en UTC
-    today_start = datetime.combine(datetime.utcnow().date(), time.min)
+    today_start = datetime.combine(datetime.now(tz=timezone.utc).date(), time.min)
     
     with Session(engine) as session:
         statement = select(func.count()).select_from(MatchResult).where(MatchResult.created_at >= today_start)

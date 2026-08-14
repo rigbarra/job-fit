@@ -144,7 +144,7 @@ def main():
     logger.info("=== METRICAS DE EJECUCIÓN ===")
     logger.info(f"Vacantes encontradas en la red: {total_found}")
     logger.info(f"Vacantes nuevas guardadas en la BD (excluyendo duplicados): {total_added}")
-    logger.info(f"Vacantes evaluadas por Gemini en esta corrida: {evaluated_count}")
+    logger.info(f"Vacantes evaluadas por LLM en esta corrida: {evaluated_count}")
     logger.info(f"Total de vacantes pendientes de evaluación LLM en BD: {len(remaining_pending)}")
     logger.info("=============================")
 

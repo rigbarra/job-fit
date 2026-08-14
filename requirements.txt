@@ -10,10 +10,6 @@ sqlmodel>=0.0.14
 # HTTP & Ingesta
 curl_cffi>=0.6.0
 beautifulsoup4>=4.12.0
-python-jobspy>=1.1.82
-
-# LLM API
-google-generativeai>=0.3.0
 
 # Renderizado de Plantillas
 jinja2>=3.1.0

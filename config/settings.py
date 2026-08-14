@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # LLM Settings
     openrouter_api_key: Optional[str] = Field(None, validation_alias="OPENROUTER_API_KEY")
-    openrouter_model: str = Field("meta-llama/llama-3.3-70b-instruct:free", validation_alias="OPENROUTER_MODEL")
+    openrouter_model: str = Field("openrouter/free", validation_alias="OPENROUTER_MODEL")
     llm_max_calls_per_day: int = Field(150, validation_alias="LLM_MAX_CALLS_PER_DAY")
     llm_max_calls_per_minute: int = Field(10, validation_alias="LLM_MAX_CALLS_PER_MINUTE")
 
