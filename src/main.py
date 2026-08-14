@@ -88,13 +88,40 @@ def main():
         except Exception as e:
             logger.error(f"Error ejecutando scraper {scraper.name}: {e}", exc_info=True)
 
-    # 5. Imprimir métricas de ejecución
+    # 5. Evaluar vacantes pendientes con el LLM
     pending_jobs = get_pending_jobs()
+    logger.info(f"Detectadas {len(pending_jobs)} vacantes pendientes de evaluación por el LLM.")
+    
+    api_key_configured = settings.gemini_api_key and settings.gemini_api_key != "tu_api_key_gratuita_aqui"
+    
+    evaluated_count = 0
+    if pending_jobs:
+        if not api_key_configured:
+            logger.warning("Gemini API: Saltando fase de evaluación porque GEMINI_API_KEY no está configurada con una llave válida en el archivo .env.")
+        else:
+            # Importar el evaluador de forma tardía para evitar errores de API al inicio
+            from src.agent.evaluator import evaluate_job
+            from src.database.repository import save_match_result
+            
+            for job in pending_jobs:
+                try:
+                    # Ejecutar evaluación mediante LLM
+                    match_result = evaluate_job(job)
+                    # Persistir resultado en base de datos
+                    save_match_result(match_result)
+                    evaluated_count += 1
+                    logger.info(f"Vacante '{job.title}' @ '{job.company}' evaluada con éxito. Score: {match_result.score:.1f}% -> Tier {match_result.tier}")
+                except Exception as ee:
+                    logger.error(f"Error evaluando vacante {job.id} ({job.title}): {ee}")
+
+    # 6. Imprimir métricas finales de ejecución
+    remaining_pending = get_pending_jobs()
     
     logger.info("=== METRICAS DE EJECUCIÓN ===")
     logger.info(f"Vacantes encontradas en la red: {total_found}")
     logger.info(f"Vacantes nuevas guardadas en la BD (excluyendo duplicados): {total_added}")
-    logger.info(f"Total de vacantes pendientes de evaluación LLM en BD: {len(pending_jobs)}")
+    logger.info(f"Vacantes evaluadas por Gemini en esta corrida: {evaluated_count}")
+    logger.info(f"Total de vacantes pendientes de evaluación LLM en BD: {len(remaining_pending)}")
     logger.info("=============================")
 
 if __name__ == "__main__":

@@ -1,0 +1,87 @@
+import pytest
+import json
+from src.database.models import Job
+from src.agent.evaluator import evaluate_job
+
+def test_evaluate_job_tier_2(mocker):
+    """Verifica la evaluación del LLM para un match de nivel Tier 2 (retoque)."""
+    # 1. Crear datos de entrada simulados
+    job = Job(
+        id=99,
+        title="Analytics Engineer",
+        company="MockCorp",
+        location="Remote",
+        description="Requerimos experiencia en dbt, Python y Airflow.",
+        url="https://example.com/job/99",
+        source="test"
+    )
+    
+    # JSON que emula la respuesta estructurada de Gemini
+    mock_json_response = {
+        "score": 75.0,
+        "rationale": "El candidato tiene buena base en Python y dbt, pero le falta Airflow.",
+        "missing_keywords": ["Airflow"],
+        "adapted_summary": "Analytics Engineer con experiencia en Snowflake y dbt...",
+        "adapted_bullets": {
+            "Liderazgo en la migración de pipelines legacy": "Liderazgo en la migración de pipelines orquestados con Airflow"
+        }
+    }
+    
+    # 2. Configurar mocks del SDK de Google Generative AI
+    mock_response = mocker.Mock()
+    mock_response.text = json.dumps(mock_json_response, ensure_ascii=False)
+    
+    mock_model = mocker.Mock()
+    mock_model.generate_content.return_value = mock_response
+    
+    # Mockear la creación de GenerativeModel
+    mocker.patch("google.generativeai.GenerativeModel", return_value=mock_model)
+    
+    # 3. Ejecutar la evaluación
+    match_result = evaluate_job(job)
+    
+    # 4. Aserciones
+    assert match_result.job_id == 99
+    assert match_result.score == 75.0
+    assert match_result.tier == 2  # Coincide con rango 60-84
+    assert "Airflow" in match_result.rationale
+    assert json.loads(match_result.missing_keywords) == ["Airflow"]
+    assert match_result.adapted_summary == "Analytics Engineer con experiencia en Snowflake y dbt..."
+    
+    adapted_bullets = json.loads(match_result.adapted_bullets)
+    assert adapted_bullets["Liderazgo en la migración de pipelines legacy"] == "Liderazgo en la migración de pipelines orquestados con Airflow"
+
+def test_evaluate_job_tier_3(mocker):
+    """Verifica la evaluación del LLM para un descarte (Tier 3)."""
+    job = Job(
+        id=100,
+        title="Senior Java Developer",
+        company="OtherCorp",
+        location="Remote",
+        description="Senior Java backend microservices architect.",
+        url="https://example.com/job/100",
+        source="test"
+    )
+    
+    mock_json_response = {
+        "score": 25.0,
+        "rationale": "El perfil del candidato está enfocado en Data/Analytics y no tiene experiencia en Java ni microservicios.",
+        "missing_keywords": ["Java", "Spring Boot", "Microservicios"],
+        "adapted_summary": None,
+        "adapted_bullets": None
+    }
+    
+    mock_response = mocker.Mock()
+    mock_response.text = json.dumps(mock_json_response, ensure_ascii=False)
+    
+    mock_model = mocker.Mock()
+    mock_model.generate_content.return_value = mock_response
+    
+    mocker.patch("google.generativeai.GenerativeModel", return_value=mock_model)
+    
+    match_result = evaluate_job(job)
+    
+    assert match_result.score == 25.0
+    assert match_result.tier == 3
+    assert match_result.adapted_summary is None
+    assert match_result.adapted_bullets is None

@@ -1,0 +1,39 @@
+name: "Rigoberto Barra"
+title: "Senior Analytics Engineer / Data Engineer"
+summary: "Ingeniero Civil en Informática con más de 5 años de experiencia diseñando y optimizando pipelines de datos (ETL/ELT), modelado de datos y arquitectura analítica. Especialista en la implementación de dbt, Snowflake, BigQuery y orquestación con Apache Airflow. Apasionado por la calidad de datos, automatización y modelado analítico."
+skills:
+  languages: 
+    - "Python"
+    - "SQL"
+    - "Scala"
+    - "Bash"
+  databases_cloud: 
+    - "Snowflake"
+    - "BigQuery"
+    - "PostgreSQL"
+    - "AWS (S3, Redshift, Glue)"
+  data_engineering: 
+    - "dbt (data build tool)"
+    - "Spark (PySpark)"
+    - "Apache Airflow"
+    - "Kafka"
+  tools: 
+    - "Git"
+    - "Docker"
+    - "Terraform"
+    - "Kubernetes"
+experience:
+  - company: "TechData Solutions"
+    role: "Senior Analytics Engineer"
+    period: "2023 - Presente"
+    bullets:
+      - "Diseño e implementación de la arquitectura analítica en Snowflake usando dbt Core, reduciendo tiempos de consulta en un 40%."
+      - "Liderazgo en la migración de pipelines de datos legacy a flujos ELT modernos orquestados con Apache Airflow sobre AWS."
+      - "Establecimiento de pruebas de calidad de datos automatizadas con Great Expectations, elevando la confiabilidad de los reportes en tableros Tableau."
+  - company: "Retail Analytics S.A."
+    role: "Data Engineer"
+    period: "2020 - 2023"
+    bullets:
+      - "Desarrollo de pipelines de ingesta de datos en tiempo real usando PySpark y Kafka conectando a Amazon S3."
+      - "Optimización de consultas SQL complejas en PostgreSQL y Redshift para analistas de negocio."
+      - "Automatización de infraestructura de pipelines utilizando Terraform y Docker en entornos locales de desarrollo."
