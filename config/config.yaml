@@ -14,7 +14,7 @@ search_filters:
     - "LATAM"
     - "Latin America"
     - "Worldwide"
-  max_job_age_days: 3    # Solo evaluar vacantes publicadas en los últimos 3 días (72 horas)
+  max_job_age_days: 1    # Solo evaluar vacantes publicadas en las últimas 24 horas (ventana de 1 día)
   experience_level: "4"  # Nivel de experiencia LinkedIn (f_E=4: Mid-Senior Level. Descarta prácticas 1 y entry-level 2)
   limit_per_source: 20
 
