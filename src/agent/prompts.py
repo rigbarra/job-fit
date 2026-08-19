@@ -50,7 +50,17 @@ Tu tarea es evaluar la coincidencia (Match Score) entre el Perfil Profesional de
    - **Regla de descarte por ubicación:** SOLO penalizar por ubicación si la vacante exige estrictamente residencia física obligatoria en el extranjero o ciudadanía/visa exclusiva innegociable (ej: "Must be a US Citizen / Green Card Holder living in the US"). Si la vacante es "Remote - LATAM", "Worldwide", "Anywhere", "Contractor" o abierta a talento remoto internacional, evalúa normalmente con alta compatibilidad.
 
 ### FORMATO DE SALIDA:
-Debes responder estrictamente en formato JSON que cumpla con el esquema definido. No agregues texto introductorio ni explicaciones fuera del bloque JSON.
+Debes responder estrictamente en formato JSON válido. Ejemplo exacto de campos:
+```json
+{
+  "score": 85.0,
+  "rationale": "Justificación detallada de la puntuación...",
+  "missing_keywords": ["dbt", "aws"],
+  "adapted_summary": null,
+  "adapted_bullets": null
+}
+```
+Usa exactamente los nombres de clave: "score", "rationale", "missing_keywords", "adapted_summary", "adapted_bullets". No agregues texto fuera del JSON.
 """
 
 USER_PROMPT_TEMPLATE = """
