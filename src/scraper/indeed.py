@@ -4,7 +4,7 @@ import random
 import re
 import time
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from bs4 import BeautifulSoup
 from curl_cffi import requests
@@ -29,7 +29,19 @@ class IndeedScraper(BaseScraper):
     def get_base_url_for_location(self, location: str) -> str:
         """Determina el subdominio regional de Indeed según la ubicación geográfica."""
         loc = location.lower()
-        if any(term in loc for term in ["chile", "santiago", "vina", "viña", "valparaiso", "valparaíso", "concepcion", "concepción"]):
+        if any(
+            term in loc
+            for term in [
+                "chile",
+                "santiago",
+                "vina",
+                "viña",
+                "valparaiso",
+                "valparaíso",
+                "concepcion",
+                "concepción",
+            ]
+        ):
             return "https://cl.indeed.com"
         elif any(term in loc for term in ["mexico", "méxico", "cdmx", "guadalajara"]):
             return "https://mx.indeed.com"
@@ -127,9 +139,7 @@ class IndeedScraper(BaseScraper):
 
                         # Indeed puede identificar el job por 'jobkey' o 'jk'
                         jobkey = (
-                            job_data.get("jobkey")
-                            or job_data.get("jk")
-                            or job_data.get("jobKey")
+                            job_data.get("jobkey") or job_data.get("jk") or job_data.get("jobKey")
                         )
                         if not jobkey:
                             continue
@@ -185,9 +195,7 @@ class IndeedScraper(BaseScraper):
                         pub_date_ms = job_data.get("pubDate")
                         if pub_date_ms:
                             try:
-                                posted_at = datetime.fromtimestamp(
-                                    pub_date_ms / 1000.0, tz=timezone.utc
-                                )
+                                posted_at = datetime.fromtimestamp(pub_date_ms / 1000.0, tz=UTC)
                             except Exception:
                                 pass
 

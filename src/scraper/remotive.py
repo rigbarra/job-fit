@@ -61,7 +61,18 @@ class RemotiveScraper(BaseScraper):
                             loc_lower = loc.lower()
                             if (
                                 loc_lower in req_location
-                                or "worldwide" in req_location
+                                or any(
+                                    term in req_location
+                                    for term in [
+                                        "worldwide",
+                                        "latam",
+                                        "latin america",
+                                        "anywhere",
+                                        "global",
+                                        "remote",
+                                        "contractor",
+                                    ]
+                                )
                                 or req_location == ""
                             ):
                                 location_matched = True
@@ -73,7 +84,16 @@ class RemotiveScraper(BaseScraper):
                     # Filtrado básico por título para descartar puestos administrativos/ventas/redacción
                     job_title = rj.get("title", "")
                     job_title_lower = job_title.lower()
-                    data_keywords = ["data", "analytics", "bi", "dbt", "etl", "pipeline", "intelligence", "datos"]
+                    data_keywords = [
+                        "data",
+                        "analytics",
+                        "bi",
+                        "dbt",
+                        "etl",
+                        "pipeline",
+                        "intelligence",
+                        "datos",
+                    ]
                     if not any(kw in job_title_lower for kw in data_keywords):
                         continue
 

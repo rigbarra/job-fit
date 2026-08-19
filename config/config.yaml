@@ -11,6 +11,9 @@ search_filters:
     - "Remoto"
     - "Chile"
     - "Santiago"
+    - "LATAM"
+    - "Latin America"
+    - "Worldwide"
   limit_per_source: 20
 
 # Umbrales de clasificación de coincidencia (Match Score)

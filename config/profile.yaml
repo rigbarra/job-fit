@@ -1,6 +1,15 @@
 name: "Rigoberto Barra"
 title: "Analytics Engineer / Data Engineer (AWS Serverless Specialist)"
 summary: "Industrial Engineer with 10+ years of experience acting as a strategic bridge between technical and business units. Specialized in designing scalable data architectures and high-impact analytical products using the Modern Data Stack (SQL, Python, AWS Serverless, dbt, Power BI). Proven track record in aligning technical execution with business strategy, leading cloud migrations and large-scale automation projects. Holds Postgraduate Diplomas in Data Science (PUC) and Business Intelligence (U. de Chile). Professional English (B2+) backed by 2 years of living and working experience in Dublin, Ireland."
+work_preferences:
+  modality: "100% Remote / Contractor (B2B / Independent Contractor) or Local Contract (Chile)"
+  target_regions:
+    - "Chile (Local / Hybrid / Remote)"
+    - "Latin America / LATAM (Remote)"
+    - "USA / Canada / Europe (Remote LATAM Contractor / B2B)"
+    - "Worldwide / Anywhere"
+  english_proficiency: "Professional Working Proficiency (B2+ / Fluent English, 2 years in Ireland)"
+  availability: "Immediate / Full-time Contractor or Employee"
 skills:
   languages: 
     - "Python (Pandas, Polars)"
