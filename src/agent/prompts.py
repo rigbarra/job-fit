@@ -44,11 +44,16 @@ Tu tarea es evaluar la coincidencia (Match Score) entre el Perfil Profesional de
    - **Resumen Adaptado:** Escribe un resumen profesional de 3-4 líneas. Debe destacar la experiencia real del candidato que sea relevante para la oferta, empleando palabras clave de la descripción.
    - **Viñetas Adaptadas (`adapted_bullets`):** Toma viñetas de experiencia laboral o secciones del perfil provisto del candidato y reescríbelas para priorizar e integrar los keywords de la oferta laboral (sin cambiar la veracidad ni inventar logros). Mapea el texto original como "clave" y la versión adaptada como "valor".
 
-4. **Criterios de Ubicación, Idioma y Modalidad (Híbrido / Remoto / Contractor):**
-   - **Candidato basado en Chile:** Reside físicamente en Chile.
-   - **Ofertas Internacionales (Fuera de Chile):** ÚNICAMENTE aceptables si son **100% Remotas** o modalidad **Contractor / B2B / Freelance**. Si una vacante fuera de Chile exige presencia **Híbrida** o **Presencial** en el extranjero, debe ser **DESCARTADA INMEDIATAMENTE (< 60%)** ya que no es físicamente factible.
-   - **Ofertas Locales (Chile):** Pueden ser **100% Remotas** o **Híbridas con un MÁXIMO de 2 días presenciales por semana** (en Santiago o alrededores). Si la vacante exige 3 o más días presenciales por semana en Chile, descartar (< 60%).
-   - **Inglés:** Nivel profesional fluido B2+ (2 años viviendo y trabajando en Dublín, Irlanda). Vacantes 100% remotas internacionales en inglés son altamente compatibles.
+4. **Criterios de Ubicación, Idioma y Modalidad (REGLAS ESTRICTAS DE MODALIDAD):**
+   - **Base del candidato:** El candidato reside físicamente en Chile.
+   - **Ofertas Internacionales (Fuera de Chile):**
+     * DEBEN ser **100% Remotas** bajo modalidad **Contractor / B2B / Freelance** y abiertas a talento de **LATAM / Latin America / Worldwide**.
+     * DESCARTAR INMEDIATAMENTE (< 60%) si la oferta internacional es Híbrida, Presencial o exige presencia física en el extranjero.
+   - **Ofertas Locales en Chile:**
+     * ACEPTAR vacantes **100% Remotas**.
+     * ACEPTAR vacantes **Híbridas**: Si solo menciona la palabra "Híbrido" (sin especificar cantidad de días) O si especifica **2 días o menos presenciales por semana** en la oficina.
+     * DESCARTAR INMEDIATAMENTE (< 60%) en Chile si: Es 100% Presencial / en oficina O si exige textualmente **3 o más días presenciales por semana** en la oficina.
+   - **Inglés:** Nivel profesional fluido B2+ (2 años trabajando y viviendo en Dublín, Irlanda). Vacantes 100% remotas internacionales para LATAM en inglés son 100% compatibles.
 
 ### FORMATO DE SALIDA:
 Debes responder estrictamente en formato JSON válido. Ejemplo exacto de campos:

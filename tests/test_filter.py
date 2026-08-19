@@ -60,4 +60,34 @@ def test_should_evaluate_job_fails_international_hybrid():
     )
     passed, reason = should_evaluate_job(job)
     assert not passed
-    assert "híbrida/presencial fuera de Chile" in reason
+    assert "híbrida/presencial" in reason
+
+
+def test_should_evaluate_job_fails_chile_3plus_days_onsite():
+    """Valida el descarte de vacantes en Chile que exigen 3 o más días presenciales."""
+    job = Job(
+        title="Ingeniero de Datos",
+        company="Banco Local Chile",
+        location="Santiago, Chile",
+        description="Modalidad híbrida exigiendo 3 días presenciales en la oficina de Las Condes. Requiere SQL y Python.",
+        url="https://example.com/job/chile-3days",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "3 o más días presenciales" in reason
+
+
+def test_should_evaluate_job_passes_chile_hybrid_general():
+    """Valida que una vacante híbrida en Chile (general o <=2 días) sea aceptada."""
+    job = Job(
+        title="Analytics Engineer",
+        company="Retail Chile",
+        location="Santiago, Chile",
+        description="Trabajo en modalidad híbrida en Santiago. Manejo de SQL, Python y Power BI.",
+        url="https://example.com/job/chile-hybrid-ok",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert passed
+    assert reason == ""

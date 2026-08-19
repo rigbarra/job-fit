@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import UTC, datetime
 
 from config.loader import load_config
@@ -79,8 +80,7 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
                 f"Descarte algorítmico: La oferta fue publicada hace {int(age_days)} días (máximo permitido: {max_age_days} días).",
             )
 
-    # 4. Validar modalidad Híbrida/Presencial Internacional
-    # Si la vacante no es local de Chile y exige modalidad híbrida o presencial -> Descarte directo.
+    # 4. Validar modalidad Híbrida / Presencial / Remota
     chile_terms = [
         "chile",
         "santiago",
@@ -95,24 +95,49 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
     ]
     is_chile_location = any(term in location_lower for term in chile_terms)
 
-    hybrid_onsite_terms = [
-        "hybrid",
-        "híbrido",
-        "hibrido",
-        "on-site",
-        "onsite",
-        "in-office",
-        "presencial",
-    ]
-    is_hybrid_or_onsite = any(term in text_combined for term in hybrid_onsite_terms)
+    # A) Oferta Internacional (fuera de Chile): DEBE ser 100% remota
+    if not is_chile_location:
+        hybrid_onsite_terms = [
+            "hybrid",
+            "híbrido",
+            "hibrido",
+            "on-site",
+            "onsite",
+            "in-office",
+            "presencial",
+        ]
+        if any(term in text_combined for term in hybrid_onsite_terms):
+            if "100% remote" not in text_combined and "fully remote" not in text_combined:
+                return (
+                    False,
+                    f"Descarte algorítmico: Oferta internacional en '{job.location}' es híbrida/presencial (debe ser 100% remota/contractor).",
+                )
 
-    # Si es híbrida/presencial fuera de Chile (ej: Buenos Aires, México, Madrid, USA), descartar.
-    if is_hybrid_or_onsite and not is_chile_location:
-        # Excepción únicamente si dice explícitamente "100% remote" o "fully remote"
-        if "100% remote" not in text_combined and "fully remote" not in text_combined:
+    # B) Oferta Local (Chile):
+    # - Permitir 100% remota o híbrida general (o con 1 o 2 días presenciales).
+    # - Descartar si es 100% presencial o si exige 3 o más días presenciales a la semana.
+    else:
+        # Descarte si es 100% presencial
+        pure_onsite_terms = [
+            "100% presencial",
+            "100% presencialidad",
+            "100% on-site",
+            "100% onsite",
+            "100% en oficina",
+            "modalidad presencial",
+        ]
+        if any(term in text_combined for term in pure_onsite_terms):
             return (
                 False,
-                f"Descarte algorítmico: Oferta en '{job.location}' es híbrida/presencial fuera de Chile (candidato reside en Chile).",
+                "Descarte algorítmico: Vacante en Chile descartada por ser 100% presencial.",
+            )
+
+        # Descarte si menciona 3, 4 o 5 días presenciales / en oficina
+        pattern_3plus_days = r"\b([345]|tres|cuatro|cinco)\s*(días|dias|days)\s*(presenciales|de\s+presencialidad|en\s+oficina|on-site|onsite|in-office)\b"
+        if re.search(pattern_3plus_days, text_combined):
+            return (
+                False,
+                "Descarte algorítmico: Vacante en Chile exige 3 o más días presenciales por semana.",
             )
 
     return True, ""
