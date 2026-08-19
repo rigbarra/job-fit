@@ -109,6 +109,14 @@ class DiscordNotifier:
 
         fields.append(
             {
+                "name": "🔗 Enlace de Postulación",
+                "value": f"[👉 **Haz clic aquí para ver la oferta en {job.source.capitalize()}**]({job.url})",
+                "inline": False,
+            }
+        )
+
+        fields.append(
+            {
                 "name": "🔍 Keywords Faltantes",
                 "value": missing_kw_str[:1024],
                 "inline": False,

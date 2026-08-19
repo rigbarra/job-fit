@@ -4,7 +4,7 @@ import random
 import re
 import time
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone
 
 from bs4 import BeautifulSoup
 from curl_cffi import requests
@@ -19,12 +19,27 @@ logger = logging.getLogger(__name__)
 class IndeedScraper(BaseScraper):
     def __init__(self, rate_limit_config: dict | None = None):
         super().__init__(name="indeed")
-        self.base_url = "https://www.indeed.com"
+        self.default_base_url = "https://www.indeed.com"
         self.rate_config = rate_limit_config or {
-            "min_delay_seconds": 5.0,
-            "max_delay_seconds": 10.0,
+            "min_delay_seconds": 3.0,
+            "max_delay_seconds": 6.0,
             "max_errors_before_circuit_break": 1,
         }
+
+    def get_base_url_for_location(self, location: str) -> str:
+        """Determina el subdominio regional de Indeed según la ubicación geográfica."""
+        loc = location.lower()
+        if any(term in loc for term in ["chile", "santiago", "vina", "viña", "valparaiso", "valparaíso", "concepcion", "concepción"]):
+            return "https://cl.indeed.com"
+        elif any(term in loc for term in ["mexico", "méxico", "cdmx", "guadalajara"]):
+            return "https://mx.indeed.com"
+        elif any(term in loc for term in ["spain", "españa", "madrid", "barcelona"]):
+            return "https://es.indeed.com"
+        elif any(term in loc for term in ["argentina", "buenos aires"]):
+            return "https://ar.indeed.com"
+        elif any(term in loc for term in ["colombia", "bogota", "bogotá", "medellin"]):
+            return "https://co.indeed.com"
+        return self.default_base_url
 
     def fetch_jobs(self, keywords: list[str], locations: list[str], limit: int = 20) -> list[Job]:
         """
@@ -34,7 +49,7 @@ class IndeedScraper(BaseScraper):
         jobs_found: list[Job] = []
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+            "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
             "Accept-Encoding": "gzip, deflate, br",
             "Connection": "keep-alive",
         }
@@ -55,6 +70,7 @@ class IndeedScraper(BaseScraper):
                     )
                     return jobs_found
 
+                base_url = self.get_base_url_for_location(location)
                 query_params = {
                     "q": keyword,
                     "l": location,
@@ -62,10 +78,10 @@ class IndeedScraper(BaseScraper):
                 }
 
                 query_string = urllib.parse.urlencode(query_params)
-                search_url = f"{self.base_url}/jobs?{query_string}"
+                search_url = f"{base_url}/jobs?{query_string}"
 
                 try:
-                    logger.info(f"Indeed: Buscando '{keyword}' en '{location}'...")
+                    logger.info(f"Indeed: Buscando '{keyword}' en '{location}' ({base_url})...")
 
                     response = requests.get(
                         search_url, headers=headers, impersonate="chrome120", timeout=20
@@ -109,21 +125,26 @@ class IndeedScraper(BaseScraper):
                             )
                             return jobs_found
 
-                        jk = job_data.get("jk")
-                        if not jk:
+                        # Indeed puede identificar el job por 'jobkey' o 'jk'
+                        jobkey = (
+                            job_data.get("jobkey")
+                            or job_data.get("jk")
+                            or job_data.get("jobKey")
+                        )
+                        if not jobkey:
                             continue
 
-                        job_url = f"{self.base_url}/viewjob?jk={jk}"
+                        job_url = f"{base_url}/viewjob?jk={jobkey}"
 
                         # 1. DEDUPLICACIÓN PREVIA: Si ya está en BD, no gastamos peticiones de red
                         if is_duplicate(job_url):
-                            logger.debug(f"Indeed: Omitiendo duplicado '{jk}'")
+                            logger.debug(f"Indeed: Omitiendo duplicado '{jobkey}'")
                             continue
 
                         # Throttling antes de descargar descripción detallada
                         delay = random.uniform(
-                            self.rate_config.get("min_delay_seconds", 5.0),
-                            self.rate_config.get("max_delay_seconds", 10.0),
+                            self.rate_config.get("min_delay_seconds", 3.0),
+                            self.rate_config.get("max_delay_seconds", 6.0),
                         )
                         logger.info(
                             f"Indeed: Esperando {delay:.2f} segundos antes de consultar descripción..."
@@ -164,7 +185,9 @@ class IndeedScraper(BaseScraper):
                         pub_date_ms = job_data.get("pubDate")
                         if pub_date_ms:
                             try:
-                                posted_at = datetime.fromtimestamp(pub_date_ms / 1000.0)
+                                posted_at = datetime.fromtimestamp(
+                                    pub_date_ms / 1000.0, tz=timezone.utc
+                                )
                             except Exception:
                                 pass
 
@@ -189,16 +212,15 @@ class IndeedScraper(BaseScraper):
                             posted_at=posted_at,
                         )
                         jobs_found.append(job)
-                        logger.info(f"Indeed: Ingerida vacante '{job.title}' de '{job.company}'")
+                        logger.info(f"Indeed: Extraída vacante '{job.title}' @ '{job.company}'")
+
+                        if len(jobs_found) >= limit:
+                            break
 
                 except Exception as e:
                     logger.exception(f"Indeed: Error durante scraping: {e}")
 
                 # Esperar entre queries de búsqueda
-                search_delay = random.uniform(
-                    self.rate_config.get("min_delay_seconds", 5.0) * 1.5,
-                    self.rate_config.get("max_delay_seconds", 10.0) * 1.5,
-                )
-                time.sleep(search_delay)
+                time.sleep(random.uniform(2.0, 4.0))
 
-        return jobs_found[:limit]
+        return jobs_found
