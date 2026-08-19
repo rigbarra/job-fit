@@ -15,6 +15,7 @@ search_filters:
     - "Latin America"
     - "Worldwide"
   max_job_age_days: 3    # Solo evaluar vacantes publicadas en los últimos 3 días (72 horas)
+  experience_level: "4"  # Nivel de experiencia LinkedIn (f_E=4: Mid-Senior Level. Descarta prácticas 1 y entry-level 2)
   limit_per_source: 20
 
 # Umbrales de clasificación de coincidencia (Match Score)

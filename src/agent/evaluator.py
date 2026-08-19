@@ -97,14 +97,17 @@ def _call_openrouter_with_model_pool(user_prompt: str) -> dict[str, Any]:
     Ejecuta la llamada a OpenRouter rotando por un pool de modelos gratuitos de alta calidad
     si el modelo principal experimenta Rate Limit (429) o saturación.
     """
-    configured_model = settings.openrouter_model or "google/gemma-3-27b-it:free"
+    configured_model = settings.openrouter_model or "deepseek/deepseek-r1:free"
     models_pool = list(
         dict.fromkeys(
             [
                 configured_model,
+                "deepseek/deepseek-r1:free",
+                "deepseek/deepseek-chat:free",
+                "qwen/qwen-2.5-72b-instruct:free",
+                "qwen/qwen-2.5-coder-32b-instruct:free",
                 "google/gemma-3-27b-it:free",
                 "meta-llama/llama-3.3-70b-instruct:free",
-                "qwen/qwen-2.5-72b-instruct:free",
                 "openrouter/free",
             ]
         )

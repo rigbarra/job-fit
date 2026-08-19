@@ -15,11 +15,17 @@ class LinkedInScraper(WebScraper):
 
     SEARCH_API = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
 
-    def __init__(self, rate_limit_config: dict | None = None, max_job_age_days: int = 3):
+    def __init__(
+        self,
+        rate_limit_config: dict | None = None,
+        max_job_age_days: int = 3,
+        experience_level: str = "4",
+    ):
         config = {"min_delay_seconds": 4.0, "max_delay_seconds": 8.0}
         config.update(rate_limit_config or {})
         super().__init__(name="linkedin", rate_limit_config=config)
         self.max_job_age_days = max_job_age_days
+        self.experience_level = experience_level
 
     def _build_search_url(self, keyword: str, location: str) -> str:
         tpr_seconds = self.max_job_age_days * 86400
@@ -49,6 +55,9 @@ class LinkedInScraper(WebScraper):
             "f_TPR": f"r{tpr_seconds}",
             "f_WT": f_wt,
         }
+        if self.experience_level:
+            params["f_E"] = self.experience_level
+
         return f"{self.SEARCH_API}?{urllib.parse.urlencode(params)}"
 
     def _parse_search_results(self, response: requests.Response, location: str) -> list[RawJobCard]:

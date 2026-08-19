@@ -41,6 +41,7 @@ def main():
     # 3. Inicializar Scrapers
     scrapers = []
     max_job_age_days = search_filters.get("max_job_age_days", 3)
+    experience_level = search_filters.get("experience_level", "4")
     if active_sources.get("remotive", True):
         scrapers.append(RemotiveScraper())
     if active_sources.get("indeed", False):
@@ -51,7 +52,11 @@ def main():
         from src.scraper.linkedin import LinkedInScraper
 
         scrapers.append(
-            LinkedInScraper(rate_limit_config=rate_limiting, max_job_age_days=max_job_age_days)
+            LinkedInScraper(
+                rate_limit_config=rate_limiting,
+                max_job_age_days=max_job_age_days,
+                experience_level=experience_level,
+            )
         )
 
     logger.info(f"Scrapers activos: {[s.name for s in scrapers]}")
