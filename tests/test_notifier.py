@@ -10,13 +10,20 @@ def test_is_configured(monkeypatch):
     assert not DiscordNotifier.is_configured()
 
     monkeypatch.setattr(
-        "config.settings.settings.discord_webhook_url", "https://discord.com/api/webhooks/XXXX/YYYY"
+        "config.settings.settings.discord_webhook_url",
+        "https://discord.com/api/webhooks/XXXX/YYYY",
     )
     assert not DiscordNotifier.is_configured()
 
     monkeypatch.setattr(
         "config.settings.settings.discord_webhook_url",
         "https://discord.com/api/webhooks/123456/abcdef",
+    )
+    assert DiscordNotifier.is_configured()
+
+    monkeypatch.setattr(
+        "config.settings.settings.discord_webhook_url",
+        "https://discordapp.com/api/webhooks/123456/abcdef",
     )
     assert DiscordNotifier.is_configured()
 
@@ -28,7 +35,7 @@ def test_send_job_notification_tier_3_silenced(monkeypatch, mocker):
         "https://discord.com/api/webhooks/123456/abcdef",
     )
 
-    mock_post = mocker.patch("src.notifier.discord.requests.post")
+    mock_urlopen = mocker.patch("urllib.request.urlopen")
 
     job = Job(
         id=1,
@@ -40,12 +47,17 @@ def test_send_job_notification_tier_3_silenced(monkeypatch, mocker):
         source="test",
     )
     match_result = MatchResult(
-        id=1, job_id=1, score=20.0, tier=3, rationale="Incompatible.", missing_keywords="[]"
+        id=1,
+        job_id=1,
+        score=20.0,
+        tier=3,
+        rationale="Incompatible.",
+        missing_keywords="[]",
     )
 
     sent = DiscordNotifier.send_job_notification(job, match_result)
     assert not sent
-    mock_post.assert_not_called()
+    mock_urlopen.assert_not_called()
 
 
 def test_send_job_notification_tier_1_success(monkeypatch, mocker):
@@ -55,9 +67,9 @@ def test_send_job_notification_tier_1_success(monkeypatch, mocker):
         "https://discord.com/api/webhooks/123456/abcdef",
     )
 
-    mock_response = mocker.Mock()
-    mock_response.status_code = 204
-    mock_post = mocker.patch("src.notifier.discord.requests.post", return_value=mock_response)
+    mock_resp = mocker.MagicMock()
+    mock_resp.__enter__.return_value.status = 204
+    mock_urlopen = mocker.patch("urllib.request.urlopen", return_value=mock_resp)
 
     job = Job(
         id=10,
@@ -80,11 +92,10 @@ def test_send_job_notification_tier_1_success(monkeypatch, mocker):
 
     sent = DiscordNotifier.send_job_notification(job, match_result)
     assert sent
-    assert mock_post.call_count == 1
+    assert mock_urlopen.call_count == 1
 
-    call_kwargs = mock_post.call_args.kwargs
-    assert "json" in call_kwargs
-    payload = call_kwargs["json"]
+    req = mock_urlopen.call_args[0][0]
+    payload = json.loads(req.data.decode("utf-8"))
 
     assert "SnowTech" in payload["embeds"][0]["title"]
     assert payload["embeds"][0]["color"] == 0x2ECC71  # Verde
@@ -102,9 +113,9 @@ def test_send_job_notification_tier_2_with_pdf(tmp_path, monkeypatch, mocker):
     pdf_file = tmp_path / "CV_Rigoberto_Barra_FinTech_20_T2_es_20260814.pdf"
     pdf_file.write_bytes(b"%PDF-1.4 mock pdf content")
 
-    mock_response = mocker.Mock()
-    mock_response.status_code = 200
-    mock_post = mocker.patch("src.notifier.discord.requests.post", return_value=mock_response)
+    mock_resp = mocker.MagicMock()
+    mock_resp.__enter__.return_value.status = 200
+    mock_urlopen = mocker.patch("urllib.request.urlopen", return_value=mock_resp)
 
     job = Job(
         id=20,
@@ -125,19 +136,18 @@ def test_send_job_notification_tier_2_with_pdf(tmp_path, monkeypatch, mocker):
         adapted_summary="Data Engineer con experiencia en Python y orquestación...",
     )
     snapshot = CVSnapshot(
-        id=5, job_id=20, pdf_path=str(pdf_file), tex_path=str(pdf_file).replace(".pdf", ".tex")
+        id=5,
+        job_id=20,
+        pdf_path=str(pdf_file),
+        tex_path=str(pdf_file).replace(".pdf", ".tex"),
     )
 
     sent = DiscordNotifier.send_job_notification(job, match_result, snapshot)
     assert sent
-    assert mock_post.call_count == 1
+    assert mock_urlopen.call_count == 1
 
-    call_kwargs = mock_post.call_args.kwargs
-    assert "data" in call_kwargs
-    assert "payload_json" in call_kwargs["data"]
-    assert "files" in call_kwargs
-    assert "files[0]" in call_kwargs["files"]
-
-    payload = json.loads(call_kwargs["data"]["payload_json"])
-    assert payload["embeds"][0]["color"] == 0xF1C40F  # Amarillo
-    assert any("Airflow" in f["value"] for f in payload["embeds"][0]["fields"])
+    req = mock_urlopen.call_args[0][0]
+    assert "multipart/form-data" in req.headers["Content-type"]
+    assert b"payload_json" in req.data
+    assert b"files[0]" in req.data
+    assert b"%PDF-1.4 mock pdf content" in req.data

@@ -1,9 +1,10 @@
 import json
 import logging
 import os
+import urllib.error
+import urllib.request
+import uuid
 from datetime import UTC, datetime
-
-from curl_cffi import requests
 
 from config.settings import settings
 from src.database.models import CVSnapshot, Job, MatchResult
@@ -20,15 +21,19 @@ class DiscordNotifier:
     @staticmethod
     def is_configured() -> bool:
         """Verifica si la URL del webhook de Discord está debidamente configurada."""
-        return (
-            bool(settings.discord_webhook_url)
-            and "XXXX" not in settings.discord_webhook_url
-            and settings.discord_webhook_url.startswith("https://discord.com/api/webhooks/")
+        if not settings.discord_webhook_url or "XXXX" in settings.discord_webhook_url:
+            return False
+        url = settings.discord_webhook_url.lower().strip()
+        return url.startswith("https://discord.com/api/webhooks/") or url.startswith(
+            "https://discordapp.com/api/webhooks/"
         )
 
     @classmethod
     def send_job_notification(
-        cls, job: Job, match_result: MatchResult, cv_snapshot: CVSnapshot | None = None
+        cls,
+        job: Job,
+        match_result: MatchResult,
+        cv_snapshot: CVSnapshot | None = None,
     ) -> bool:
         """
         Envía una alerta de vacante a Discord con un Embed detallado y el PDF del CV adjunto.
@@ -81,15 +86,33 @@ class DiscordNotifier:
                 "value": f"**{match_result.score:.1f}%** ({tier_icon} {tier_title})",
                 "inline": True,
             },
-            {"name": "📍 Ubicación", "value": job.location or "No especificada", "inline": True},
-            {"name": "🌐 Portal / Fuente", "value": job.source.capitalize(), "inline": True},
+            {
+                "name": "📍 Ubicación",
+                "value": job.location or "No especificada",
+                "inline": True,
+            },
+            {
+                "name": "🌐 Portal / Fuente",
+                "value": job.source.capitalize(),
+                "inline": True,
+            },
         ]
 
         if job.salary:
-            fields.append({"name": "💰 Salario", "value": job.salary, "inline": True})
+            fields.append(
+                {
+                    "name": "💰 Salario",
+                    "value": job.salary,
+                    "inline": True,
+                }
+            )
 
         fields.append(
-            {"name": "🔍 Keywords Faltantes", "value": missing_kw_str[:1024], "inline": False}
+            {
+                "name": "🔍 Keywords Faltantes",
+                "value": missing_kw_str[:1024],
+                "inline": False,
+            }
         )
 
         if match_result.rationale:
@@ -127,49 +150,66 @@ class DiscordNotifier:
             "embeds": [embed],
         }
 
-        # 4. Preparar el despacho (con o sin archivo adjunto)
+        # 4. Despacho HTTP (con o sin archivo adjunto PDF vía multipart)
         try:
-            pdf_attached = False
-            files = {}
-            pdf_file_handle = None
+            has_pdf = bool(
+                cv_snapshot and cv_snapshot.pdf_path and os.path.exists(cv_snapshot.pdf_path)
+            )
 
-            if cv_snapshot and cv_snapshot.pdf_path and os.path.exists(cv_snapshot.pdf_path):
+            if has_pdf and cv_snapshot:
                 pdf_filename = os.path.basename(cv_snapshot.pdf_path)
-                pdf_file_handle = open(cv_snapshot.pdf_path, "rb")
-                files = {"files[0]": (pdf_filename, pdf_file_handle, "application/pdf")}
-                pdf_attached = True
+                with open(cv_snapshot.pdf_path, "rb") as f:
+                    pdf_bytes = f.read()
 
-            try:
-                if pdf_attached and pdf_file_handle:
-                    response = requests.post(
-                        settings.discord_webhook_url,
-                        data={"payload_json": json.dumps(payload)},
-                        files=files,
-                        timeout=30,
-                    )
-                else:
-                    response = requests.post(
-                        settings.discord_webhook_url,
-                        json=payload,
-                        headers={"Content-Type": "application/json"},
-                        timeout=30,
-                    )
+                boundary = f"----JobFitBoundary{uuid.uuid4().hex}"
+                body = []
 
-                if response.status_code in (200, 204):
+                # Parte 1: JSON payload
+                body.append(
+                    f"--{boundary}\r\n"
+                    f'Content-Disposition: form-data; name="payload_json"\r\n'
+                    f"Content-Type: application/json\r\n\r\n"
+                    f"{json.dumps(payload)}".encode()
+                )
+
+                # Parte 2: PDF adjunto
+                body.append(
+                    f"--{boundary}\r\n"
+                    f'Content-Disposition: form-data; name="files[0]"; filename="{pdf_filename}"\r\n'
+                    f"Content-Type: application/pdf\r\n\r\n".encode() + pdf_bytes
+                )
+
+                body.append(f"--{boundary}--\r\n".encode())
+                post_data = b"\r\n".join(body)
+                content_type = f"multipart/form-data; boundary={boundary}"
+            else:
+                post_data = json.dumps(payload).encode("utf-8")
+                content_type = "application/json"
+
+            req = urllib.request.Request(
+                settings.discord_webhook_url,
+                data=post_data,
+                headers={
+                    "Content-Type": content_type,
+                    "User-Agent": "job-fit-notifier/1.0",
+                },
+                method="POST",
+            )
+
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                if resp.status in (200, 204):
                     logger.info(
-                        f"Discord: Notificación de '{job.title}' @ '{job.company}' enviada exitosamente (PDF adjunto: {pdf_attached})."
+                        f"Discord: Notificación de '{job.title}' @ '{job.company}' enviada exitosamente (PDF adjunto: {has_pdf})."
                     )
                     return True
                 else:
-                    logger.error(
-                        f"Discord: Error {response.status_code} despachando webhook: {response.text}"
-                    )
+                    logger.error(f"Discord: Error {resp.status} despachando webhook.")
                     return False
 
-            finally:
-                if pdf_file_handle:
-                    pdf_file_handle.close()
-
+        except urllib.error.HTTPError as he:
+            err_body = he.read().decode("utf-8", errors="ignore")
+            logger.error(f"Discord HTTPError {he.code} para vacante {job.id}: {err_body}")
+            return False
         except Exception as e:
             logger.error(
                 f"Discord: Excepción al despachar notificación para vacante {job.id}: {e}",

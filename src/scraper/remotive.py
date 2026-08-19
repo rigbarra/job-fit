@@ -70,6 +70,13 @@ class RemotiveScraper(BaseScraper):
                     if not location_matched:
                         continue
 
+                    # Filtrado básico por título para descartar puestos administrativos/ventas/redacción
+                    job_title = rj.get("title", "")
+                    job_title_lower = job_title.lower()
+                    data_keywords = ["data", "analytics", "bi", "dbt", "etl", "pipeline", "intelligence", "datos"]
+                    if not any(kw in job_title_lower for kw in data_keywords):
+                        continue
+
                     # Convertir fecha de publicación
                     posted_at = None
                     pub_date_str = rj.get("publication_date")
