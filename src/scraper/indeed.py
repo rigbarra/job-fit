@@ -1,234 +1,102 @@
 import json
 import logging
-import random
 import re
-import time
 import urllib.parse
 from datetime import UTC, datetime
 
 from bs4 import BeautifulSoup
 from curl_cffi import requests
 
-from src.database.models import Job
-from src.database.repository import is_duplicate
-from src.scraper.base import BaseScraper
+from src.scraper.base import RawJobCard, WebScraper
 
 logger = logging.getLogger(__name__)
 
 
-class IndeedScraper(BaseScraper):
+class IndeedScraper(WebScraper):
+    """Scraper de Indeed que hereda throttling, circuit breaker y dedup de WebScraper."""
+
+    # Mapa de subdominios regionales de Indeed
+    REGIONAL_DOMAINS = {
+        (
+            "chile",
+            "santiago",
+            "vina",
+            "viña",
+            "valparaiso",
+            "valparaíso",
+            "concepcion",
+            "concepción",
+        ): "https://cl.indeed.com",
+        ("mexico", "méxico", "cdmx", "guadalajara"): "https://mx.indeed.com",
+        ("spain", "españa", "madrid", "barcelona"): "https://es.indeed.com",
+        ("argentina", "buenos aires"): "https://ar.indeed.com",
+        ("colombia", "bogota", "bogotá", "medellin"): "https://co.indeed.com",
+    }
+
     def __init__(self, rate_limit_config: dict | None = None):
-        super().__init__(name="indeed")
-        self.default_base_url = "https://www.indeed.com"
-        self.rate_config = rate_limit_config or {
-            "min_delay_seconds": 3.0,
-            "max_delay_seconds": 6.0,
-            "max_errors_before_circuit_break": 1,
-        }
+        super().__init__(name="indeed", rate_limit_config=rate_limit_config)
 
-    def get_base_url_for_location(self, location: str) -> str:
-        """Determina el subdominio regional de Indeed según la ubicación geográfica."""
+    def _get_base_url(self, location: str) -> str:
+        """Determina el subdominio regional de Indeed según la ubicación."""
         loc = location.lower()
-        if any(
-            term in loc
-            for term in [
-                "chile",
-                "santiago",
-                "vina",
-                "viña",
-                "valparaiso",
-                "valparaíso",
-                "concepcion",
-                "concepción",
-            ]
-        ):
-            return "https://cl.indeed.com"
-        elif any(term in loc for term in ["mexico", "méxico", "cdmx", "guadalajara"]):
-            return "https://mx.indeed.com"
-        elif any(term in loc for term in ["spain", "españa", "madrid", "barcelona"]):
-            return "https://es.indeed.com"
-        elif any(term in loc for term in ["argentina", "buenos aires"]):
-            return "https://ar.indeed.com"
-        elif any(term in loc for term in ["colombia", "bogota", "bogotá", "medellin"]):
-            return "https://co.indeed.com"
-        return self.default_base_url
+        for terms, domain in self.REGIONAL_DOMAINS.items():
+            if any(term in loc for term in terms):
+                return domain
+        return "https://www.indeed.com"
 
-    def fetch_jobs(self, keywords: list[str], locations: list[str], limit: int = 20) -> list[Job]:
-        """
-        Extrae vacantes de Indeed emulando TLS de Chrome con curl_cffi y
-        parseando el JSON embebido en la página, con circuit breaker de bloqueos.
-        """
-        jobs_found: list[Job] = []
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept-Language": "es-CL,es;q=0.9,en;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-        }
+    def _build_search_url(self, keyword: str, location: str) -> str:
+        base_url = self._get_base_url(location)
+        params = {"q": keyword, "l": location, "from": "searchOnHP"}
+        return f"{base_url}/jobs?{urllib.parse.urlencode(params)}"
 
-        consecutive_blocks = 0
-        max_blocks = self.rate_config.get("max_errors_before_circuit_break", 1)
+    def _parse_search_results(self, response: requests.Response, location: str) -> list[RawJobCard]:
+        base_url = self._get_base_url(location)
+        pattern = r'window\.mosaic\.providerData\["mosaic-provider-jobcards"\]\s*=\s*(\{.+?\});'
+        match = re.search(pattern, response.text, re.DOTALL)
 
-        # Iteramos por keywords y localizaciones
-        for keyword in keywords:
-            for location in locations:
-                if len(jobs_found) >= limit:
-                    break
+        if not match:
+            return []
 
-                # Si el circuit breaker se activó, abortamos todo el scraper
-                if consecutive_blocks >= max_blocks:
-                    logger.critical(
-                        "Indeed: Circuit Breaker activado. Abortando búsqueda para evitar blacklist de IP."
-                    )
-                    return jobs_found
+        try:
+            data = json.loads(match.group(1))
+            raw_results = (
+                data.get("metaData", {}).get("mosaicProviderJobCardsModel", {}).get("results", [])
+            )
+        except Exception as e:
+            logger.error(f"Indeed: Error parseando JSON de Mosaic: {e}")
+            return []
 
-                base_url = self.get_base_url_for_location(location)
-                query_params = {
-                    "q": keyword,
-                    "l": location,
-                    "from": "searchOnHP",
-                }
+        cards = []
+        for r in raw_results:
+            jobkey = r.get("jobkey") or r.get("jk") or r.get("jobKey")
+            if not jobkey:
+                continue
 
-                query_string = urllib.parse.urlencode(query_params)
-                search_url = f"{base_url}/jobs?{query_string}"
-
+            posted_at = None
+            pub_date_ms = r.get("pubDate")
+            if pub_date_ms:
                 try:
-                    logger.info(f"Indeed: Buscando '{keyword}' en '{location}' ({base_url})...")
+                    posted_at = datetime.fromtimestamp(pub_date_ms / 1000.0, tz=UTC)
+                except Exception:
+                    pass
 
-                    response = requests.get(
-                        search_url, headers=headers, impersonate="chrome120", timeout=20
-                    )
+            salary_info = r.get("salarySnippet") or r.get("estimatedSalary")
+            salary = salary_info.get("text") if salary_info else None
 
-                    if response.status_code in [403, 429]:
-                        consecutive_blocks += 1
-                        logger.error(f"Indeed: Acceso bloqueado ({response.status_code}).")
-                        continue
-                    elif response.status_code != 200:
-                        logger.error(f"Indeed: Error {response.status_code} al consultar búsqueda.")
-                        continue
+            cards.append(
+                RawJobCard(
+                    title=r.get("title", ""),
+                    company=r.get("company", ""),
+                    location=r.get("formattedLocation", location),
+                    url=f"{base_url}/viewjob?jk={jobkey}",
+                    salary=salary,
+                    job_type=r.get("jobCardRequirementsModel", {}).get("jobTypes") or None,
+                    posted_at=posted_at,
+                )
+            )
+        return cards
 
-                    # Si la respuesta es exitosa, reiniciamos el contador de bloqueos
-                    consecutive_blocks = 0
-
-                    pattern = r'window\.mosaic\.providerData\["mosaic-provider-jobcards"\]\s*=\s*(\{.+?\});'
-                    match = re.search(pattern, response.text, re.DOTALL)
-
-                    raw_results = []
-                    if match:
-                        try:
-                            data = json.loads(match.group(1))
-                            raw_results = (
-                                data.get("metaData", {})
-                                .get("mosaicProviderJobCardsModel", {})
-                                .get("results", [])
-                            )
-                        except Exception as je:
-                            logger.error(f"Indeed: Error parseando JSON de Mosaic: {je}")
-
-                    logger.info(f"Indeed: Encontrados {len(raw_results)} resultados en la página.")
-
-                    for job_data in raw_results:
-                        if len(jobs_found) >= limit:
-                            break
-
-                        if consecutive_blocks >= max_blocks:
-                            logger.critical(
-                                "Indeed: Circuit Breaker activado en medio de descarga de detalles. Abortando."
-                            )
-                            return jobs_found
-
-                        # Indeed puede identificar el job por 'jobkey' o 'jk'
-                        jobkey = (
-                            job_data.get("jobkey") or job_data.get("jk") or job_data.get("jobKey")
-                        )
-                        if not jobkey:
-                            continue
-
-                        job_url = f"{base_url}/viewjob?jk={jobkey}"
-
-                        # 1. DEDUPLICACIÓN PREVIA: Si ya está en BD, no gastamos peticiones de red
-                        if is_duplicate(job_url):
-                            logger.debug(f"Indeed: Omitiendo duplicado '{jobkey}'")
-                            continue
-
-                        # Throttling antes de descargar descripción detallada
-                        delay = random.uniform(
-                            self.rate_config.get("min_delay_seconds", 3.0),
-                            self.rate_config.get("max_delay_seconds", 6.0),
-                        )
-                        logger.info(
-                            f"Indeed: Esperando {delay:.2f} segundos antes de consultar descripción..."
-                        )
-                        time.sleep(delay)
-
-                        # 2. Descargar la descripción completa del puesto
-                        try:
-                            desc_response = requests.get(
-                                job_url, headers=headers, impersonate="chrome120", timeout=15
-                            )
-
-                            if desc_response.status_code in [403, 429]:
-                                consecutive_blocks += 1
-                                logger.error(
-                                    f"Indeed: Bloqueo detectado al bajar descripción ({desc_response.status_code})."
-                                )
-                                continue
-
-                            if desc_response.status_code != 200:
-                                continue
-
-                            soup = BeautifulSoup(desc_response.text, "html.parser")
-                            desc_div = soup.find(id="jobDescriptionText")
-                            job_desc = (
-                                desc_div.get_text(separator="\n").strip() if desc_div else None
-                            )
-
-                        except Exception as de:
-                            logger.error(f"Indeed: Error de conexión bajando descripción: {de}")
-                            continue
-
-                        if not job_desc:
-                            continue
-
-                        # Obtener fecha de publicación
-                        posted_at = None
-                        pub_date_ms = job_data.get("pubDate")
-                        if pub_date_ms:
-                            try:
-                                posted_at = datetime.fromtimestamp(pub_date_ms / 1000.0, tz=UTC)
-                            except Exception:
-                                pass
-
-                        # Parsear sueldo
-                        salary_text = None
-                        salary_info = job_data.get("salarySnippet") or job_data.get(
-                            "estimatedSalary"
-                        )
-                        if salary_info:
-                            salary_text = salary_info.get("text")
-
-                        job = Job(
-                            title=job_data.get("title", ""),
-                            company=job_data.get("company", ""),
-                            location=job_data.get("formattedLocation", location),
-                            description=job_desc,
-                            url=job_url,
-                            source=self.name,
-                            salary=salary_text,
-                            job_type=job_data.get("jobCardRequirementsModel", {}).get("jobTypes")
-                            or None,
-                            posted_at=posted_at,
-                        )
-                        jobs_found.append(job)
-                        logger.info(f"Indeed: Extraída vacante '{job.title}' @ '{job.company}'")
-
-                        if len(jobs_found) >= limit:
-                            break
-
-                except Exception as e:
-                    logger.exception(f"Indeed: Error durante scraping: {e}")
-
-                # Esperar entre queries de búsqueda
-                time.sleep(random.uniform(2.0, 4.0))
-
-        return jobs_found
+    def _extract_description(self, url: str, response: requests.Response) -> str | None:
+        soup = BeautifulSoup(response.text, "html.parser")
+        desc_div = soup.find(id="jobDescriptionText")
+        return desc_div.get_text(separator="\n").strip() if desc_div else None

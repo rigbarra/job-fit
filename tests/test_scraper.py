@@ -86,9 +86,10 @@ def test_indeed_scraper(mocker):
     mock_detail_res.status_code = 200
     mock_detail_res.text = mock_detail_html
 
-    mocker.patch("src.scraper.indeed.is_duplicate", return_value=False)
+    mocker.patch("src.scraper.base.is_duplicate", return_value=False)
 
-    mock_get = mocker.patch("src.scraper.indeed.requests.get")
+    # Mock de requests.get en base.py (donde WebScraper lo invoca)
+    mock_get = mocker.patch("src.scraper.base.requests.get")
     mock_get.side_effect = [mock_search_res, mock_detail_res]
     mocker.patch("time.sleep")
 
@@ -137,8 +138,8 @@ def test_linkedin_scraper(mocker):
     mock_detail_res.status_code = 200
     mock_detail_res.text = mock_detail_html
 
-    mocker.patch("src.scraper.linkedin.is_duplicate", return_value=False)
-    mock_get = mocker.patch("src.scraper.linkedin.requests.get")
+    mocker.patch("src.scraper.base.is_duplicate", return_value=False)
+    mock_get = mocker.patch("src.scraper.base.requests.get")
     mock_get.side_effect = [mock_search_res, mock_detail_res]
     mocker.patch("time.sleep")
 

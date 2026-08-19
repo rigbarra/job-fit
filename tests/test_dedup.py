@@ -24,9 +24,10 @@ def test_job_save_and_duplicate():
     assert not is_duplicate(job_url)
 
     # 2. Guardar el empleo por primera vez
-    saved_job = save_job(job)
+    saved_job, is_new = save_job(job)
     assert saved_job.id is not None
     assert saved_job.hash_url is not None
+    assert is_new is True
 
     # 3. Comprobar que ahora sí es detectado como duplicado
     assert is_duplicate(job_url)
@@ -40,11 +41,12 @@ def test_job_save_and_duplicate():
         url=job_url,
         source="test",
     )
-    saved_duplicate = save_job(duplicate_job)
+    saved_duplicate, is_new_dup = save_job(duplicate_job)
 
     # Debe retornar el registro original sin duplicarlo en la base de datos
     assert saved_duplicate.id == saved_job.id
     assert saved_duplicate.title == "Data Engineer"  # No cambia
+    assert is_new_dup is False
 
 
 def test_get_pending_jobs():
@@ -66,8 +68,8 @@ def test_get_pending_jobs():
         source="test",
     )
 
-    saved_job1 = save_job(job1)
-    saved_job2 = save_job(job2)
+    saved_job1, _ = save_job(job1)
+    saved_job2, _ = save_job(job2)
 
     # Al inicio, ambos están pendientes
     pending = get_pending_jobs()

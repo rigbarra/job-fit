@@ -41,20 +41,25 @@ def is_duplicate(url: str) -> bool:
         return results.first() is not None
 
 
-def save_job(job: Job) -> Job:
-    """Guarda una vacante si no existe previamente (deduplicación integrada)."""
+def save_job(job: Job) -> tuple[Job, bool]:
+    """
+    Guarda una vacante si no existe previamente (deduplicación integrada).
+
+    Returns:
+        tuple[Job, bool]: (job guardado/existente, True si fue insertado como nuevo).
+    """
     job.hash_url = get_hash(job.url)
     with Session(engine) as session:
         # Verificar duplicados por URL
         statement = select(Job).where(Job.hash_url == job.hash_url)
         existing = session.exec(statement).first()
         if existing:
-            return existing
+            return existing, False
 
         session.add(job)
         session.commit()
         session.refresh(job)
-        return job
+        return job, True
 
 
 def get_pending_jobs() -> list[Job]:

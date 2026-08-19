@@ -26,7 +26,6 @@ match_thresholds:
 sources:
   remotive: true         # API REST, muy estable
   indeed: false          # Desactivado por defecto por seguridad de IP
-  adzuna: false          # Requiere registrarse para obtener API Key
   linkedin: true         # Endpoints públicos guest de LinkedIn con throttling
 
 # Cautela y Control de Bloqueos (Rate Limiting)

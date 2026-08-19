@@ -1,11 +1,14 @@
 import logging
 import sys
 
-import yaml
-
+from config.loader import load_config
 from config.settings import settings
-from src.database.repository import get_pending_jobs, init_db, save_job
-from src.scraper.indeed import IndeedScraper
+from src.agent.evaluator import evaluate_job
+from src.agent.filter import should_evaluate_job
+from src.cv_engine.compiler import generate_cv_for_job
+from src.database.models import MatchResult
+from src.database.repository import get_pending_jobs, init_db, save_job, save_match_result
+from src.notifier.discord import DiscordNotifier
 from src.scraper.remotive import RemotiveScraper
 
 # Configurar logging detallado
@@ -17,25 +20,6 @@ logging.basicConfig(
 logger = logging.getLogger("job-fit")
 
 
-def load_config() -> dict:
-    """Carga los parámetros y filtros del archivo yaml de configuración."""
-    config_path = settings.project_root / "config" / "config.yaml"
-    try:
-        with open(config_path, encoding="utf-8") as f:
-            return yaml.safe_load(f)
-    except Exception as e:
-        logger.error(f"No se pudo cargar el archivo de configuración en {config_path}: {e}")
-        # Retornar una estructura básica de fallback
-        return {
-            "search_filters": {
-                "keywords": ["Analytics Engineer", "Data Engineer"],
-                "locations": ["Remote"],
-                "limit_per_source": 10,
-            },
-            "sources": {"remotive": True, "indeed": False},
-        }
-
-
 def main():
     logger.info("Iniciando pipeline de Ingesta y Scraping (Fase 1)...")
 
@@ -43,7 +27,7 @@ def main():
     logger.info("Inicializando base de datos local...")
     init_db()
 
-    # 2. Cargar configuración y filtros
+    # 2. Cargar configuración y filtros (cacheado en memoria)
     config = load_config()
     search_filters = config.get("search_filters", {})
     keywords = search_filters.get("keywords", [])
@@ -58,6 +42,8 @@ def main():
     if active_sources.get("remotive", True):
         scrapers.append(RemotiveScraper())
     if active_sources.get("indeed", False):
+        from src.scraper.indeed import IndeedScraper
+
         scrapers.append(IndeedScraper(rate_limit_config=rate_limiting))
     if active_sources.get("linkedin", False):
         from src.scraper.linkedin import LinkedInScraper
@@ -81,11 +67,9 @@ def main():
 
             logger.info(f"Scraper '{scraper.name}' extrajo {len(jobs)} vacantes.")
 
-            # Guardar en BD (deduplicando automáticamente)
             for job in jobs:
-                saved_job = save_job(job)
-                # Si el ID fue asignado por la BD tras insertar, es nuevo
-                if saved_job.id is not None and saved_job.created_at == job.created_at:
+                _, is_new = save_job(job)
+                if is_new:
                     total_added += 1
 
         except Exception as e:
@@ -102,19 +86,12 @@ def main():
 
     evaluated_count = 0
     if pending_jobs:
-        # Importar el filtro de forma tardía
-        from src.agent.filter import should_evaluate_job
-        from src.database.models import MatchResult
-        from src.database.repository import save_match_result
-
         filtered_pending_jobs = []
         for job in pending_jobs:
             try:
-                # 1. Pre-filtrado algorítmico local (Ahorro de tokens)
                 passed, reason = should_evaluate_job(job)
 
                 if not passed:
-                    # Registrar descarte inmediato en BD sin coste de API
                     auto_discard = MatchResult(
                         job_id=job.id, score=10.0, tier=3, rationale=reason, missing_keywords="[]"
                     )
@@ -127,15 +104,12 @@ def main():
             except Exception as fe:
                 logger.error(f"Error en pre-filtrado de vacante {job.id}: {fe}")
 
-        # 2. Ejecutar evaluación mediante LLM solo para las vacantes que superaron el filtro
         if filtered_pending_jobs:
             if not api_key_configured:
                 logger.warning(
                     f"OpenRouter API: Hay {len(filtered_pending_jobs)} vacantes pre-filtradas con alto potencial, pero se salta la fase LLM porque OPENROUTER_API_KEY no está configurada."
                 )
             else:
-                from src.agent.evaluator import evaluate_job
-
                 for job in filtered_pending_jobs:
                     try:
                         match_result = evaluate_job(job)
@@ -145,11 +119,9 @@ def main():
                             f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM. Score: {match_result.score:.1f}% -> Tier {match_result.tier}"
                         )
 
-                        # 3. Si es Tier 1 (Postulación directa) o Tier 2 (Match con retoque), compilar PDF a medida
+                        # Si es Tier 1 o Tier 2, compilar PDF y notificar
                         if match_result.tier in (1, 2):
                             snapshot = None
-                            from src.cv_engine.compiler import generate_cv_for_job
-
                             try:
                                 snapshot = generate_cv_for_job(job, match_result)
                                 logger.info(f"📄 CV PDF generado exitosamente: {snapshot.pdf_path}")
@@ -157,9 +129,6 @@ def main():
                                 logger.error(
                                     f"Error generando CV en PDF para vacante {job.id}: {ce}"
                                 )
-
-                            # 4. Despachar alerta a Discord con el PDF adjunto
-                            from src.notifier.discord import DiscordNotifier
 
                             try:
                                 DiscordNotifier.send_job_notification(job, match_result, snapshot)
