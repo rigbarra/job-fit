@@ -59,6 +59,10 @@ def main():
         scrapers.append(RemotiveScraper())
     if active_sources.get("indeed", False):
         scrapers.append(IndeedScraper(rate_limit_config=rate_limiting))
+    if active_sources.get("linkedin", False):
+        from src.scraper.linkedin import LinkedInScraper
+
+        scrapers.append(LinkedInScraper(rate_limit_config=rate_limiting))
 
     logger.info(f"Scrapers activos: {[s.name for s in scrapers]}")
     logger.info(

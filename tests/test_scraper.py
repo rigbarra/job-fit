@@ -1,10 +1,10 @@
 from src.scraper.indeed import IndeedScraper
+from src.scraper.linkedin import LinkedInScraper
 from src.scraper.remotive import RemotiveScraper
 
 
 def test_remotive_scraper(mocker):
     """Prueba unitaria de RemotiveScraper usando mocks de red."""
-    # 1. Configurar Mock de respuesta de la API REST
     mock_response = mocker.Mock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
@@ -24,13 +24,11 @@ def test_remotive_scraper(mocker):
         ],
     }
 
-    # Inyectar mock en la llamada requests.get de RemotiveScraper
     mocker.patch("src.scraper.remotive.requests.get", return_value=mock_response)
 
     scraper = RemotiveScraper()
     jobs = scraper.fetch_jobs(keywords=["Analytics Engineer"], locations=["Chile"], limit=5)
 
-    # 2. Aserciones de datos extraídos y mapeados
     assert len(jobs) == 1
     job = jobs[0]
     assert job.title == "Analytics Engineer"
@@ -44,7 +42,6 @@ def test_remotive_scraper(mocker):
 
 def test_indeed_scraper(mocker):
     """Prueba unitaria de IndeedScraper simulando búsqueda y descarga de descripción."""
-    # 1. HTML simulado del resultado de búsqueda de Indeed con script Mosaic
     mock_search_html = """
     <html>
       <head>
@@ -54,7 +51,7 @@ def test_indeed_scraper(mocker):
               "mosaicProviderJobCardsModel": {
                 "results": [
                   {
-                    "jk": "indkey999",
+                    "jobkey": "indkey999",
                     "title": "Lead Data Engineer",
                     "company": "Indeed Inc",
                     "formattedLocation": "Remote",
@@ -71,7 +68,6 @@ def test_indeed_scraper(mocker):
     </html>
     """
 
-    # HTML simulado de la página de detalles de vacante
     mock_detail_html = """
     <html>
       <body>
@@ -90,20 +86,15 @@ def test_indeed_scraper(mocker):
     mock_detail_res.status_code = 200
     mock_detail_res.text = mock_detail_html
 
-    # Mock de deduplicación para que no salte el filtro de duplicados
     mocker.patch("src.scraper.indeed.is_duplicate", return_value=False)
 
-    # Mockear las llamadas secuenciales de requests.get (1° búsqueda, 2° detalle descripción)
     mock_get = mocker.patch("src.scraper.indeed.requests.get")
     mock_get.side_effect = [mock_search_res, mock_detail_res]
-
-    # Mockear time.sleep para que las pruebas corran instantáneamente
     mocker.patch("time.sleep")
 
     scraper = IndeedScraper()
     jobs = scraper.fetch_jobs(keywords=["Lead Data Engineer"], locations=["Remote"], limit=1)
 
-    # 2. Aserciones
     assert len(jobs) == 1
     job = jobs[0]
     assert job.title == "Lead Data Engineer"
@@ -112,3 +103,53 @@ def test_indeed_scraper(mocker):
     assert job.salary == "$150k"
     assert job.source == "indeed"
     assert "Requisitos: Spark" in job.description
+
+
+def test_linkedin_scraper(mocker):
+    """Prueba unitaria de LinkedInScraper usando mocks de red."""
+    mock_search_html = """
+    <ul class="jobs-search__results-list">
+      <li class="base-card">
+        <h3 class="base-search-card__title">Senior Analytics Engineer</h3>
+        <h4 class="base-search-card__subtitle">Darwin AI</h4>
+        <span class="job-search-card__location">Santiago, Chile</span>
+        <a class="base-card__full-link" href="https://cl.linkedin.com/jobs/view/senior-analytics-engineer-12345?position=1&pageNum=0"></a>
+        <time datetime="2026-08-19T08:00:00Z"></time>
+      </li>
+    </ul>
+    """
+
+    mock_detail_html = """
+    <html>
+      <body>
+        <div class="show-more-less-html__markup">
+          Buscamos un Senior Analytics Engineer con experiencia en dbt, Python, SQL y AWS Redshift.
+        </div>
+      </body>
+    </html>
+    """
+
+    mock_search_res = mocker.Mock()
+    mock_search_res.status_code = 200
+    mock_search_res.text = mock_search_html
+
+    mock_detail_res = mocker.Mock()
+    mock_detail_res.status_code = 200
+    mock_detail_res.text = mock_detail_html
+
+    mocker.patch("src.scraper.linkedin.is_duplicate", return_value=False)
+    mock_get = mocker.patch("src.scraper.linkedin.requests.get")
+    mock_get.side_effect = [mock_search_res, mock_detail_res]
+    mocker.patch("time.sleep")
+
+    scraper = LinkedInScraper()
+    jobs = scraper.fetch_jobs(keywords=["Senior Analytics Engineer"], locations=["Chile"], limit=1)
+
+    assert len(jobs) == 1
+    job = jobs[0]
+    assert job.title == "Senior Analytics Engineer"
+    assert job.company == "Darwin AI"
+    assert job.location == "Santiago, Chile"
+    assert job.source == "linkedin"
+    assert job.url == "https://cl.linkedin.com/jobs/view/senior-analytics-engineer-12345"
+    assert "dbt, Python, SQL" in job.description
