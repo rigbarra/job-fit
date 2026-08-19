@@ -95,23 +95,53 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
     ]
     is_chile_location = any(term in location_lower for term in chile_terms)
 
-    # A) Oferta Internacional (fuera de Chile): DEBE ser 100% remota
+    # A) Oferta Internacional (fuera de Chile): DEBE ser 100% remota y abierta a talento global
     if not is_chile_location:
+        # Descartar si menciona requerimientos presenciales / híbridos en el extranjero
         hybrid_onsite_terms = [
             "hybrid",
             "híbrido",
             "hibrido",
             "on-site",
             "onsite",
+            "on site",
             "in-office",
+            "in office",
             "presencial",
+            "in-person",
+            "in person",
+            "office-based",
+            "relocation required",
+            "must relocate",
         ]
         if any(term in text_combined for term in hybrid_onsite_terms):
-            if "100% remote" not in text_combined and "fully remote" not in text_combined:
-                return (
-                    False,
-                    f"Descarte algorítmico: Oferta internacional en '{job.location}' es híbrida/presencial (debe ser 100% remota/contractor).",
-                )
+            return (
+                False,
+                f"Descarte algorítmico: Oferta internacional en '{job.location}' requiere presencia híbrida/física (debe ser 100% remota).",
+            )
+
+        # Descartar si exige residencia obligatoria local o restricciones de visa doméstica en EE.UU./UK/etc.
+        domestic_restriction_terms = [
+            "must reside in the us",
+            "must reside in the united states",
+            "us only",
+            "u.s. only",
+            "must be a us citizen",
+            "must be a u.s. citizen",
+            "green card holder",
+            "no visa sponsorship",
+            "without visa sponsorship",
+            "not eligible for visa sponsorship",
+            "authorized to work in the us without",
+            "authorized to work in the u.s. without",
+            "authorized to work in the uk without",
+            "security clearance",
+        ]
+        if any(term in text_combined for term in domestic_restriction_terms):
+            return (
+                False,
+                f"Descarte algorítmico: Oferta en '{job.location}' exige autorización de trabajo local exclusiva (sin sponsorship/visa).",
+            )
 
     # B) Oferta Local (Chile):
     # - Permitir 100% remota o híbrida general (o con 1 o 2 días presenciales).

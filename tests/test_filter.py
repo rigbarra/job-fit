@@ -60,7 +60,22 @@ def test_should_evaluate_job_fails_international_hybrid():
     )
     passed, reason = should_evaluate_job(job)
     assert not passed
-    assert "híbrida/presencial" in reason
+    assert "100% remota" in reason or "híbrida" in reason
+
+
+def test_should_evaluate_job_fails_international_domestic_restriction():
+    """Valida el descarte de vacantes internacionales que exigen visa o residencia en EE.UU."""
+    job = Job(
+        title="Data Engineer",
+        company="US Tech Corp",
+        location="Remote",
+        description="Must reside in the US. No visa sponsorship provided. Requires SQL and Python.",
+        url="https://example.com/job/us-only",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "sin sponsorship/visa" in reason or "autorización de trabajo local" in reason
 
 
 def test_should_evaluate_job_fails_chile_3plus_days_onsite():

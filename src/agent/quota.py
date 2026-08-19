@@ -14,6 +14,10 @@ class RateLimitError(Exception):
     """Excepción lanzada cuando la API del LLM retorna un error 429 (Too Many Requests)."""
 
 
+class DailyQuotaExhaustedError(Exception):
+    """Excepción lanzada cuando se alcanza el límite de evaluaciones diarias configuradas."""
+
+
 class LLMQuotaManager:
     # Rastreo en memoria de llamadas en el último minuto de la ejecución actual
     _last_calls = []
@@ -58,19 +62,21 @@ class LLMQuotaManager:
         cls._last_calls.append(time.time())
 
     @classmethod
-    def call_with_retry(cls, api_func: Callable[[], Any], max_retries: int = 5) -> Any:
+    def call_with_retry(cls, api_func: Callable[[], Any], max_retries: int = 2) -> Any:
         """
         Ejecuta una llamada de la API del LLM controlando la cuota diaria,
         los límites de RPM y manejando reintentos con backoff exponencial y jitter.
         """
         # 1. Validar cuota diaria antes de enviar peticiones
         if not cls.check_daily_quota():
-            raise RuntimeError("Cuota diaria de llamadas de la API de OpenRouter agotada.")
+            raise DailyQuotaExhaustedError(
+                f"Cuota diaria de llamadas ({settings.llm_max_calls_per_day}) alcanzada."
+            )
 
         # 2. Controlar RPM localmente
         cls.enforce_rpm()
 
-        # 3. Intentar ejecución de la llamada
+        # 3. Intentar ejecución de la llamada con reintentos moderados
         retries = 0
         while True:
             try:
@@ -84,8 +90,8 @@ class LLMQuotaManager:
                     )
                     raise e
 
-                # Backoff exponencial: 2^retries + ruido aleatorio de jitter (0 a 1 segundo)
-                sleep_time = (2**retries) + random.uniform(0.0, 1.0)
+                # Backoff exponencial corto: 2^retries + ruido aleatorio de jitter (0 a 1 segundo)
+                sleep_time = (2**retries) + random.uniform(0.5, 1.5)
                 logger.warning(
                     f"LLM API: Error 429 (Rate Limit). Reintentando ({retries}/{max_retries}) en {sleep_time:.2f}s..."
                 )

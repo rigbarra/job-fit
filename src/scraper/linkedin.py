@@ -23,11 +23,31 @@ class LinkedInScraper(WebScraper):
 
     def _build_search_url(self, keyword: str, location: str) -> str:
         tpr_seconds = self.max_job_age_days * 86400
+        loc_lower = location.lower()
+
+        chile_terms = [
+            "chile",
+            "santiago",
+            "vina",
+            "viña",
+            "valparaiso",
+            "valparaíso",
+            "concepcion",
+            "concepción",
+        ]
+        is_chile = any(term in loc_lower for term in chile_terms)
+
+        # f_WT: 1 = On-site (Presencial), 2 = Remote (Remoto), 3 = Hybrid (Híbrido)
+        # - Para internacional: Exigir f_WT=2 (100% Remoto exclusivamente)
+        # - Para Chile: Exigir f_WT=2,3 (Remoto o Híbrido, descartando on-site puro de raíz)
+        f_wt = "2,3" if is_chile else "2"
+
         params = {
             "keywords": keyword,
             "location": location,
             "start": 0,
             "f_TPR": f"r{tpr_seconds}",
+            "f_WT": f_wt,
         }
         return f"{self.SEARCH_API}?{urllib.parse.urlencode(params)}"
 

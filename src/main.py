@@ -5,6 +5,7 @@ from config.loader import load_config
 from config.settings import settings
 from src.agent.evaluator import evaluate_job
 from src.agent.filter import should_evaluate_job
+from src.agent.quota import DailyQuotaExhaustedError, RateLimitError
 from src.cv_engine.compiler import generate_cv_for_job
 from src.database.models import MatchResult
 from src.database.repository import get_pending_jobs, init_db, save_job, save_match_result
@@ -139,6 +140,16 @@ def main():
                                 logger.error(
                                     f"Error despachando notificación de Discord para vacante {job.id}: {de}"
                                 )
+                    except DailyQuotaExhaustedError as dqe:
+                        logger.warning(
+                            f"Evaluación LLM pausada: {dqe}. Las vacantes pendientes se conservan para la próxima corrida."
+                        )
+                        break
+                    except RateLimitError as rle:
+                        logger.warning(
+                            f"OpenRouter: Todos los modelos del pool están saturados temporalmente (429). Pausando evaluación para proteger cuota. {rle}"
+                        )
+                        break
                     except Exception as ee:
                         logger.error(f"Error evaluando vacante {job.id} ({job.title}): {ee}")
 
