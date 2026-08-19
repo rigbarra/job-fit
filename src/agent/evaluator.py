@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from typing import Any
 
 import yaml
@@ -21,7 +22,17 @@ def normalize_llm_json(raw_json_str: str) -> dict[str, Any]:
     Parsea y normaliza respuestas JSON del LLM manejando sinónimos de campos comunes
     y variaciones de estructura devueltas por modelos gratuitos (ej. match_score -> score).
     """
-    data = json.loads(raw_json_str)
+    if not isinstance(raw_json_str, str):
+        raise ValueError(f"El LLM retornó un tipo no texto: {type(raw_json_str)}")
+
+    # Limpiar bloques <think>...</think> y bloques markdown ```json ... ``` si existieran
+    clean_str = re.sub(r"<think>.*?</think>", "", raw_json_str, flags=re.DOTALL).strip()
+    if "```json" in clean_str:
+        clean_str = clean_str.split("```json")[1].split("```")[0].strip()
+    elif "```" in clean_str:
+        clean_str = clean_str.split("```")[1].split("```")[0].strip()
+
+    data = json.loads(clean_str)
 
     if not isinstance(data, dict):
         raise ValueError(f"El LLM retornó un tipo no JSON dict: {type(data)}")
@@ -92,80 +103,6 @@ def normalize_llm_json(raw_json_str: str) -> dict[str, Any]:
     }
 
 
-def _call_openrouter_with_model_pool(user_prompt: str) -> dict[str, Any]:
-    """
-    Ejecuta la llamada a OpenRouter rotando por un pool de modelos gratuitos de alta calidad
-    si el modelo principal experimenta Rate Limit (429) o saturación.
-    """
-    configured_model = settings.openrouter_model or "deepseek/deepseek-r1:free"
-    models_pool = list(
-        dict.fromkeys(
-            [
-                configured_model,
-                "deepseek/deepseek-r1:free",
-                "deepseek/deepseek-chat:free",
-                "qwen/qwen-2.5-72b-instruct:free",
-                "qwen/qwen-2.5-coder-32b-instruct:free",
-                "google/gemma-3-27b-it:free",
-                "meta-llama/llama-3.3-70b-instruct:free",
-                "openrouter/free",
-            ]
-        )
-    )
-
-    headers = {
-        "Authorization": f"Bearer {settings.openrouter_api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/rigbarra/job-fit",
-        "X-Title": "Job Fit",
-    }
-
-    last_err = None
-    for model_name in models_pool:
-        payload = {
-            "model": model_name,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.1,
-        }
-
-        try:
-            logger.info(f"OpenRouter: Evaluando con modelo '{model_name}'...")
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=45,
-            )
-
-            if response.status_code == 200:
-                return response.json()
-            elif response.status_code in (429, 503):
-                logger.warning(
-                    f"OpenRouter: Modelo '{model_name}' saturado ({response.status_code}). Rotando al siguiente modelo del pool..."
-                )
-                last_err = RateLimitError(f"OpenRouter {response.status_code} en '{model_name}'")
-                continue
-            else:
-                logger.warning(
-                    f"OpenRouter: Error {response.status_code} en '{model_name}'. Probando siguiente modelo..."
-                )
-                last_err = RuntimeError(f"Error {response.status_code} en '{model_name}'")
-                continue
-
-        except Exception as err:
-            logger.warning(f"OpenRouter: Excepción de red con modelo '{model_name}': {err}")
-            last_err = err
-            continue
-
-    if last_err:
-        raise last_err
-    raise RuntimeError("Todos los modelos del pool de OpenRouter fallaron.")
-
-
 def evaluate_job(
     job: Job,
     profile_path: str | None = None,
@@ -173,8 +110,7 @@ def evaluate_job(
 ) -> MatchResult:
     """
     Evalúa la compatibilidad de una vacante frente al perfil del candidato
-    usando la API de OpenRouter, seleccionando el perfil en el idioma nativo de la oferta
-    y exigiendo respuesta estricta y monolingüe.
+    usando la API de OpenRouter con el modelo Gemma configurado.
     """
     if (
         not settings.openrouter_api_key
@@ -206,11 +142,53 @@ def evaluate_job(
         job_description=job.description,
     )
 
-    # 4. Ejecutar llamada a través del pool con reintentos controlados
-    def _execute():
-        return _call_openrouter_with_model_pool(user_prompt)
+    model_to_use = settings.openrouter_model or "google/gemma-3-27b-it:free"
 
-    response_data = LLMQuotaManager.call_with_retry(_execute)
+    def _make_openrouter_call():
+        headers = {
+            "Authorization": f"Bearer {settings.openrouter_api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/rigbarra/job-fit",
+            "X-Title": "Job Fit",
+        }
+
+        payload = {
+            "model": model_to_use,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1,
+        }
+
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=60,
+            )
+
+            if response.status_code == 429:
+                raise RateLimitError(f"OpenRouter API: 429 Too Many Requests en {model_to_use}")
+            elif response.status_code != 200:
+                raise RuntimeError(
+                    f"OpenRouter API retornó error {response.status_code}: {response.text}"
+                )
+
+            return response.json()
+
+        except Exception as err:
+            if isinstance(err, RateLimitError):
+                raise err
+            raise RuntimeError(f"Error de red/conexión con OpenRouter: {err}")
+
+    logger.info(
+        f"OpenRouter: Evaluando vacante '{job.title}' @ '{job.company}' [{lang_display}] usando el modelo '{model_to_use}'..."
+    )
+
+    response_data = LLMQuotaManager.call_with_retry(_make_openrouter_call)
 
     try:
         content_text = response_data["choices"][0]["message"]["content"]

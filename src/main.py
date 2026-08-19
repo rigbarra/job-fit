@@ -152,7 +152,7 @@ def main():
                         break
                     except RateLimitError as rle:
                         logger.warning(
-                            f"OpenRouter: Todos los modelos del pool están saturados temporalmente (429). Pausando evaluación para proteger cuota. {rle}"
+                            f"OpenRouter: El modelo está saturado temporalmente (429). Pausando evaluación para proteger cuota. {rle}"
                         )
                         break
                     except Exception as ee:
