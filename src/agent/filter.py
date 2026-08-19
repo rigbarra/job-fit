@@ -1,4 +1,5 @@
 import logging
+from datetime import UTC, datetime
 
 from config.loader import load_config
 from src.database.models import Job
@@ -36,6 +37,7 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
     Retorna (True, "") si pasa el filtro, o (False, Rationale) si es descartada.
     """
     filter_config = _get_filter_config()
+    config = load_config()
 
     if not filter_config.get("enabled", True):
         return True, ""
@@ -58,6 +60,21 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
             return (
                 False,
                 f"Descarte algorítmico: La descripción no contiene la palabra clave obligatoria '{kw}'.",
+            )
+
+    # 3. Validar antigüedad máxima de la oferta en días
+    max_age_days = config.get("search_filters", {}).get("max_job_age_days", 3)
+    if job.posted_at:
+        now = datetime.now(tz=UTC)
+        posted_at = job.posted_at
+        if posted_at.tzinfo is None:
+            posted_at = posted_at.replace(tzinfo=UTC)
+
+        age_days = (now - posted_at).total_seconds() / 86400.0
+        if age_days > max_age_days:
+            return (
+                False,
+                f"Descarte algorítmico: La oferta fue publicada hace {int(age_days)} días (máximo permitido: {max_age_days} días).",
             )
 
     return True, ""
