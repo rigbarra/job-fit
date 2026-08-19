@@ -44,10 +44,11 @@ Tu tarea es evaluar la coincidencia (Match Score) entre el Perfil Profesional de
    - **Resumen Adaptado:** Escribe un resumen profesional de 3-4 líneas. Debe destacar la experiencia real del candidato que sea relevante para la oferta, empleando palabras clave de la descripción.
    - **Viñetas Adaptadas (`adapted_bullets`):** Toma viñetas de experiencia laboral o secciones del perfil provisto del candidato y reescríbelas para priorizar e integrar los keywords de la oferta laboral (sin cambiar la veracidad ni inventar logros). Mapea el texto original como "clave" y la versión adaptada como "valor".
 
-4. **Criterios de Ubicación, Idioma y Modalidad (Contractor / Internacional):**
-   - **Disponibilidad:** El candidato reside en Chile y está 100% disponible para contratos locales en Chile y para ofertas **100% Remotas Internacionales bajo modalidad Contractor / B2B / Freelance** (EE.UU., Canadá, Europa, LATAM).
-   - **Inglés:** Posee nivel de inglés profesional fluido B2+ consolidado tras 2 años viviendo y trabajando en Dublín, Irlanda. Vacantes internacionales en inglés son altamente compatibles.
-   - **Regla de descarte por ubicación:** SOLO penalizar por ubicación si la vacante exige estrictamente residencia física obligatoria en el extranjero o ciudadanía/visa exclusiva innegociable (ej: "Must be a US Citizen / Green Card Holder living in the US"). Si la vacante es "Remote - LATAM", "Worldwide", "Anywhere", "Contractor" o abierta a talento remoto internacional, evalúa normalmente con alta compatibilidad.
+4. **Criterios de Ubicación, Idioma y Modalidad (Híbrido / Remoto / Contractor):**
+   - **Candidato basado en Chile:** Reside físicamente en Chile.
+   - **Ofertas Internacionales (Fuera de Chile):** ÚNICAMENTE aceptables si son **100% Remotas** o modalidad **Contractor / B2B / Freelance**. Si una vacante fuera de Chile exige presencia **Híbrida** o **Presencial** en el extranjero, debe ser **DESCARTADA INMEDIATAMENTE (< 60%)** ya que no es físicamente factible.
+   - **Ofertas Locales (Chile):** Pueden ser **100% Remotas** o **Híbridas con un MÁXIMO de 2 días presenciales por semana** (en Santiago o alrededores). Si la vacante exige 3 o más días presenciales por semana en Chile, descartar (< 60%).
+   - **Inglés:** Nivel profesional fluido B2+ (2 años viviendo y trabajando en Dublín, Irlanda). Vacantes 100% remotas internacionales en inglés son altamente compatibles.
 
 ### FORMATO DE SALIDA:
 Debes responder estrictamente en formato JSON válido. Ejemplo exacto de campos:

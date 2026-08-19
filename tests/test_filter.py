@@ -40,10 +40,24 @@ def test_should_evaluate_job_fails_description():
         company="CloudTech",
         location="Remote",
         description="Manage pipelines and API integrations using Python and AWS Glue.",
-        # Falta "SQL" en la descripción
         url="https://example.com/job/fail-desc",
         source="test",
     )
     passed, reason = should_evaluate_job(job)
     assert not passed
     assert "La descripción no contiene la palabra clave obligatoria 'sql'" in reason
+
+
+def test_should_evaluate_job_fails_international_hybrid():
+    """Valida el descarte de vacantes híbridas o presenciales ubicadas fuera de Chile."""
+    job = Job(
+        title="Analytics Engineer",
+        company="GlobalTech Argentina",
+        location="Buenos Aires, Argentina",
+        description="Puesto híbrido 2 días en oficina Buenos Aires. Requiere SQL, Python, dbt.",
+        url="https://example.com/job/hybrid-intl",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "híbrida/presencial fuera de Chile" in reason

@@ -44,6 +44,8 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
 
     title = job.title.lower()
     description = job.description.lower()
+    location_lower = (job.location or "").lower()
+    text_combined = f"{title} {location_lower} {description}".lower()
 
     # 1. Validar palabras clave en el título (cualquiera de la lista)
     title_keywords = filter_config.get("title_keywords_any", [])
@@ -75,6 +77,42 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
             return (
                 False,
                 f"Descarte algorítmico: La oferta fue publicada hace {int(age_days)} días (máximo permitido: {max_age_days} días).",
+            )
+
+    # 4. Validar modalidad Híbrida/Presencial Internacional
+    # Si la vacante no es local de Chile y exige modalidad híbrida o presencial -> Descarte directo.
+    chile_terms = [
+        "chile",
+        "santiago",
+        "vina",
+        "viña",
+        "valparaiso",
+        "valparaíso",
+        "concepcion",
+        "concepción",
+        "las condes",
+        "providencia",
+    ]
+    is_chile_location = any(term in location_lower for term in chile_terms)
+
+    hybrid_onsite_terms = [
+        "hybrid",
+        "híbrido",
+        "hibrido",
+        "on-site",
+        "onsite",
+        "in-office",
+        "presencial",
+    ]
+    is_hybrid_or_onsite = any(term in text_combined for term in hybrid_onsite_terms)
+
+    # Si es híbrida/presencial fuera de Chile (ej: Buenos Aires, México, Madrid, USA), descartar.
+    if is_hybrid_or_onsite and not is_chile_location:
+        # Excepción únicamente si dice explícitamente "100% remote" o "fully remote"
+        if "100% remote" not in text_combined and "fully remote" not in text_combined:
+            return (
+                False,
+                f"Descarte algorítmico: Oferta en '{job.location}' es híbrida/presencial fuera de Chile (candidato reside en Chile).",
             )
 
     return True, ""
