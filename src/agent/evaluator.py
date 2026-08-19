@@ -3,11 +3,14 @@ import logging
 import os
 from typing import Any
 
+import yaml
 from curl_cffi import requests
 
 from config.settings import settings
 from src.agent.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, MatchEvaluation
 from src.agent.quota import LLMQuotaManager, RateLimitError
+from src.cv_engine.builder import load_profile
+from src.cv_engine.compiler import detect_job_language
 from src.database.models import Job, MatchResult
 
 logger = logging.getLogger(__name__)
@@ -89,10 +92,15 @@ def normalize_llm_json(raw_json_str: str) -> dict[str, Any]:
     }
 
 
-def evaluate_job(job: Job, profile_path: str | None = None) -> MatchResult:
+def evaluate_job(
+    job: Job,
+    profile_path: str | None = None,
+    language: str | None = None,
+) -> MatchResult:
     """
     Evalúa la compatibilidad de una vacante frente al perfil del candidato
-    usando la API de OpenRouter y controlando cuotas.
+    usando la API de OpenRouter, seleccionando el perfil en el idioma nativo de la oferta
+    y exigiendo respuesta estricta y monolingüe.
     """
     if (
         not settings.openrouter_api_key
@@ -102,18 +110,26 @@ def evaluate_job(job: Job, profile_path: str | None = None) -> MatchResult:
             "OpenRouter API: OPENROUTER_API_KEY no está configurada. Configúrala en el archivo .env."
         )
 
-    if not profile_path:
-        profile_path = os.path.join(settings.project_root, "config", "profile.yaml")
+    # 1. Detectar idioma de la oferta laboral
+    job_lang = language or detect_job_language(job)
+    lang_display = "ESPAÑOL" if job_lang == "es" else "ENGLISH"
 
+    # 2. Cargar el perfil del candidato en el idioma exacto de la vacante
     try:
+        profile_data = load_profile(language=job_lang, profile_path=profile_path)
+        profile_text = yaml.dump(profile_data, allow_unicode=True, sort_keys=False)
+    except Exception as e:
+        logger.error(f"No se pudo cargar el perfil del candidato ({job_lang}): {e}")
+        if not profile_path:
+            profile_path = os.path.join(settings.project_root, "config", "profile.yaml")
         with open(profile_path, encoding="utf-8") as f:
             profile_text = f.read()
-    except Exception as e:
-        logger.error(f"No se pudo cargar el perfil del candidato en {profile_path}: {e}")
-        raise FileNotFoundError(f"Perfil del candidato no encontrado: {profile_path}")
 
+    # 3. Construir prompt con indicación explícita de idioma
     user_prompt = USER_PROMPT_TEMPLATE.format(
-        candidate_profile=profile_text, job_description=job.description
+        job_language=lang_display,
+        candidate_profile=profile_text,
+        job_description=job.description,
     )
 
     def _make_openrouter_call():
@@ -157,7 +173,7 @@ def evaluate_job(job: Job, profile_path: str | None = None) -> MatchResult:
             raise RuntimeError(f"Error de red/conexión con OpenRouter: {err}")
 
     logger.info(
-        f"OpenRouter: Evaluando vacante '{job.title}' @ '{job.company}' usando el modelo '{settings.openrouter_model}'..."
+        f"OpenRouter: Evaluando vacante '{job.title}' @ '{job.company}' [{lang_display}] usando el modelo '{settings.openrouter_model}'..."
     )
 
     response_data = LLMQuotaManager.call_with_retry(_make_openrouter_call)

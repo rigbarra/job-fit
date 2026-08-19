@@ -54,42 +54,61 @@ def test_detect_job_language():
 
 
 def test_build_cv_tex_base():
-    """Valida la generación de código LaTeX para CV base (Tier 1)."""
+    """Valida la generación de código LaTeX para CV base bilingüe (Tier 1)."""
     tex_es = build_cv_tex(match_result=None, language="es")
     assert r"\documentclass" in tex_es
     assert "Rigoberto Barra" in tex_es
     assert "Resumen Profesional" in tex_es
+    assert "Ingeniero Civil Industrial" in tex_es
     assert "Banco Estado" in tex_es
 
     tex_en = build_cv_tex(match_result=None, language="en")
     assert r"\documentclass" in tex_en
     assert "Rigoberto Barra" in tex_en
     assert "Professional Summary" in tex_en
+    assert "Industrial Engineer" in tex_en
     assert "Banco Estado" in tex_en
 
 
 def test_build_cv_tex_tier_2_adapted():
-    """Valida la inyección de resumen y viñetas adaptadas para Tier 2."""
-    adapted_summary_text = "Ingeniero especializado con alto dominio de Airflow, Snowflake y dbt..."
-    adapted_bullet_original = "Spearheaded the migration and remodeling of legacy data flows"
-    adapted_bullet_replacement = "Spearheaded the migration of data flows towards Redshift using Airflow for automated orchestration"
+    """Valida la inyección de resumen y viñetas adaptadas para Tier 2 en español e inglés."""
+    # Test en Español
+    adapted_summary_es = "Ingeniero especializado con alto dominio de Airflow, Snowflake y dbt..."
+    adapted_bullet_orig_es = "Lideré la migración y remodelación de flujos de datos"
+    adapted_bullet_repl_es = "Lideré la migración de pipelines hacia Redshift usando Airflow"
 
-    match_result = MatchResult(
+    match_result_es = MatchResult(
         job_id=1,
         score=75.0,
         tier=2,
         rationale="Match moderado con retoque.",
         missing_keywords='["Airflow"]',
-        adapted_summary=adapted_summary_text,
-        adapted_bullets=f'{{"{adapted_bullet_original}": "{adapted_bullet_replacement}"}}',
+        adapted_summary=adapted_summary_es,
+        adapted_bullets=f'{{"{adapted_bullet_orig_es}": "{adapted_bullet_repl_es}"}}',
     )
 
-    tex_result = build_cv_tex(match_result=match_result, language="es")
+    tex_es = build_cv_tex(match_result=match_result_es, language="es")
+    assert adapted_summary_es in tex_es
+    assert adapted_bullet_repl_es in tex_es
 
-    # Debe contener el resumen adaptado
-    assert adapted_summary_text in tex_result
-    # Debe contener la viñeta adaptada
-    assert adapted_bullet_replacement in tex_result
+    # Test en Inglés
+    adapted_summary_en = "Senior Analytics Engineer with deep expertise in Airflow and dbt..."
+    adapted_bullet_orig_en = "Spearheaded the migration and remodeling of legacy data flows"
+    adapted_bullet_repl_en = "Spearheaded data migration towards Redshift orchestrated with Airflow"
+
+    match_result_en = MatchResult(
+        job_id=2,
+        score=78.0,
+        tier=2,
+        rationale="Moderate match.",
+        missing_keywords='["Airflow"]',
+        adapted_summary=adapted_summary_en,
+        adapted_bullets=f'{{"{adapted_bullet_orig_en}": "{adapted_bullet_repl_en}"}}',
+    )
+
+    tex_en = build_cv_tex(match_result=match_result_en, language="en")
+    assert adapted_summary_en in tex_en
+    assert adapted_bullet_repl_en in tex_en
 
 
 @pytest.mark.skipif(not shutil.which("pdflatex"), reason="pdflatex no está instalado en el sistema")

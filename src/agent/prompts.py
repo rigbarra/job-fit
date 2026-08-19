@@ -70,6 +70,13 @@ Usa exactamente los nombres de clave: "score", "rationale", "missing_keywords", 
 """
 
 USER_PROMPT_TEMPLATE = """
+### IDIOMA OBLIGATORIO DE RESPUESTA
+Esta vacante laboral está redactada en: **{job_language}**.
+Es ESTRICTAMENTE OBLIGATORIO que los campos 'rationale', 'adapted_summary' y 'adapted_bullets' estén redactados 100% en **{job_language}**.
+- Si la vacante es en Español -> Responde 100% en ESPAÑOL neutro.
+- Si la vacante es en Inglés -> Responde 100% en INGLÉS profesional.
+No mezcles idiomas. NUNCA respondas en inglés si la oferta está en español, ni respondas en español si la oferta está en inglés.
+
 ### PERFIL DEL CANDIDATO (YAML)
 {candidate_profile}
 

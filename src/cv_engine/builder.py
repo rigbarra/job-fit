@@ -23,9 +23,7 @@ def escape_latex(text: str) -> str:
         return ""
 
     # Reemplazo de caracteres especiales que no estén ya escapados
-    # 1. Backslash (si es texto plano)
-    # 2. %, &, $, #, _
-    # Usamos regex para no volver a escapar lo que ya tiene una barra inversa antes
+    # %, &, $, #, _
     text = re.sub(r"(?<!\\)%", r"\%", text)
     text = re.sub(r"(?<!\\)&", r"\&", text)
     text = re.sub(r"(?<!\\)\$", r"\$", text)
@@ -66,8 +64,10 @@ def get_jinja_env(templates_dir: str | None = None) -> jinja2.Environment:
     return env
 
 
-def load_profile(profile_path: str | None = None) -> dict[str, Any]:
-    """Carga los datos del perfil profesional desde el archivo YAML."""
+def load_profile(language: str = "es", profile_path: str | None = None) -> dict[str, Any]:
+    """
+    Carga los datos del perfil profesional desde el archivo YAML en el idioma especificado ('es' o 'en').
+    """
     if not profile_path:
         path = settings.project_root / "config" / "profile.yaml"
     else:
@@ -75,10 +75,31 @@ def load_profile(profile_path: str | None = None) -> dict[str, Any]:
 
     try:
         with open(path, encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
+            raw_data = yaml.safe_load(f) or {}
     except Exception as e:
         logger.error(f"Error cargando perfil en {path}: {e}")
         raise FileNotFoundError(f"No se pudo cargar el perfil del candidato: {path}")
+
+    lang_key = "en" if language.lower() in ("en", "english", "ingles") else "es"
+
+    # Si el YAML contiene secciones bilingües 'es' y 'en'
+    if lang_key in raw_data:
+        lang_data = raw_data[lang_key]
+        return {
+            "name": raw_data.get("name", "Rigoberto Barra"),
+            "phone": raw_data.get("phone", "+56-996974170"),
+            "email": raw_data.get("email", "rigbarra@outlook.com"),
+            "linkedin": raw_data.get("linkedin", "linkedin.com/in/rigbarra"),
+            "skills": raw_data.get("skills", {}),
+            "work_preferences": raw_data.get("work_preferences", {}),
+            "title": lang_data.get("title", ""),
+            "location": lang_data.get("location", ""),
+            "summary": lang_data.get("summary", ""),
+            "experience": lang_data.get("experience", []),
+            "education": lang_data.get("education", []),
+        }
+
+    return raw_data
 
 
 def build_cv_tex(
@@ -88,7 +109,7 @@ def build_cv_tex(
 ) -> str:
     """
     Genera el código fuente LaTeX (.tex) completo inyectando los datos del perfil
-    y las adaptaciones del LLM (si aplican para Tier 2).
+    en el idioma correspondiente y aplicando las adaptaciones del LLM (si aplican para Tier 2).
 
     Args:
         match_result: Resultado de la evaluación LLM con textos adaptados (opcional).
@@ -98,7 +119,8 @@ def build_cv_tex(
     Returns:
         str: Contenido del archivo LaTeX listo para compilar.
     """
-    profile = copy.deepcopy(profile_override or load_profile())
+    lang_key = "en" if language.lower() in ("en", "english", "ingles") else "es"
+    profile = copy.deepcopy(profile_override or load_profile(language=lang_key))
 
     summary = profile.get("summary", "")
     experiences: list[dict[str, Any]] = profile.get("experience", [])
@@ -122,7 +144,7 @@ def build_cv_tex(
         except Exception as e:
             logger.warning(f"No se pudo parsear adapted_bullets como JSON: {e}")
 
-    # Procesar viñetas de experiencia
+    # Procesar viñetas de experiencia con matching robusto
     for exp in experiences:
         exp["role"] = escape_latex(exp.get("role", ""))
         exp["company"] = escape_latex(exp.get("company", ""))
@@ -134,11 +156,20 @@ def build_cv_tex(
         processed_bullets = []
         for bullet in exp.get("bullets", []):
             final_bullet = bullet
+            bullet_clean = bullet.lower().strip()
+
             # Verificar si esta viñeta fue adaptada por el LLM
             for original_key, adapted_val in adapted_bullets_map.items():
-                if original_key.lower() in bullet.lower():
+                orig_clean = original_key.lower().strip()
+                # Coincidencia flexible: substring, inclusión inversa o prefijo de 25 caracteres
+                if (
+                    orig_clean in bullet_clean
+                    or bullet_clean in orig_clean
+                    or (len(orig_clean) >= 20 and orig_clean[:25] in bullet_clean)
+                    or (len(bullet_clean) >= 20 and bullet_clean[:25] in orig_clean)
+                ):
                     logger.info(
-                        f"Reemplazando viñeta adaptada en '{exp['company']}': {original_key[:30]}..."
+                        f"Reemplazando viñeta adaptada en '{exp['company']}': {original_key[:35]}..."
                     )
                     final_bullet = adapted_val
                     break
@@ -154,9 +185,7 @@ def build_cv_tex(
 
     # 3. Renderizar con Jinja2
     env = get_jinja_env()
-    template_name = (
-        "cv_base_en.tex" if language.lower() in ("en", "english", "ingles") else "cv_base_es.tex"
-    )
+    template_name = "cv_base_en.tex" if lang_key == "en" else "cv_base_es.tex"
 
     try:
         template = env.get_template(template_name)

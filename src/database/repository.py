@@ -89,18 +89,24 @@ def save_cv_snapshot(snapshot: CVSnapshot) -> CVSnapshot:
 
 
 def get_match_results_count_today() -> int:
-    """Obtiene el número de evaluaciones (MatchResult) realizadas el día de hoy."""
+    """
+    Obtiene el número de evaluaciones reales realizadas por el LLM el día de hoy,
+    excluyendo los descartes automáticos del filtro algorítmico local (que no gastan cuota de API).
+    """
     from datetime import datetime, time
 
     from sqlalchemy import func
 
-    # Inicio del día de hoy en UTC
-    today_start = datetime.combine(datetime.now(tz=UTC).date(), time.min)
+    # Inicio del día de hoy en UTC con tzinfo
+    today_start = datetime.combine(datetime.now(tz=UTC).date(), time.min, tzinfo=UTC)
 
     with Session(engine) as session:
         statement = (
             select(func.count())
             .select_from(MatchResult)
-            .where(MatchResult.created_at >= today_start)
+            .where(
+                MatchResult.created_at >= today_start,
+                ~MatchResult.rationale.like("Descarte algorítmico%"),
+            )
         )
         return session.exec(statement).one()
