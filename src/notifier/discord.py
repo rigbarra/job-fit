@@ -7,6 +7,7 @@ import uuid
 from datetime import UTC, datetime
 
 from config.settings import settings
+from src.agent.filter import CHILE_TERMS
 from src.database.models import CVSnapshot, Job, MatchResult
 
 logger = logging.getLogger(__name__)
@@ -61,7 +62,12 @@ def send_job_notification(
         tier_icon = "🟡"
         tier_title = "MATCH CON RETOQUE (Tier 2)"
 
-    # 2. Formatear palabras clave faltantes
+    # 2. Determinar etiqueta de ubicación (Chile vs Internacional)
+    loc_lower = (job.location or "").lower()
+    is_local = any(term in loc_lower for term in CHILE_TERMS)
+    loc_tag = "🇨🇱 [CHILE]" if is_local else "🌐 [INTL]"
+
+    # 3. Formatear palabras clave faltantes
     missing_kw_str = "Ninguna detectada"
     if match_result.missing_keywords:
         try:
@@ -71,7 +77,7 @@ def send_job_notification(
         except Exception:
             missing_kw_str = match_result.missing_keywords
 
-    # 3. Construir campos del Embed
+    # 4. Construir campos del Embed
     fields = [
         {
             "name": "📊 Match Score",
@@ -134,7 +140,7 @@ def send_job_notification(
         )
 
     embed = {
-        "title": f"🎯 {job.title} @ {job.company}",
+        "title": f"{loc_tag} {job.title} @ {job.company}",
         "url": job.url,
         "color": color,
         "fields": fields,
@@ -146,7 +152,7 @@ def send_job_notification(
     }
 
     payload = {
-        "content": f"🚨 **Nueva vacante recomendada encontrada:** [{job.title}]({job.url})",
+        "content": f"🚨 {loc_tag} **Nueva vacante recomendada:** [{job.title}]({job.url})",
         "embeds": [embed],
     }
 
