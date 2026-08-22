@@ -30,6 +30,11 @@ sources:
   indeed: false          # Desactivado por defecto por seguridad de IP
   linkedin: true         # Endpoints públicos guest de LinkedIn con throttling
 
+# Búsquedas Internacionales (Control y Ahorro de Tokens)
+international_search:
+  enabled: false       # false: apaga 100% búsquedas de afuera (ahorro total de tokens). Cambiar a true cuando quieras reactivar.
+  only_tier_1: true    # true: si están activas, solo notifica vacantes de afuera con Match Directo (Tier 1).
+
 # Cautela y Control de Bloqueos (Rate Limiting)
 rate_limiting:
   min_delay_seconds: 5.0  # Tiempo mínimo de espera entre llamadas a páginas de detalle

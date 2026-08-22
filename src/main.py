@@ -44,6 +44,9 @@ def main():
 
     active_sources = config.get("sources", {})
     rate_limiting = config.get("rate_limiting", {})
+    intl_config = config.get("international_search", {})
+    intl_enabled = intl_config.get("enabled", False)
+    intl_only_tier1 = intl_config.get("only_tier_1", True)
 
     # Separar ubicaciones en locales (Chile) e internacionales
     local_locs = [loc for loc in locations if is_local_location(loc)]
@@ -70,13 +73,20 @@ def main():
     quota_exhausted = False
 
     logger.info(f"Ubicaciones locales (Chile): {local_locs}")
-    logger.info(f"Ubicaciones internacionales: {intl_locs}")
+    logger.info(f"Búsquedas internacionales activas: {intl_enabled}")
 
     # 4. Iniciar ejecución secuencial por grupos prioritarios
     for source_name, is_local in execution_groups:
         if quota_exhausted:
             logger.warning(
                 f"Saltando grupo ({source_name.upper()}, Local={is_local}) porque la cuota diaria o límite de tasa fue alcanzado."
+            )
+            continue
+
+        # Si el grupo es internacional y las búsquedas internacionales están deshabilitadas, saltar
+        if not is_local and not intl_enabled:
+            logger.info(
+                f"Saltando grupo internacional ({source_name.upper()}) (desactivado en config.yaml)."
             )
             continue
 
@@ -183,8 +193,13 @@ def main():
                             f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM. Score: {match_result.score:.1f}% -> Tier {match_result.tier}"
                         )
 
-                        # Si es Tier 1 o Tier 2, compilar PDF y notificar
-                        if match_result.tier in (1, 2):
+                        # Notificación: Chile permite Tier 1 y 2. Internacional permite Tier 1 (y Tier 2 solo si only_tier_1=False).
+                        is_job_local = is_local_location(job.location)
+                        should_notify = match_result.tier == 1 or (
+                            is_job_local and match_result.tier == 2
+                        ) or (not is_job_local and not intl_only_tier1 and match_result.tier == 2)
+
+                        if should_notify:
                             snapshot = None
                             try:
                                 snapshot = generate_cv_for_job(job, match_result)
