@@ -4,14 +4,13 @@ from datetime import datetime
 from curl_cffi import requests
 
 from src.database.models import Job
-from src.scraper.base import BaseScraper
 
 logger = logging.getLogger(__name__)
 
 
-class RemotiveScraper(BaseScraper):
+class RemotiveScraper:
     def __init__(self):
-        super().__init__(name="remotive")
+        self.name = "remotive"
         self.api_url = "https://remotive.com/api/remote-jobs"
 
     def fetch_jobs(self, keywords: list[str], locations: list[str], limit: int = 20) -> list[Job]:

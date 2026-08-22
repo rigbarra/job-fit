@@ -7,6 +7,21 @@ from src.database.models import Job
 
 logger = logging.getLogger(__name__)
 
+# Constante compartida: términos que identifican ubicaciones en Chile.
+# Importar desde aquí en lugar de duplicar en cada módulo.
+CHILE_TERMS = [
+    "chile",
+    "santiago",
+    "vina",
+    "viña",
+    "valparaiso",
+    "valparaíso",
+    "concepcion",
+    "concepción",
+    "las condes",
+    "providencia",
+]
+
 
 def _get_filter_config() -> dict:
     """Obtiene los filtros algorítmicos desde la configuración cacheada."""
@@ -81,19 +96,7 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
             )
 
     # 4. Validar modalidad Híbrida / Presencial / Remota
-    chile_terms = [
-        "chile",
-        "santiago",
-        "vina",
-        "viña",
-        "valparaiso",
-        "valparaíso",
-        "concepcion",
-        "concepción",
-        "las condes",
-        "providencia",
-    ]
-    is_chile_location = any(term in location_lower for term in chile_terms)
+    is_chile_location = any(term in location_lower for term in CHILE_TERMS)
 
     # A) Oferta Internacional (fuera de Chile): DEBE ser 100% remota y abierta a talento global
     if not is_chile_location:

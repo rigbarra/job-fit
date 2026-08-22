@@ -21,10 +21,6 @@ class Settings(BaseSettings):
     output_pdf_dir: str = Field("./data/generated_cvs", validation_alias="OUTPUT_PDF_DIR")
     templates_dir: str = Field("./templates/cv", validation_alias="TEMPLATES_DIR")
 
-    # External APIs
-    adzuna_app_id: str | None = Field(None, validation_alias="ADZUNA_APP_ID")
-    adzuna_api_key: str | None = Field(None, validation_alias="ADZUNA_API_KEY")
-
     # Project Root
     project_root: Path = Path(__file__).resolve().parent.parent
 

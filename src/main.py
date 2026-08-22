@@ -4,12 +4,12 @@ import sys
 from config.loader import load_config
 from config.settings import settings
 from src.agent.evaluator import evaluate_job
-from src.agent.filter import should_evaluate_job
+from src.agent.filter import CHILE_TERMS, should_evaluate_job
 from src.agent.quota import DailyQuotaExhaustedError, RateLimitError
 from src.cv_engine.compiler import generate_cv_for_job
 from src.database.models import MatchResult
 from src.database.repository import get_pending_jobs, init_db, save_job, save_match_result
-from src.notifier.discord import DiscordNotifier
+from src.notifier.discord import send_job_notification
 
 # Configurar logging detallado
 logging.basicConfig(
@@ -18,19 +18,6 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger("job-fit")
-
-CHILE_TERMS = [
-    "chile",
-    "santiago",
-    "vina",
-    "viña",
-    "valparaiso",
-    "valparaíso",
-    "concepcion",
-    "concepción",
-    "las condes",
-    "providencia",
-]
 
 
 def is_local_location(location: str) -> bool:
@@ -208,7 +195,7 @@ def main():
                                 )
 
                             try:
-                                DiscordNotifier.send_job_notification(job, match_result, snapshot)
+                                send_job_notification(job, match_result, snapshot)
                             except Exception as de:
                                 logger.error(
                                     f"Error despachando notificación de Discord para vacante {job.id}: {de}"

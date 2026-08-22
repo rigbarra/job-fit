@@ -9,7 +9,7 @@ from curl_cffi import requests
 
 from config.settings import settings
 from src.agent.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, MatchEvaluation
-from src.agent.quota import LLMQuotaManager, RateLimitError
+from src.agent.quota import RateLimitError, call_with_retry
 from src.cv_engine.builder import load_profile
 from src.cv_engine.compiler import detect_job_language
 from src.database.models import Job, MatchResult
@@ -188,7 +188,7 @@ def evaluate_job(
         f"OpenRouter: Evaluando vacante '{job.title}' @ '{job.company}' [{lang_display}] usando el modelo '{model_to_use}'..."
     )
 
-    response_data = LLMQuotaManager.call_with_retry(_make_openrouter_call)
+    response_data = call_with_retry(_make_openrouter_call)
 
     try:
         content_text = response_data["choices"][0]["message"]["content"]

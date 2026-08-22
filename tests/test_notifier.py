@@ -1,31 +1,31 @@
 import json
 
 from src.database.models import CVSnapshot, Job, MatchResult
-from src.notifier.discord import DiscordNotifier
+from src.notifier.discord import is_configured, send_job_notification
 
 
 def test_is_configured(monkeypatch):
     """Valida la detección de webhook configurado vs omitido."""
     monkeypatch.setattr("config.settings.settings.discord_webhook_url", None)
-    assert not DiscordNotifier.is_configured()
+    assert not is_configured()
 
     monkeypatch.setattr(
         "config.settings.settings.discord_webhook_url",
         "https://discord.com/api/webhooks/XXXX/YYYY",
     )
-    assert not DiscordNotifier.is_configured()
+    assert not is_configured()
 
     monkeypatch.setattr(
         "config.settings.settings.discord_webhook_url",
         "https://discord.com/api/webhooks/123456/abcdef",
     )
-    assert DiscordNotifier.is_configured()
+    assert is_configured()
 
     monkeypatch.setattr(
         "config.settings.settings.discord_webhook_url",
         "https://discordapp.com/api/webhooks/123456/abcdef",
     )
-    assert DiscordNotifier.is_configured()
+    assert is_configured()
 
 
 def test_send_job_notification_tier_3_silenced(monkeypatch, mocker):
@@ -55,7 +55,7 @@ def test_send_job_notification_tier_3_silenced(monkeypatch, mocker):
         missing_keywords="[]",
     )
 
-    sent = DiscordNotifier.send_job_notification(job, match_result)
+    sent = send_job_notification(job, match_result)
     assert not sent
     mock_urlopen.assert_not_called()
 
@@ -90,7 +90,7 @@ def test_send_job_notification_tier_1_success(monkeypatch, mocker):
         missing_keywords="[]",
     )
 
-    sent = DiscordNotifier.send_job_notification(job, match_result)
+    sent = send_job_notification(job, match_result)
     assert sent
     assert mock_urlopen.call_count == 1
 
@@ -142,7 +142,7 @@ def test_send_job_notification_tier_2_with_pdf(tmp_path, monkeypatch, mocker):
         tex_path=str(pdf_file).replace(".pdf", ".tex"),
     )
 
-    sent = DiscordNotifier.send_job_notification(job, match_result, snapshot)
+    sent = send_job_notification(job, match_result, snapshot)
     assert sent
     assert mock_urlopen.call_count == 1
 

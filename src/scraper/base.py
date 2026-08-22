@@ -26,28 +26,7 @@ class RawJobCard:
     posted_at: datetime | None = None
 
 
-class BaseScraper(ABC):
-    """Interfaz base para todos los scrapers."""
-
-    def __init__(self, name: str):
-        self.name = name
-
-    @abstractmethod
-    def fetch_jobs(self, keywords: list[str], locations: list[str], limit: int = 20) -> list[Job]:
-        """
-        Extrae vacantes de la fuente específica.
-
-        Args:
-            keywords: Lista de palabras clave a buscar (ej: ["Data Engineer"]).
-            locations: Lista de ubicaciones a filtrar (ej: ["Remote"]).
-            limit: Límite aproximado de vacantes a retornar.
-
-        Returns:
-            List[Job]: Lista de objetos Job listos para su persistencia.
-        """
-
-
-class WebScraper(BaseScraper):
+class WebScraper(ABC):
     """
     Clase base para scrapers de sitios web con scraping HTML.
     Encapsula la lógica compartida de:
@@ -74,7 +53,7 @@ class WebScraper(BaseScraper):
     }
 
     def __init__(self, name: str, rate_limit_config: dict | None = None):
-        super().__init__(name)
+        self.name = name
         self.rate_config = {**self.DEFAULT_RATE_CONFIG, **(rate_limit_config or {})}
 
     # ──────────────── Métodos abstractos (cada scraper implementa estos) ────────────────

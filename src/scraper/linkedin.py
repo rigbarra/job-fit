@@ -5,9 +5,8 @@ from datetime import UTC, datetime
 from bs4 import BeautifulSoup
 from curl_cffi import requests
 
+from src.agent.filter import CHILE_TERMS
 from src.scraper.base import RawJobCard, WebScraper
-
-logger = logging.getLogger(__name__)
 
 
 class LinkedInScraper(WebScraper):
@@ -31,17 +30,7 @@ class LinkedInScraper(WebScraper):
         tpr_seconds = self.max_job_age_days * 86400
         loc_lower = location.lower()
 
-        chile_terms = [
-            "chile",
-            "santiago",
-            "vina",
-            "viña",
-            "valparaiso",
-            "valparaíso",
-            "concepcion",
-            "concepción",
-        ]
-        is_chile = any(term in loc_lower for term in chile_terms)
+        is_chile = any(term in loc_lower for term in CHILE_TERMS)
 
         # f_WT: 1 = On-site (Presencial), 2 = Remote (Remoto), 3 = Hybrid (Híbrido)
         # - Para internacional: Exigir f_WT=2 (100% Remoto exclusivamente)
