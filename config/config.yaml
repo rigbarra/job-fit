@@ -30,10 +30,14 @@ sources:
   indeed: false          # Desactivado por defecto por seguridad de IP
   linkedin: true         # Endpoints públicos guest de LinkedIn con throttling
 
-# Búsquedas Internacionales (Control y Ahorro de Tokens)
-international_search:
-  enabled: false       # false: apaga 100% búsquedas de afuera (ahorro total de tokens). Cambiar a true cuando quieras reactivar.
-  only_tier_1: true    # true: si están activas, solo notifica vacantes de afuera con Match Directo (Tier 1).
+# Control de Notificaciones y Evaluación por Ubicación y Tier
+notification_rules:
+  national:
+    allow_tier_1: true    # 🇨🇱 Match Directo Chile
+    allow_tier_2: true    # 🇨🇱 Match con Retoque Chile
+  international:
+    allow_tier_1: true    # 🌐 Match Directo Internacional
+    allow_tier_2: false   # 🌐 Match con Retoque Internacional (Desactivado hoy para ahorrar tokens)
 
 # Cautela y Control de Bloqueos (Rate Limiting)
 rate_limiting:

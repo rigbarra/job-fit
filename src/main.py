@@ -44,9 +44,10 @@ def main():
 
     active_sources = config.get("sources", {})
     rate_limiting = config.get("rate_limiting", {})
-    intl_config = config.get("international_search", {})
-    intl_enabled = intl_config.get("enabled", False)
-    intl_only_tier1 = intl_config.get("only_tier_1", True)
+    notification_rules = config.get("notification_rules", {})
+
+    intl_rules = notification_rules.get("international", {})
+    intl_enabled = intl_rules.get("allow_tier_1", True) or intl_rules.get("allow_tier_2", True)
 
     # Separar ubicaciones en locales (Chile) e internacionales
     local_locs = [loc for loc in locations if is_local_location(loc)]
@@ -73,7 +74,7 @@ def main():
     quota_exhausted = False
 
     logger.info(f"Ubicaciones locales (Chile): {local_locs}")
-    logger.info(f"Búsquedas internacionales activas: {intl_enabled}")
+    logger.info(f"Reglas de notificación cargadas: {notification_rules}")
 
     # 4. Iniciar ejecución secuencial por grupos prioritarios
     for source_name, is_local in execution_groups:
@@ -83,10 +84,10 @@ def main():
             )
             continue
 
-        # Si el grupo es internacional y las búsquedas internacionales están deshabilitadas, saltar
+        # Si el grupo es internacional y todas sus reglas están deshabilitadas, saltar
         if not is_local and not intl_enabled:
             logger.info(
-                f"Saltando grupo internacional ({source_name.upper()}) (desactivado en config.yaml)."
+                f"Saltando grupo internacional ({source_name.upper()}) (desactivado en notification_rules)."
             )
             continue
 
@@ -193,11 +194,12 @@ def main():
                             f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM. Score: {match_result.score:.1f}% -> Tier {match_result.tier}"
                         )
 
-                        # Notificación: Chile permite Tier 1 y 2. Internacional permite Tier 1 (y Tier 2 solo si only_tier_1=False).
+                        # Verificar si califica para notificación según notification_rules en config.yaml
                         is_job_local = is_local_location(job.location)
-                        should_notify = match_result.tier == 1 or (
-                            is_job_local and match_result.tier == 2
-                        ) or (not is_job_local and not intl_only_tier1 and match_result.tier == 2)
+                        group_key = "national" if is_job_local else "international"
+                        tier_key = f"allow_tier_{match_result.tier}"
+                        group_rules = notification_rules.get(group_key, {})
+                        should_notify = bool(group_rules.get(tier_key, True))
 
                         if should_notify:
                             snapshot = None
