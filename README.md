@@ -1,100 +1,123 @@
 # 🚀 job-fit
 
-Sistema autónomo de ingesta de ofertas laborales, evaluación ATS de compatibilidad (*match score*) mediante IA y compilación automatizada de CV adaptados en formato LaTeX para perfiles de **Data & Analytics (Analytics Engineer / Data Engineer)**. 
+Sistema autónomo de ingesta de ofertas laborales, evaluación ATS de compatibilidad (*match score*) mediante IA y compilación automatizada de CV adaptados en formato LaTeX para perfiles de **Data & Analytics (Analytics Engineer / Data Engineer)**.
 
-Diseñado bajo una arquitectura de **costo mínimo absoluto**, utilizando Python 3.13, SQLite local, scraping resiliente con TLS impersonation, filtros algorítmicos locales (0 tokens) y modelos LLM de costo cero vía OpenRouter.
+Diseñado bajo la filosofía **Ponytail (Minimalismo y YAGNI)**: arquitectura de costo $0, ejecutable en `cron`, SQLite local, scraping resiliente con impersonación TLS de navegador, filtros algorítmicos locales (0 tokens) y evaluación mediante modelos LLM gratuitos vía OpenRouter.
 
 ---
 
-## 🏗️ Arquitectura del Pipeline
+## 🏗️ Diagrama de Flujo del Pipeline
 
 ```mermaid
 flowchart TD
-    A[🔍 Scrapers: LinkedIn Guest API / Remotive] -->|Fetch Vacantes| B(Deduplicación SHA-256 en SQLite)
-    B -->|Vacante Nueva| C{Filtro Algorítmico Local}
+    A[⏰ Cron Diario a las 9:00 AM] --> B[src/main.py: Orquestador Secuencial]
     
-    C -->|Falla: Título/SQL/Fecha > 3d/Híbrido Int.| D[🔴 Descarte Local 0 Tokens]
-    C -->|Pasa Filtros| E[🧠 Evaluador ATS LLM via OpenRouter]
-    
-    E --> F{Clasificación por Score}
-    F -->|< 60%: Tier 3| G[⚪ Descarte por Incompatibilidad]
-    F -->|60-84%: Tier 2| H[✍️ Adaptación de Resumen y Viñetas]
-    F -->|>= 85%: Tier 1| I[📄 CV Base sin Alteración]
-    
-    H --> J[🖨️ Compilador LaTeX pdflatex]
-    I --> J
-    
-    J --> K[🔔 Notificador Discord Webhook]
-    K -->|Mensaje Embed + PDF Adjunto| L[📱 Notificación en Móvil / PC]
+    subgraph Grupo 1: Prioridad Chile
+        B --> C1[Scraping Indeed Chile & LinkedIn Chile]
+        C1 --> D1[Deduplicación SHA-256 en SQLite]
+        D1 --> E1[Filtro Algorítmico Local 0 Tokens]
+        E1 --> F1[Evaluación LLM OpenRouter]
+    end
+
+    subgraph Grupo 2: Fallback Internacional
+        F1 -->|Si queda cuota| C2[Scraping Remotive / LinkedIn Int.]
+        C2 --> D2[Deduplicación SHA-256 en SQLite]
+        D2 --> E2[Filtro Algorítmico Local 0 Tokens]
+        E2 --> F2[Evaluación LLM OpenRouter]
+    end
+
+    F1 -->|Match Tier 1 o 2| G[📄 Generación & Compilación LaTeX pdflatex]
+    F2 -->|Match según notification_rules| G
+
+    G --> H[🔔 Notificación Discord con Embed + PDF Adjunto]
 ```
 
 ---
 
 ## 📋 Características Principales
 
-### 1. Ingesta Multifuente & Web Scraping Resiliente
-* **LinkedIn Guest API:** Scraping mediante endpoints públicos no oficiales de LinkedIn (`jobs-guest/jobs/api/seeMoreJobPostings/search`). No requiere login ni cookies de sesión.
-* **Remotive API:** API REST pública para vacantes 100% remotas globales.
-* **TLS Impersonation & Anti-Bloqueos:** Utiliza `curl_cffi` para emular la huella TLS de Chrome 120, junto con pausas aleatorias (*throttling* de 4 a 8 seg) y un patrón de **Circuit Breaker** (detención preventiva inmediata ante errores HTTP `403` o `429`).
-* **Filtro de Antigüedad (`max_job_age_days`):** Inyecta `f_TPR=r259200` en las búsquedas para obtener únicamente ofertas de las **últimas 72 horas**.
+### 1. Priorización Estricta de Cuotas (Chile vs Internacional)
+* **Grupos Secuenciales de Ejecución:** Prioriza las cuotas diarias del LLM evaluando primero las vacantes de Chile (Indeed Chile $\rightarrow$ LinkedIn Chile) antes de gastar recursos en fuentes internacionales (Remotive $\rightarrow$ Indeed Int. $\rightarrow$ LinkedIn Int.).
+* **Interruptor de Cuota (*Circuit Breaker*):** Si se agota la cuota diaria del LLM o el modelo retorna un error 429 (Rate Limit), la ejecución se pausa de forma limpia preservando las vacantes restantes en la base de datos para la ejecución del día siguiente.
 
-### 2. Pre-Filtrado Algorítmico Local (Ahorro del 80% en Tokens)
-Antes de llamar al LLM, el pipeline aplica reglas locales estrictas:
-* **Filtro por Título:** Requiere keywords de datos (`data`, `analytics`, `bi`, `dbt`, `etl`, `pipeline`, `datos`, `analista`, `ingeniero`).
-* **Filtro por Descripción:** Exige presencia obligatoria de la palabra clave `sql`.
-* **Filtro de Antigüedad:** Descarta ofertas con más de 3 días de publicación.
-* **Reglas Estrictas de Modalidad:**
-  * **Internacionales (fuera de Chile):** DEBEN ser **100% Remotas** bajo modalidad **Contractor / B2B**. Si exige presencialidad u modalidad híbrida en el extranjero, se descarta.
-  * **Locales (Chile):** Permite **100% Remoto** y **Híbrido** (general o máximo 2 días presenciales por semana). Descarta ofertas 100% presenciales o que exijan 3+ días en oficina.
+### 2. Scraping Resiliente y Anti-Bloqueos
+* **LinkedIn Guest API:** Ingesta desde los endpoints públicos no oficiales de LinkedIn (`jobs-guest/jobs/api/seeMoreJobPostings/search`). Filtra directamente en la búsqueda nativa por nivel de experiencia (Mid-Senior `f_E=4`) y modalidad (`f_WT=2` remoto o `f_WT=2,3` híbrido).
+* **Remotive API:** Ingesta directa desde API REST pública para empleos remotos globales.
+* **TLS Impersonation:** Utiliza `curl_cffi` para emular la huella TLS de Chrome 120, evitando detección de bots.
+* **Circuit Breaker HTTP:** Detiene el scraper de inmediato al detectar códigos `403` o `429`.
 
-### 3. Evaluador ATS con Normalización Robusta de IA
-* **OpenRouter Free Tier:** Conexión con modelos LLM sin costo (`openrouter/free`).
-* **Normalizador de JSON (`normalize_llm_json`):** Mapea automáticamente cualquier variación de formato del LLM (ej: `match_score` $\rightarrow$ `score`, respuestas tipo lista a diccionarios) antes de validar con `Pydantic`.
-* **Control de Cuotas:** Gestor `LLMQuotaManager` con backoff exponencial, jitter y control de peticiones por minuto (RPM) y límite diario.
+### 3. Pre-Filtrado Algorítmico Local (Ahorro del 80% en Tokens)
+Antes de llamar al LLM, el sistema descarta localmente vacantes irrelevantes:
+* **Filtro por Título:** Exige palabras clave de datos (`data`, `analytics`, `bi`, `dbt`, `etl`, `pipeline`, `datos`, `analista`, `ingeniero`).
+* **Filtro por Descripción:** Exige presencia obligatoria de la habilidad clave `sql`.
+* **Ventana Móvil de 24h:** Filtra únicamente ofertas publicadas en el último día (`max_job_age_days: 1`).
+* **Filtro Estricto de Modalidad y Residencia:** Descarta ofertas en el extranjero que exijan residencia local en EE.UU./UK o presencia física. En Chile descarta ofertas 100% presenciales o con 3+ días en oficina.
 
-### 4. CV Engine (Generación y Compilación LaTeX)
-* **Plantillas Bilingües Jinja2:** Delimitadores personalizados compatibles con TeX (`\VAR{}`, `\BLOCK{}`) para `templates/cv/cv_base_es.tex` y `cv_base_en.tex`.
-* **Sanitizador LaTeX:** Escapado automático de caracteres especiales TeX (`%`, `&`, `$`, `#`, `_`, comillas tipográficas) para prevenir fallos en `pdflatex`.
-* **Compilación en Aislamiento:** Genera el archivo PDF en un directorio temporal aislado y persiste el artefacto en `data/generated_cvs/` guardando el historial en la base de datos (`CVSnapshot`).
+### 4. Evaluador ATS con IA y Normalización Robusta
+* **Modelo LLM Gratuito:** Integración con OpenRouter (`openrouter/free` o `google/gemma-3-27b-it:free`).
+* **Normalizador Defensivo (`normalize_llm_json`):** Limpia etiquetas de razonamiento (`<think>...</think>`) y normaliza cualquier variación de clave devuelta por modelos libres antes de validar con `Pydantic`.
+* **Control de RPM y Backoff:** Manejo automático de retardo y reintentos con *jitter* aleatorio.
 
-### 5. Notificaciones Enriquecidas a Discord
-* **Embeds Interactivos:** Alertas formateadas con indicador de color (🟩 Verde = Tier 1 Match Directo, 🟨 Dorado = Tier 2 Match con Retoque).
-* **Enlace Directo:** Campo destacado con link limpio de 1 clic al portal de empleo.
-* **PDF Adjunto Multipart:** Sube el PDF adaptado directamente en la notificación mediante peticiones `multipart/form-data` sin librerías externas.
+### 5. CV Engine (Compilación Automática LaTeX)
+* **Plantillas Bilingües Jinja2:** Genera código `.tex` para español (`cv_base_es.tex`) o inglés (`cv_base_en.tex`) según el idioma detectado de la oferta.
+* **Sanitizador LaTeX:** Escapa caracteres especiales TeX (`%`, `&`, `$`, `#`, `_`, etc.) para prevenir errores de compilación.
+* **Compilación en Aislamiento:** Genera el PDF usando `pdflatex` en directorios temporales aislados y guarda el registro en la BD (`CVSnapshot`).
+
+### 6. Notificaciones Enriquecidas a Discord
+* **Etiquetas Visuales en Tiempo Real:** Identifica al instante si la oferta es `🇨🇱 [CHILE]` o `🌐 [INTL]`.
+* **Indicador por Tier de Coincidencia:**
+  * 🟢 **Verde Esmeralda (Tier 1 $\ge 85\%$):** Match directo con CV base.
+  * 🟡 **Amarillo Dorado (Tier 2 $60-84\%$):** Match con resumen y viñetas adaptadas al puesto.
+* **PDF Adjunto Multipart:** Sube el PDF compilado directamente al canal de Discord usando `multipart/form-data` nativo de Python (`urllib`).
+* **Reglas de Notificación Configurables (`notification_rules`):** Permite encender o apagar notificaciones por ubicación y Tier desde `config.yaml`.
 
 ---
 
-## 📂 Estructura del Proyecto
+## 🎛️ Reglas de Notificación Configurables (`config/config.yaml`)
+
+Puedes controlar qué alertas recibir editando el bloque `notification_rules` en [`config/config.yaml`](file:///home/rigbarra/projects/job-fit/config/config.yaml):
+
+```yaml
+notification_rules:
+  national:
+    allow_tier_1: true    # 🇨🇱 Match Directo Chile
+    allow_tier_2: true    # 🇨🇱 Match con Retoque Chile
+  international:
+    allow_tier_1: true    # 🌐 Match Directo Internacional
+    allow_tier_2: false   # 🌐 Match con Retoque Internacional (Desactivado hoy para ahorrar tokens)
+```
+
+---
+
+## 📂 Estructura del Repositorio
 
 ```
 job-fit/
 ├── config/              # Configuración general y del perfil
-│   ├── config.yaml      # Filtros de búsqueda, fuentes, antigüedad y thresholds
-│   ├── loader.py        # Cargador centralizado de YAML con cache en memoria
-│   ├── profile.yaml     # Perfil del candidato (skills, experiencia, preferencias)
-│   └── settings.py      # Configuración de variables de entorno (Pydantic Settings)
-├── data/                # Almacenamiento de datos
-│   ├── db/              # Base de datos SQLite (job_fit.db)
-│   └── generated_cvs/   # PDFs y archivos .tex compilados
-├── docs/                # Documentación técnica extendida y markdown de referencia
-│   └── ARCHITECTURE.md  # Esquemas de BD, diagramas Mermaid y log problema-solución
-├── docker/              # Entorno Dockerificado con TeX Live
+│   ├── config.yaml      # Filtros de búsqueda, fuentes, antigüedad y notification_rules
+│   ├── loader.py        # Cargador de YAML con cache en memoria
+│   ├── profile.yaml     # Perfil del candidato (skills, experiencia, antecedentes)
+│   └── settings.py      # Variables de entorno gestionadas por Pydantic Settings
+├── data/                # Almacenamiento local (SQLite BD y PDFs generados)
+├── docs/                # Documentación técnica de arquitectura y guía paso a paso
+│   ├── ARCHITECTURE.md  # Diagramas de secuencia y esquemas de base de datos
+│   └── TECHNICAL_GUIDE.md # Guía técnica detallada paso a paso para estudio del código
 ├── src/                 # Código fuente principal
 │   ├── agent/           # Evaluador LLM, pre-filtro algorítmico, prompts y cuotas
 │   ├── cv_engine/       # Builder de plantillas LaTeX y compilador pdflatex
 │   ├── database/        # Modelos ORM (SQLModel) y repositorio SQLite
-│   ├── notifier/        # Despachador de Webhooks a Discord (Multipart upload)
+│   ├── notifier/        # Despachador de Webhooks a Discord (Multipart PDF upload)
 │   ├── scraper/         # Scrapers (WebScraper base, LinkedIn, Remotive, Indeed)
 │   └── main.py          # Orquestador del pipeline end-to-end
 ├── templates/           # Plantillas LaTeX (.tex) y hojas de estilo (.sty)
-└── tests/               # Suite de 23 pruebas unitarias completas (pytest)
+└── tests/               # Suite de 24 pruebas unitarias completas (pytest)
 ```
 
 ---
 
-## 🛠️ Requisitos e Instalación Local
+## 🛠️ Requisitos e Instalación
 
-### Requisitos
+### Requisitos Previos
 * **Python 3.13**
 * **TeX Live** (`pdflatex`) instalado en el sistema
 
@@ -105,14 +128,14 @@ job-fit/
    cd job-fit
    ```
 
-2. Crear entorno virtual e instalar dependencias:
+2. Crear el entorno virtual e instalar dependencias:
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
    ```
 
-3. Instalar TeX Live (para compilar PDFs):
+3. Instalar TeX Live en Linux / WSL2:
    ```bash
    sudo apt-get update
    sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended texlive-lang-spanish
@@ -128,38 +151,35 @@ job-fit/
 
 ## ⚡ Uso y Automatización
 
-### Ejecución Manual Única
+### Ejecución Manual
 ```bash
 PYTHONPATH=. .venv/bin/python src/main.py
 ```
 
-### Configuración del Comando Rápido (`jobfit`)
-Para ejecutar el barrido en cualquier momento simplemente escribiendo `jobfit` en tu terminal Linux / WSL2:
-
+### Alias para Ejecución Rápida (`jobfit`)
+Agrega la siguiente línea a tu shell (`~/.bashrc` o `~/.zshrc`):
 ```bash
-echo "alias jobfit='cd /home/rigbarra/projects/job-fit && PYTHONPATH=. .venv/bin/python src/main.py'" >> ~/.bashrc
-source ~/.bashrc
+alias jobfit='cd /home/rigbarra/projects/job-fit && PYTHONPATH=. .venv/bin/python src/main.py'
 ```
 
-### Automatización Diaria (Crontab Local)
-Para correrlo en segundo plano de Lunes a Viernes a las 08:00 AM:
+### Automatización Diaria (Crontab a las 9:00 AM)
 ```bash
 crontab -e
-# Agregar la siguiente línea:
-0 8 * * 1-5 cd /home/rigbarra/projects/job-fit && PYTHONPATH=. /home/rigbarra/projects/job-fit/.venv/bin/python src/main.py >> /home/rigbarra/projects/job-fit/logs/pipeline.log 2>&1
+# Agregar la línea:
+0 9 * * * cd /home/rigbarra/projects/job-fit && PYTHONPATH=. /home/rigbarra/projects/job-fit/.venv/bin/python src/main.py >> /home/rigbarra/projects/job-fit/logs/pipeline.log 2>&1
 ```
 
 ---
 
 ## 🧪 Pruebas Unitarias
 
-El proyecto cuenta con una suite completa de **23 tests unitarios** que se ejecutan 100% offline utilizando base de datos SQLite en memoria:
+El proyecto cuenta con 24 tests unitarios que corren 100% offline usando SQLite en memoria y mocks HTTP:
 
 ```bash
-PYTHONPATH=. .venv/bin/python -m pytest -v
+.venv/bin/python -m pytest -v
 ```
 
 ---
 
 ## 📄 Licencia
-Desarrollado para uso personal de búsqueda y postulación de empleo autónoma.
+Desarrollado como proyecto open-source de uso personal para automatización y optimización de búsqueda laboral.

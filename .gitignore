@@ -49,3 +49,7 @@ htmlcov/
 # Temporary files
 tmp/
 example_linkedin/
+logs/
+
+# Agent Internals
+.agent/
