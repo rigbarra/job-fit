@@ -20,14 +20,14 @@ class BaseLLMProvider(ABC):
 class OpenRouterProvider(BaseLLMProvider):
     """Proveedor para la API de OpenRouter (gratuito o de pago)."""
 
-    def __init__(self):
-        self.api_key = settings.openrouter_api_key
-        self.model = settings.openrouter_model
+    def __init__(self, api_key: str, model: str):
+        self.api_key = api_key
+        self.model = model
         self.url = "https://openrouter.ai/api/v1/chat/completions"
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
-        if not self.api_key or self.api_key == "tu_api_key_de_openrouter_aqui":
-            raise RuntimeError("OPENROUTER_API_KEY no está configurada en .env.")
+        if not self.api_key:
+            raise RuntimeError("API Key no provista para OpenRouter.")
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -63,14 +63,14 @@ class OpenRouterProvider(BaseLLMProvider):
 class GeminiProvider(BaseLLMProvider):
     """Proveedor nativo para Google Gemini API (Gemini 2.0 Flash / 1.5 Pro)."""
 
-    def __init__(self):
-        self.api_key = settings.gemini_api_key
-        self.model = settings.gemini_model
+    def __init__(self, api_key: str, model: str):
+        self.api_key = api_key
+        self.model = model if model and "gemini" in model else "gemini-2.0-flash"
         self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         if not self.api_key:
-            raise RuntimeError("GEMINI_API_KEY no está configurada en .env.")
+            raise RuntimeError("API Key no provista para Gemini.")
 
         headers = {"Content-Type": "application/json"}
         payload = {
@@ -111,9 +111,9 @@ class GeminiProvider(BaseLLMProvider):
 class OpenAIProvider(BaseLLMProvider):
     """Proveedor para OpenAI o endpoints compatibles (vLLM, Ollama, LiteLLM)."""
 
-    def __init__(self):
-        self.api_key = settings.openai_api_key or "sk-dummy"
-        self.model = settings.openai_model
+    def __init__(self, api_key: str, model: str):
+        self.api_key = api_key
+        self.model = model
         self.base_url = settings.openai_api_base.rstrip("/")
         self.url = f"{self.base_url}/chat/completions"
 
@@ -146,15 +146,31 @@ class OpenAIProvider(BaseLLMProvider):
 
 
 def get_llm_provider() -> BaseLLMProvider:
-    """Factory para instanciar el proveedor de LLM según la configuración."""
-    provider_name = (settings.llm_provider or "openrouter").lower().strip()
+    """Factory para instanciar el proveedor de LLM según la configuración o auto-detección."""
+    api_key = settings.llm_api_key
+    model = settings.llm_model
+    provider_name = (settings.llm_provider or "").lower().strip()
 
-    if provider_name in ["gemini", "antigravity"]:
-        logger.info(f"Usando proveedor de LLM: Google Gemini ({settings.gemini_model})")
-        return GeminiProvider()
-    elif provider_name in ["openai", "vllm", "ollama"]:
-        logger.info(f"Usando proveedor de LLM: OpenAI Compatible ({settings.openai_model})")
-        return OpenAIProvider()
+    if not api_key:
+        raise RuntimeError("No se ha configurado LLM_API_KEY en el archivo .env")
+
+    # Auto-detección del proveedor basado en el prefijo de la API Key si no está configurado explícitamente
+    if not provider_name:
+        if api_key.startswith("AIzaSy"):
+            provider_name = "gemini"
+        elif api_key.startswith("sk-or-"):
+            provider_name = "openrouter"
+        elif api_key.startswith("sk-") or "localhost" in settings.openai_api_base:
+            provider_name = "openai"
+        else:
+            provider_name = "openrouter"
+
+    if provider_name == "gemini":
+        logger.info(f"Usando proveedor de LLM: Google Gemini ({model})")
+        return GeminiProvider(api_key, model)
+    elif provider_name == "openai":
+        logger.info(f"Usando proveedor de LLM: OpenAI Compatible ({model})")
+        return OpenAIProvider(api_key, model)
     else:
-        logger.info(f"Usando proveedor de LLM: OpenRouter ({settings.openrouter_model})")
-        return OpenRouterProvider()
+        logger.info(f"Usando proveedor de LLM: OpenRouter ({model})")
+        return OpenRouterProvider(api_key, model)

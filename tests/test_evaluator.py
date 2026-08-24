@@ -34,8 +34,11 @@ def test_evaluate_job_tier_2(mocker):
         "choices": [{"message": {"content": json.dumps(mock_json_response, ensure_ascii=False)}}]
     }
 
-    # Mockear requests.post en evaluator
+    # Mockear requests.post y settings de LLM en evaluator
     mocker.patch("src.agent.providers.requests.post", return_value=mock_response)
+    from config.settings import settings
+    mocker.patch.object(settings, "llm_api_key", "sk-or-testkey")
+    mocker.patch.object(settings, "llm_provider", "openrouter")
 
     # 3. Ejecutar la evaluación
     match_result = evaluate_job(job)
@@ -84,6 +87,9 @@ def test_evaluate_job_tier_3(mocker):
     }
 
     mocker.patch("src.agent.providers.requests.post", return_value=mock_response)
+    from config.settings import settings
+    mocker.patch.object(settings, "llm_api_key", "sk-or-testkey")
+    mocker.patch.object(settings, "llm_provider", "openrouter")
 
     match_result = evaluate_job(job)
 

@@ -3,14 +3,32 @@ from src.agent.providers import GeminiProvider, OpenRouterProvider, get_llm_prov
 
 
 def test_get_llm_provider_openrouter(mocker):
-    """Verifica que el proveedor por defecto sea OpenRouterProvider."""
+    """Verifica que el proveedor sea OpenRouterProvider."""
     mocker.patch.object(settings, "llm_provider", "openrouter")
+    mocker.patch.object(settings, "llm_api_key", "sk-or-testkey")
     provider = get_llm_provider()
     assert isinstance(provider, OpenRouterProvider)
 
 
 def test_get_llm_provider_gemini(mocker):
-    """Verifica la selección de GeminiProvider para Google Gemini / Antigravity."""
+    """Verifica la selección de GeminiProvider para Google Gemini."""
     mocker.patch.object(settings, "llm_provider", "gemini")
+    mocker.patch.object(settings, "llm_api_key", "AIzaSy-testkey")
     provider = get_llm_provider()
     assert isinstance(provider, GeminiProvider)
+
+
+def test_get_llm_provider_autodetect_gemini(mocker):
+    """Verifica la auto-detección de Gemini basado en la API Key."""
+    mocker.patch.object(settings, "llm_provider", None)
+    mocker.patch.object(settings, "llm_api_key", "AIzaSy_SomeSecretKey")
+    provider = get_llm_provider()
+    assert isinstance(provider, GeminiProvider)
+
+
+def test_get_llm_provider_autodetect_openrouter(mocker):
+    """Verifica la auto-detección de OpenRouter basado en la API Key."""
+    mocker.patch.object(settings, "llm_provider", None)
+    mocker.patch.object(settings, "llm_api_key", "sk-or-v1-SomeKey")
+    provider = get_llm_provider()
+    assert isinstance(provider, OpenRouterProvider)
