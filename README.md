@@ -35,7 +35,7 @@ python -m src.cli market-study
 flowchart TD
     A[Cron Diario / CLI] --> B[src/main.py: Orquestador Secuencial]
     
-    subgraph Grupo Chile (Prioritario)
+    subgraph id_chile [Grupo Chile (Prioritario)]
         B --> C1[Scraping Get on Board API, LinkedIn Chile & Indeed Chile]
         C1 --> D1[Deduplicación SHA-256 en SQLite]
         D1 --> E1[Filtro Algorítmico Local 0 Tokens]
