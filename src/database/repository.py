@@ -62,6 +62,12 @@ def save_job(job: Job) -> tuple[Job, bool]:
         return job, True
 
 
+def get_job_by_id(job_id: int) -> Job | None:
+    """Obtiene una vacante por su ID primario."""
+    with Session(engine) as session:
+        return session.get(Job, job_id)
+
+
 def get_pending_jobs() -> list[Job]:
     """Obtiene vacantes ingresadas que aún no han sido evaluadas por el LLM."""
     with Session(engine) as session:

@@ -1,0 +1,84 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[left=2.0cm, top=2.0cm, right=2.0cm, bottom=2.0cm]{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{parskip}
+
+\usepackage[scaled=0.95]{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+\definecolor{primary}{RGB}{37, 99, 235}
+\definecolor{darkgray}{RGB}{30, 41, 59}
+\definecolor{textgray}{RGB}{51, 65, 85}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primary,
+    urlcolor=primary,
+}
+
+\pagestyle{empty}
+
+\begin{document}
+
+% Header Name & Contact Info
+\begin{center}
+    {\Huge \bfseries \color{darkgray} \VAR{candidate_name}} \\[0.4em]
+    {\color{textgray} \VAR{candidate_location} \;\cdot\; \VAR{candidate_phone} \;\cdot\; \href{mailto:\VAR{candidate_email}}{\VAR{candidate_email}} \;\cdot\; \href{\VAR{candidate_linkedin}}{LinkedIn}}
+\end{center}
+
+\vspace{0.6em}
+\hrule height 1pt
+\vspace{1.2em}
+
+% Date & Target Info
+\noindent \textcolor{textgray}{\VAR{date_str}} \\[0.8em]
+\noindent \textbf{\color{darkgray} \VAR{company_name}} \\
+\noindent \textcolor{textgray}{\VAR{job_title}}
+
+\vspace{1.2em}
+
+% Opening Salutation
+\noindent \textbf{\VAR{salutation}}
+
+\vspace{0.8em}
+
+% Opening Paragraph
+\VAR{opening_paragraph}
+
+\vspace{0.8em}
+
+% Body Paragraph
+\VAR{body_paragraph}
+
+\vspace{0.6em}
+\begin{itemize}[leftmargin=1.5em, labelsep=0.5em, itemsep=0.3em]
+\BLOCK{ for bullet in achievement_bullets }
+    \item \VAR{bullet}
+\BLOCK{ endfor }
+\end{itemize}
+\vspace{0.6em}
+
+% Connection / Motivation Paragraph
+\VAR{connection_paragraph}
+
+\vspace{0.8em}
+
+% Closing Paragraph
+\VAR{closing_paragraph}
+
+\vspace{2.0em}
+
+\noindent
+\begin{minipage}{0.5\textwidth}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\raggedleft
+\textcolor{textgray}{\VAR{closing_valediction}} \\[2.5em]
+\textbf{\color{darkgray} \VAR{candidate_name}}
+\end{minipage}
+
+\end{document}
