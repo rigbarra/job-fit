@@ -58,6 +58,6 @@ def test_generate_market_study_report():
     file_path, text = generate_market_study_report()
 
     assert file_path != ""
-    assert "Estudio Real de Mercado Laboral" in text
+    assert "Estudio Histórico de Mercado Laboral" in text
     assert "Data Engineer" in text
     assert "Analytics Engineer" in text

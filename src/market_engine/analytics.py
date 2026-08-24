@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import re
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime
 
 from sqlmodel import Session, select
@@ -36,7 +36,6 @@ def extract_detailed_modality(location: str, description: str, job_type: str | N
     )
 
     # 2. Detectar días presenciales específicos en oficina
-    # Patrones como "1 día presencial", "2 días en oficina", "1x4", "2x3", "3x2", etc.
     pattern_nxm = re.search(r"\b([1-4])\s*(?:x|por|\/)\s*([1-4])\b", text)
     pattern_days_pres = re.search(
         r"\b([1-4])\s*(?:d[ií]as?)\s*(?:a la semana|semanales|al mes)?\s*(?:en oficina|de oficina|presencial|presenciales|en dependencias)",
@@ -54,7 +53,6 @@ def extract_detailed_modality(location: str, description: str, job_type: str | N
     elif pattern_days_rev:
         office_days = pattern_days_rev.group(1)
 
-    # Si hay mención explícita de días de oficina
     if office_days:
         remote_days = 5 - int(office_days) if int(office_days) < 5 else 0
         return f"Híbrido ({office_days} día{'s' if int(office_days) > 1 else ''} oficina / {remote_days} remoto)"
@@ -86,12 +84,12 @@ def extract_detailed_modality(location: str, description: str, job_type: str | N
 
 def generate_market_study_report() -> tuple[str, str]:
     """
-    Genera un informe 100% verídico y basado en hechos sobre las vacantes ingresadas,
-    separando los datos explícitamente publicados de las vacantes con salario confidencial,
-    e informando el desglose exacto de días de oficina en puestos híbridos.
+    Genera el Estudio de Mercado Histórico Acumulativo en vivo.
+    Procesa todas las vacantes acumuladas en la base de datos histórica,
+    calculando tendencias, estadísticas salariales reales y evolución temporal.
 
     Returns:
-        tuple[str, str]: (ruta del archivo markdown generado, texto del reporte)
+        tuple[str, str]: (ruta del archivo markdown canónico generado, texto del reporte)
     """
     with Session(repo.engine) as session:
         jobs = session.exec(select(Job)).all()
@@ -101,7 +99,10 @@ def generate_market_study_report() -> tuple[str, str]:
         logger.warning("No hay vacantes en la base de datos para generar el estudio de mercado.")
         return "", "No hay datos de vacantes suficientes en la base de datos."
 
-    match_dict = {m.job_id: m for m in matches}
+    # Fechas de cobertura histórica
+    created_dates = [j.created_at for j in jobs if j.created_at]
+    first_date_str = min(created_dates).strftime("%d/%m/%Y") if created_dates else datetime.now().strftime("%d/%m/%Y")
+    now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
 
     # 1. Normalización de Rol
     def normalize_role(title: str) -> str:
@@ -132,6 +133,7 @@ def generate_market_study_report() -> tuple[str, str]:
             return "Other Data & Analytics"
 
     roles_counter = Counter([normalize_role(j.title) for j in jobs])
+    sources_counter = Counter([j.source.capitalize() for j in jobs])
 
     # 2. Desglose Detallado de Modalidad (Días presenciales)
     detailed_modalities = [
@@ -186,27 +188,35 @@ def generate_market_study_report() -> tuple[str, str]:
                 pass
     tech_counter = Counter(all_techs)
 
-    # 5. Construcción del Reporte Markdown
-    today_str = datetime.now().strftime("%d-%m-%Y")
+    # 5. Construcción del Reporte Markdown Acumulativo
     transparency_pct = (len(jobs_with_salary) / len(jobs)) * 100 if jobs else 0
 
     report_lines = [
-        f"# 📊 Estudio Real de Mercado Laboral: Data & Analytics Chile ({today_str})",
+        "# 📊 Estudio Histórico de Mercado Laboral: Data & Analytics Chile (Acumulado Vivo)",
         "",
-        "Este informe se basa **exclusivamente en datos fácticos extraídos de las publicaciones reales** de las empresas en los portales analizados, distinguiendo ofertas con salario público de aquellas con renta confidencial.",
+        f"> **📅 Periodo Histórico Acumulado:** Desde `{first_date_str}` hasta `{now_str}`  ",
+        f"> **📈 Total de Ofertas Registradas en BD:** **{len(jobs)} vacantes** recopiladas de forma acumulativa y continua.",
+        "",
+        "Este informe se actualiza **automáticamente en cada corrida** y consolida la inteligencia histórica de mercado sin descartar los hallazgos de semanas o meses anteriores.",
         "",
         "---",
         "",
-        "## 1. 📈 Muestra Analizada y Transparencia Salarial",
-        f"- **Total de vacantes procesadas en la plaza:** {len(jobs)} ofertas",
+        "## 1. 🏛️ Fuentes de Información y Transparencia Salarial",
+        f"- **Total de vacantes acumuladas en la BD:** {len(jobs)} ofertas",
         f"- **Vacantes con Salario Explícito Publicado:** {len(jobs_with_salary)} ofertas ({transparency_pct:.1f}%)",
-        f"- **Vacantes con Salario Confidencial / No publicado:** {jobs_without_salary_count} ofertas ({100 - transparency_pct:.1f}%)",
+        f"- **Vacantes con Salario Confidencial / 'A convenir':** {jobs_without_salary_count} ofertas ({100 - transparency_pct:.1f}%)",
         "",
-        "> [!NOTE]",
-        "> En el mercado chileno, más del **80% de las empresas no transparenta la renta** en la publicación inicial y negocia según pretensiones del candidato en la primera entrevista telefónica.",
-        "",
-        "### Demanda por Rol Identificado:",
+        "### Aportes por Portal de Empleo:",
     ]
+
+    for src_name, count in sources_counter.most_common():
+        pct = (count / len(jobs)) * 100
+        report_lines.append(f"- **{src_name}:** {count} vacantes ({pct:.1f}%)")
+
+    report_lines.extend([
+        "",
+        "### Demanda Acumulada por Rol Identificado:",
+    ])
 
     for role, count in roles_counter.most_common():
         pct = (count / len(jobs)) * 100
@@ -216,11 +226,11 @@ def generate_market_study_report() -> tuple[str, str]:
         "",
         "---",
         "",
-        "## 2. 🏢 Desglose Real de Modalidades y Días de Oficina",
+        "## 2. 🏢 Modalidad de Trabajo y Presencialidad en Oficina",
         "",
-        "A continuación se detalla el régimen presencial exigido en los avisos:",
+        "Régimen presencial observado en las publicaciones de la muestra acumulada:",
         "",
-        "| Modalidad / Régimen Presencial | Vacantes | Porcentaje |",
+        "| Modalidad / Régimen Presencial | Vacantes Acumuladas | Porcentaje |",
         "| :--- | :--- | :--- |",
     ])
 
@@ -232,7 +242,7 @@ def generate_market_study_report() -> tuple[str, str]:
         "",
         "---",
         "",
-        "## 3. 💵 Salarios Fácticos Publicados por las Empresas",
+        "## 3. 💵 Registro Histórico de Salarios Reales Publicados",
         "",
     ])
 
@@ -253,9 +263,9 @@ def generate_market_study_report() -> tuple[str, str]:
             med_usd = sorted(usd_vals)[len(usd_vals) // 2]
             report_lines.extend([
                 "",
-                f"- **Mínimo publicado en USD:** ${min(usd_vals):,.0f} USD / mes",
+                f"- **Mínimo real en USD:** ${min(usd_vals):,.0f} USD / mes",
                 f"- **Mediana de ofertas en USD:** **${med_usd:,.0f} USD / mes**",
-                f"- **Máximo publicado en USD:** ${max(usd_vals):,.0f} USD / mes",
+                f"- **Máximo real en USD:** ${max(usd_vals):,.0f} USD / mes",
             ])
 
     if salaries_clp:
@@ -276,9 +286,9 @@ def generate_market_study_report() -> tuple[str, str]:
             med_clp = sorted(clp_vals)[len(clp_vals) // 2]
             report_lines.extend([
                 "",
-                f"- **Mínimo publicado en CLP:** ${min(clp_vals):,.0f} CLP",
+                f"- **Mínimo real en CLP:** ${min(clp_vals):,.0f} CLP",
                 f"- **Mediana de ofertas en CLP:** **${med_clp:,.0f} CLP**",
-                f"- **Máximo publicado en CLP:** ${max(clp_vals):,.0f} CLP",
+                f"- **Máximo real en CLP:** ${max(clp_vals):,.0f} CLP",
             ])
     else:
         report_lines.extend([
@@ -293,7 +303,7 @@ def generate_market_study_report() -> tuple[str, str]:
         "",
         "## 4. 🎯 Guía Realista de Negociación y Pretensión de Renta para Chile",
         "",
-        "Dado que la mayoría de los avisos chilenos no publica renta, las bandas de mercado comprobadas para postulaciones locales bajo contrato chileno son:",
+        "Dado que la gran mayoría de ofertas locales en Chile no publica salario, las bandas de mercado comprobadas para postulaciones locales bajo contrato chileno son:",
         "",
         "| Perfil / Seniority en Chile | Expectativa Realista a Pedir (Líquido) | Rango de Mercado Real |",
         "| :--- | :--- | :--- |",
@@ -303,11 +313,11 @@ def generate_market_study_report() -> tuple[str, str]:
         "| **Remoto Internacional B2B / Contractor (USD)** | **$3.800 a $5.200 USD** | $3.000 - $6.500 USD |",
         "",
         "> [!IMPORTANT]",
-        "> En empresas locales chilenas (bancos, retail, consultoras locales), solicitar más de **$3.800.000 - $4.000.000 CLP líquidos** suele requerir roles de arquitectura o liderazgo formal. Para superar los **$4.500.000 CLP equivalentes ($4.500+ USD)**, el camino óptimo es la modalidad **Contractor internacional remoto**.",
+        "> En empresas locales chilenas (bancos, retail, consultoras locales), solicitar más de **$3.800.000 - $4.000.000 CLP líquidos** suele requerir roles de arquitectura o liderazgo formal. Para aspirar a **$4.500.000+ CLP equivalentes ($4.500+ USD)**, el camino óptimo es la modalidad **Contractor internacional remoto**.",
         "",
         "---",
         "",
-        "## 5. 🛠️ Herramientas más Exigidas en las Publicaciones",
+        "## 5. 🛠️ Tecnologías más Exigidas en las Publicaciones",
         "",
         "| Herramienta / Tecnología | Menciones Reales en Vacantes Evaluadas |",
         "| :--- | :--- |",
@@ -326,14 +336,19 @@ def generate_market_study_report() -> tuple[str, str]:
 
     report_text = "\n".join(report_lines)
 
-    # Guardar reporte
+    # Guardar reporte canónico (archivo vivo siempre actualizado)
     out_dir = os.path.join(settings.project_root, "data", "market_study")
     os.makedirs(out_dir, exist_ok=True)
-    filename = f"market_study_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-    file_path = os.path.join(out_dir, filename)
+    canonical_file_path = os.path.join(out_dir, "market_study.md")
 
-    with open(file_path, "w", encoding="utf-8") as f:
+    with open(canonical_file_path, "w", encoding="utf-8") as f:
         f.write(report_text)
 
-    logger.info(f"Estudio de mercado real generado en: {file_path}")
-    return file_path, report_text
+    # Guardar también snapshot histórico fechado
+    timestamp_filename = f"market_study_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+    timestamp_file_path = os.path.join(out_dir, timestamp_filename)
+    with open(timestamp_file_path, "w", encoding="utf-8") as f:
+        f.write(report_text)
+
+    logger.info(f"Estudio de mercado vivo actualizado en: {canonical_file_path}")
+    return canonical_file_path, report_text

@@ -267,6 +267,14 @@ def main():
     logger.info(f"Total de vacantes pendientes de evaluación LLM en BD: {len(remaining_pending)}")
     logger.info("=============================")
 
+    # 7. Actualización automática del Estudio de Mercado Histórico Acumulativo
+    try:
+        from src.market_engine.analytics import generate_market_study_report
+        canonical_path, _ = generate_market_study_report()
+        logger.info(f"📊 Estudio de Mercado Histórico actualizado en: {canonical_path}")
+    except Exception as me:
+        logger.error(f"Error actualizando estudio de mercado: {me}")
+
 
 if __name__ == "__main__":
     main()
