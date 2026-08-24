@@ -22,6 +22,9 @@ python -m src.cli interview 3
 
 # 4. Generar únicamente la Carta de Presentación (.pdf)
 python -m src.cli cover-letter 3
+
+# 5. Generar informe analítico de mercado y estudio salarial (.md)
+python -m src.cli market-study
 ```
 
 ---

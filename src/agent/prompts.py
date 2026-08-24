@@ -27,6 +27,18 @@ class MatchEvaluation(BaseModel):
         None,
         description="Desglose opcional de puntajes por dimensión: technical_skills (30%), experience_match (25%), behavioral_fit (15%), career_alignment (30%).",
     )
+    recommended_salary_ask: str | None = Field(
+        None,
+        description="Estimación de expectativa salarial óptima recomendada a pedir (ej: '$3.200.000 CLP / mes' o '$3.500 USD / mes') para maximizar la oferta según el stack y nivel de complejidad.",
+    )
+    key_technologies: list[str] | None = Field(
+        default_factory=list,
+        description="Lista de las 3 a 6 tecnologías o herramientas clave exigidas en la vacante (ej: ['PySpark', 'dbt', 'AWS', 'Airflow']).",
+    )
+    seniority_level: str | None = Field(
+        None,
+        description="Nivel de seniority solicitado: 'Junior', 'Mid', 'Senior', 'Staff' o 'Lead'.",
+    )
     adapted_summary: str | None = Field(
         None,
         description="Resumen profesional adaptado e inyectado con palabras clave del puesto. Generar únicamente si el score está entre 60.0 y 84.0. De lo contrario, dejar en null.",

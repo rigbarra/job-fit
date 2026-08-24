@@ -21,6 +21,51 @@ CHILE_TERMS = [
 ]
 
 
+def parse_salary_details(salary_str: str | None) -> tuple[float | None, float | None, str | None]:
+    """Extrae valores numéricos min_salary, max_salary y moneda de una cadena de texto."""
+    if not salary_str:
+        return None, None, None
+
+    clean_str = salary_str.replace(".", "").replace(",", "")
+    nums = [float(n) for n in re.findall(r"\d+", clean_str)]
+    if not nums:
+        return None, None, None
+
+    is_usd = "usd" in salary_str.lower() or max(nums) < 100000
+    currency = "USD" if is_usd else "CLP"
+
+    if len(nums) >= 2:
+        return min(nums), max(nums), currency
+    else:
+        return nums[0], nums[0], currency
+
+
+def extract_modality_and_country(location: str, description: str) -> tuple[str, str]:
+    """Extrae la modalidad (Remoto 100%, Híbrido 2x3, Presencial, etc.) y país normalizado."""
+    text = f"{location} {description}".lower()
+
+    # País
+    country = "Chile" if any(term in text for term in CHILE_TERMS) else "Internacional / Remote"
+
+    # Modalidad
+    if any(k in text for k in ["100% remoto", "remote", "remoto", "teletrabajo", "work from home", "wfh"]):
+        if any(h in text for h in ["híbrido", "hibrido", "hybrid"]):
+            modality = "Híbrido"
+        else:
+            modality = "Remoto 100%"
+    elif any(k in text for k in ["híbrido", "hibrido", "hybrid"]):
+        modality = "Híbrido"
+        m = re.search(r"\b([1-4])\s*(x|por)\s*([1-4])\b", text)
+        if m:
+            modality = f"Híbrido ({m.group(1)}x{m.group(3)})"
+    elif any(k in text for k in ["presencial", "on-site", "onsite", "en oficina"]):
+        modality = "Presencial"
+    else:
+        modality = "Híbrido / Remoto"
+
+    return modality, country
+
+
 def is_salary_too_low(salary_str: str) -> tuple[bool, str]:
     """Determina si un rango de salario expresado en texto está por debajo de los mínimos ($2.5M CLP o $2500 USD)."""
     if not salary_str:

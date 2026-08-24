@@ -71,6 +71,21 @@ def handle_cover_letter(args):
     print(f"\n✉️ Carta de Presentación PDF generada en:\n{cover_pdf}")
 
 
+from src.market_engine.analytics import generate_market_study_report
+
+
+def handle_market_study(args):
+    """Genera el informe de Estudio de Mercado y Estadísticas Salariales."""
+    init_db()
+    logger.info("--- Generando Estudio de Mercado y Análisis Salarial ---")
+    file_path, report_text = generate_market_study_report()
+    if file_path:
+        print(f"\n📊 Reporte de Mercado generado exitosamente en:\n{file_path}\n")
+        print(report_text)
+    else:
+        print(f"\n⚠️ {report_text}")
+
+
 def _get_or_create_job(target: str) -> Job | None:
     if target.isdigit():
         return get_job_by_id(int(target))
@@ -117,6 +132,10 @@ def main():
     p_cover = subparsers.add_parser("cover-letter", help="Genera únicamente la Carta de Presentación")
     p_cover.add_argument("target", help="ID de la vacante en la BD o URL/descripción")
     p_cover.set_defaults(func=handle_cover_letter)
+
+    # Comando: market-study
+    p_market = subparsers.add_parser("market-study", help="Genera reporte analítico de sueldos y tendencias de mercado")
+    p_market.set_defaults(func=handle_market_study)
 
     args = parser.parse_args()
     args.func(args)

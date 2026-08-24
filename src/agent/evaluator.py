@@ -186,12 +186,21 @@ def evaluate_job(
         else None
     )
 
+    key_technologies_json = (
+        json.dumps(evaluation.key_technologies, ensure_ascii=False)
+        if evaluation.key_technologies
+        else None
+    )
+
     return MatchResult(
         job_id=job.id,
         score=score,
         tier=tier,
         rationale=evaluation.rationale,
         missing_keywords=missing_keywords_json,
+        recommended_salary_ask=evaluation.recommended_salary_ask,
+        key_technologies=key_technologies_json,
+        seniority_level=evaluation.seniority_level,
         adapted_summary=evaluation.adapted_summary,
         adapted_bullets=adapted_bullets_json,
     )

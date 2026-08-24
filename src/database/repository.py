@@ -43,12 +43,30 @@ def is_duplicate(url: str) -> bool:
 
 def save_job(job: Job) -> tuple[Job, bool]:
     """
-    Guarda una vacante si no existe previamente (deduplicación integrada).
+    Guarda una vacante si no existe previamente (deduplicación integrada) y enriquece sus metadatos.
 
     Returns:
         tuple[Job, bool]: (job guardado/existente, True si fue insertado como nuevo).
     """
+    from src.agent.filter import extract_modality_and_country, parse_salary_details
+
     job.hash_url = get_hash(job.url)
+
+    # Enriquecer modalidad y país si no están definidos
+    if not job.modality or not job.country:
+        modality, country = extract_modality_and_country(job.location, job.description)
+        if not job.modality:
+            job.modality = modality
+        if not job.country:
+            job.country = country
+
+    # Enriquecer salarios numéricos normalizados si no están definidos
+    if job.min_salary is None and job.salary:
+        min_sal, max_sal, curr = parse_salary_details(job.salary)
+        job.min_salary = min_sal
+        job.max_salary = max_sal
+        job.salary_currency = curr
+
     with Session(engine) as session:
         # Verificar duplicados por URL
         statement = select(Job).where(Job.hash_url == job.hash_url)
