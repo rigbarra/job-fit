@@ -18,9 +18,9 @@ search_filters:
     - "LATAM"
     - "Latin America"
     - "Worldwide"
-  max_job_age_days: 7    # Rango extendido a 7 días para pruebas de calibración
+  max_job_age_days: 30   # Ventana de 30 días hacia atrás
   experience_level: "4"  # Nivel de experiencia LinkedIn (f_E=4: Mid-Senior Level)
-  limit_per_source: 20
+  limit_per_source: 35
 
 # Umbrales de clasificación de coincidencia (Match Score)
 match_thresholds:

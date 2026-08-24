@@ -5,6 +5,7 @@ from typing import Any
 from curl_cffi import requests
 
 from config.settings import settings
+from src.agent.quota import RateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class OpenRouterProvider(BaseLLMProvider):
 
         response = requests.post(self.url, headers=headers, json=payload, timeout=45)
         if response.status_code == 429:
-            raise RuntimeError("Rate limit o cuota agotada en OpenRouter (HTTP 429)")
+            raise RateLimitError("Rate limit o cuota agotada en OpenRouter (HTTP 429)")
         elif response.status_code != 200:
             raise RuntimeError(
                 f"Error en OpenRouter API ({response.status_code}): {response.text[:300]}"
@@ -61,12 +62,16 @@ class OpenRouterProvider(BaseLLMProvider):
 
 
 class GeminiProvider(BaseLLMProvider):
-    """Proveedor nativo para Google Gemini API (Gemini 2.0 Flash / 1.5 Pro)."""
+    """Proveedor nativo para Google Gemini API (Gemini 3.6 Flash / 2.5 Pro)."""
 
     def __init__(self, api_key: str, model: str):
         self.api_key = api_key
-        # Si el modelo especifica gemini, se usa directamente; de lo contrario, se usa el default de 3.6-flash
-        self.model = model if (model and "gemini" in model) else "gemini-3.6-flash"
+        if model and ("gemini-2.0" in model or "gemini-1.5" in model):
+            self.model = "gemini-3.6-flash"
+        elif model and "gemini" in model:
+            self.model = model
+        else:
+            self.model = "gemini-3.6-flash"
         self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
@@ -91,7 +96,7 @@ class GeminiProvider(BaseLLMProvider):
 
         response = requests.post(self.url, headers=headers, json=payload, timeout=45)
         if response.status_code == 429:
-            raise RuntimeError("Rate limit alcanzado en Google Gemini API (HTTP 429)")
+            raise RateLimitError("Rate limit alcanzado en Google Gemini API (HTTP 429)")
         elif response.status_code != 200:
             raise RuntimeError(
                 f"Error en Gemini API ({response.status_code}): {response.text[:300]}"
@@ -110,12 +115,13 @@ class GeminiProvider(BaseLLMProvider):
 
 
 class OpenAIProvider(BaseLLMProvider):
-    """Proveedor para OpenAI o endpoints compatibles (vLLM, Ollama, LiteLLM)."""
+    """Proveedor para OpenAI o endpoints compatibles (DeepSeek, Groq, Ollama, vLLM)."""
 
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, base_url: str | None = None):
         self.api_key = api_key
         self.model = model
-        self.base_url = settings.openai_api_base.rstrip("/")
+        target_base = base_url or settings.llm_base_url or settings.openai_api_base
+        self.base_url = target_base.rstrip("/")
         self.url = f"{self.base_url}/chat/completions"
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
@@ -133,7 +139,9 @@ class OpenAIProvider(BaseLLMProvider):
         }
 
         response = requests.post(self.url, headers=headers, json=payload, timeout=45)
-        if response.status_code != 200:
+        if response.status_code == 429:
+            raise RateLimitError(f"Rate limit alcanzado en API OpenAI Compatible ({self.base_url})")
+        elif response.status_code != 200:
             raise RuntimeError(
                 f"Error en OpenAI API ({response.status_code}): {response.text[:300]}"
             )
@@ -173,9 +181,16 @@ def get_llm_provider() -> BaseLLMProvider:
     if provider_name == "gemini":
         logger.info(f"Usando proveedor de LLM: Google Gemini ({model})")
         return GeminiProvider(api_key, model)
-    elif provider_name == "openai":
-        logger.info(f"Usando proveedor de LLM: OpenAI Compatible ({model})")
-        return OpenAIProvider(api_key, model)
+    elif provider_name == "openrouter" or api_key.startswith("sk-or-"):
+        logger.info(f"Usando proveedor de LLM: OpenRouter ({model})")
+        return OpenRouterProvider(api_key, model)
+    elif (
+        provider_name in ("openai", "deepseek", "groq", "ollama")
+        or settings.llm_base_url is not None
+        or api_key.startswith("sk-")
+    ):
+        logger.info(f"Usando proveedor de LLM: OpenAI Compatible / {provider_name or 'Custom'} ({model})")
+        return OpenAIProvider(api_key, model, base_url=settings.llm_base_url)
     else:
         logger.info(f"Usando proveedor de LLM: OpenRouter ({model})")
         return OpenRouterProvider(api_key, model)

@@ -10,8 +10,9 @@ logger = logging.getLogger(__name__)
 class IndeedScraper:
     """Scraper de Indeed que utiliza la librería JobSpy para mayor resiliencia contra bloqueos."""
 
-    def __init__(self, rate_limit_config: dict | None = None):
+    def __init__(self, rate_limit_config: dict | None = None, max_job_age_days: int = 30):
         self.name = "indeed"
+        self.max_job_age_days = max_job_age_days
 
     def fetch_jobs(self, keywords: list[str], locations: list[str], limit: int = 20) -> list[Job]:
         jobs_found: list[Job] = []
@@ -34,7 +35,7 @@ class IndeedScraper:
                         search_term=keyword,
                         location=location,
                         results_wanted=limit,
-                        hours_old=168,  # Rango de 7 días
+                        hours_old=self.max_job_age_days * 24,
                         country_indeed=country_param,
                     )
 

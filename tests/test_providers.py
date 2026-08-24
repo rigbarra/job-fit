@@ -40,3 +40,14 @@ def test_get_llm_provider_autodetect_openrouter(mocker):
     mocker.patch.object(settings, "llm_api_key", "sk-or-v1-SomeKey")
     provider = get_llm_provider()
     assert isinstance(provider, OpenRouterProvider)
+
+
+def test_get_llm_provider_deepseek_or_openai(mocker):
+    """Verifica la selección de OpenAICompatibleProvider para DeepSeek/OpenAI."""
+    from src.agent.providers import OpenAIProvider
+    mocker.patch.object(settings, "llm_provider", "deepseek")
+    mocker.patch.object(settings, "llm_api_key", "sk-deepseek-12345")
+    mocker.patch.object(settings, "llm_base_url", "https://api.deepseek.com/v1")
+    provider = get_llm_provider()
+    assert isinstance(provider, OpenAIProvider)
+    assert provider.base_url == "https://api.deepseek.com/v1"

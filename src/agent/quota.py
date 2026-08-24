@@ -62,7 +62,7 @@ def enforce_rpm():
     _last_calls.append(time.time())
 
 
-def call_with_retry(api_func: Callable[[], Any], max_retries: int = 2) -> Any:
+def call_with_retry(api_func: Callable[[], Any], max_retries: int = 3) -> Any:
     """
     Ejecuta una llamada de la API del LLM controlando la cuota diaria,
     los límites de RPM y manejando reintentos con backoff exponencial y jitter.
@@ -90,10 +90,10 @@ def call_with_retry(api_func: Callable[[], Any], max_retries: int = 2) -> Any:
                 )
                 raise e
 
-            # Backoff exponencial corto: 2^retries + ruido aleatorio de jitter (0 a 1 segundo)
-            sleep_time = (2**retries) + random.uniform(0.5, 1.5)
+            # Backoff exponencial: 5 * 2^(retries-1) + jitter (ej: 5s, 10s, 20s)
+            sleep_time = (5.0 * (2 ** (retries - 1))) + random.uniform(1.0, 3.0)
             logger.warning(
-                f"LLM API: Error 429 (Rate Limit). Reintentando ({retries}/{max_retries}) en {sleep_time:.2f}s..."
+                f"LLM API: Error 429 (Rate Limit). Esperando {sleep_time:.2f}s antes de reintentar ({retries}/{max_retries})..."
             )
             time.sleep(sleep_time)
 

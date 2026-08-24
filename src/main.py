@@ -121,7 +121,10 @@ def main():
         elif source_name == "indeed":
             from src.scraper.indeed import IndeedScraper
 
-            scraper = IndeedScraper(rate_limit_config=rate_limiting)
+            scraper = IndeedScraper(
+                rate_limit_config=rate_limiting,
+                max_job_age_days=max_job_age_days,
+            )
         elif source_name == "linkedin":
             from src.scraper.linkedin import LinkedInScraper
 
