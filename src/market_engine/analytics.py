@@ -135,9 +135,11 @@ def generate_market_study_report() -> tuple[str, str]:
     roles_counter = Counter([normalize_role(j.title) for j in jobs])
     sources_counter = Counter([j.source.capitalize() for j in jobs])
 
-    # 2. Desglose Detallado de Modalidad (Días presenciales)
+    # 2. Desglose Detallado de Modalidad (Días presenciales) - Filtrado para Tier 1 y Tier 2
+    tier12_job_ids = {m.job_id for m in matches if m.tier in [1, 2]}
+    tier12_jobs = [j for j in jobs if j.id in tier12_job_ids]
     detailed_modalities = [
-        extract_detailed_modality(j.location, j.description, j.job_type) for j in jobs
+        extract_detailed_modality(j.location, j.description, j.job_type) for j in tier12_jobs
     ]
     modalities_counter = Counter(detailed_modalities)
 
@@ -210,7 +212,7 @@ def generate_market_study_report() -> tuple[str, str]:
     ]
 
     for src_name, count in sources_counter.most_common():
-        pct = (count / len(jobs)) * 100
+        pct = (count / len(tier12_jobs)) * 100 if tier12_jobs else 0
         report_lines.append(f"- **{src_name}:** {count} vacantes ({pct:.1f}%)")
 
     report_lines.extend([
@@ -219,7 +221,7 @@ def generate_market_study_report() -> tuple[str, str]:
     ])
 
     for role, count in roles_counter.most_common():
-        pct = (count / len(jobs)) * 100
+        pct = (count / len(tier12_jobs)) * 100 if tier12_jobs else 0
         report_lines.append(f"- **{role}:** {count} vacantes ({pct:.1f}%)")
 
     report_lines.extend([
@@ -228,14 +230,14 @@ def generate_market_study_report() -> tuple[str, str]:
         "",
         "## 2. Modalidad de Trabajo y Presencialidad en Oficina",
         "",
-        "Régimen presencial observado en las publicaciones de la muestra acumulada:",
+        "> **Nota de Relevancia:** Estos porcentajes se calculan **únicamente sobre vacantes Tier 1 y Tier 2** (aquellas donde tu perfil tiene un Match directo o competitivo), descartando el ruido de empleos remotos que exigen stacks no dominados.",
         "",
         "| Modalidad / Régimen Presencial | Vacantes Acumuladas | Porcentaje |",
         "| :--- | :--- | :--- |",
     ])
 
     for mod, count in modalities_counter.most_common():
-        pct = (count / len(jobs)) * 100
+        pct = (count / len(tier12_jobs)) * 100 if tier12_jobs else 0
         report_lines.append(f"| **{mod}** | {count} | {pct:.1f}% |")
 
     report_lines.extend([
@@ -245,56 +247,54 @@ def generate_market_study_report() -> tuple[str, str]:
         "## 3. Registro Histórico de Salarios Reales Publicados",
         "",
     ])
-
-    if salaries_usd:
+    
+    # Agregar todos los salarios unificados a CLP
+    USD_TO_CLP = 950
+    salaries_by_role = {}
+    
+    for s in salaries_clp + salaries_usd:
+        val = s["avg"]
+        if val <= 0:
+            continue
+            
+        if s in salaries_usd:
+            clp_val = val * USD_TO_CLP
+        else:
+            clp_val = val
+            
+        # Descartar outliers erróneos (ej. 5000 CLP en vez de 5M)
+        if clp_val < 500000:
+            continue
+            
+        r = s["role"]
+        if r not in salaries_by_role:
+            salaries_by_role[r] = []
+        salaries_by_role[r].append(clp_val)
+        
+    if salaries_by_role:
         report_lines.extend([
-            "### Ofertas con Salario Publicado en USD (Get on Board / Remoto):",
+            "Todos los salarios han sido unificados a **Pesos Chilenos (CLP)** (Tasa ref. 1 USD = $950 CLP).",
             "",
-            "| Empresa | Cargo | Salario Publicado | Portal |",
-            "| :--- | :--- | :--- | :--- |",
+            "| Cargo Analizado | Muestras | Mínimo (CLP) | Mediana (CLP) | Máximo (CLP) |",
+            "| :--- | :--- | :--- | :--- | :--- |"
         ])
-        for s in salaries_usd:
+        
+        # Ordenar roles por mediana descendente
+        role_stats = []
+        for r, vals in salaries_by_role.items():
+            vals_sorted = sorted(vals)
+            med = vals_sorted[len(vals_sorted) // 2]
+            role_stats.append((r, len(vals), min(vals), med, max(vals)))
+            
+        role_stats.sort(key=lambda x: x[3], reverse=True)
+        
+        for r, count, min_v, med_v, max_v in role_stats:
             report_lines.append(
-                f"| **{s['company']}** | {s['title']} | `{s['raw_salary']}` | {s['source'].capitalize()} |"
+                f"| **{r}** | {count} | ${min_v:,.0f} | **${med_v:,.0f}** | ${max_v:,.0f} |"
             )
-
-        usd_vals = [s["avg"] for s in salaries_usd if s["avg"] > 0]
-        if usd_vals:
-            med_usd = sorted(usd_vals)[len(usd_vals) // 2]
-            report_lines.extend([
-                "",
-                f"- **Mínimo real en USD:** ${min(usd_vals):,.0f} USD / mes",
-                f"- **Mediana de ofertas en USD:** **${med_usd:,.0f} USD / mes**",
-                f"- **Máximo real en USD:** ${max(usd_vals):,.0f} USD / mes",
-            ])
-
-    if salaries_clp:
-        report_lines.extend([
-            "",
-            "### Ofertas con Salario Publicado en CLP (Moneda Local):",
-            "",
-            "| Empresa | Cargo | Salario Publicado | Portal |",
-            "| :--- | :--- | :--- | :--- |",
-        ])
-        for s in salaries_clp:
-            report_lines.append(
-                f"| **{s['company']}** | {s['title']} | `{s['raw_salary']}` | {s['source'].capitalize()} |"
-            )
-
-        clp_vals = [s["avg"] for s in salaries_clp if s["avg"] > 0]
-        if clp_vals:
-            med_clp = sorted(clp_vals)[len(clp_vals) // 2]
-            report_lines.extend([
-                "",
-                f"- **Mínimo real en CLP:** ${min(clp_vals):,.0f} CLP",
-                f"- **Mediana de ofertas en CLP:** **${med_clp:,.0f} CLP**",
-                f"- **Máximo real en CLP:** ${max(clp_vals):,.0f} CLP",
-            ])
     else:
         report_lines.extend([
-            "",
-            "### Ofertas con Salario Explícito en CLP:",
-            "*Ninguna de las publicaciones en LinkedIn / Indeed de este lote incluyó banda salarial explícita en pesos chilenos (todas como 'Renta a convenir').*",
+            "*Ninguna de las publicaciones en este lote incluyó banda salarial explícita.*",
         ])
 
     report_lines.extend([
@@ -312,8 +312,7 @@ def generate_market_study_report() -> tuple[str, str]:
         "| **Data Analyst Senior / BI Specialist** (Power BI/SQL) | **$2.400.000 a $3.000.000 CLP** | $2.000.000 - $3.000.000 CLP |",
         "| **Remoto Internacional B2B / Contractor (USD)** | **$3.800 a $5.200 USD** | $3.000 - $6.500 USD |",
         "",
-        "> [!IMPORTANT]",
-        "> En empresas locales chilenas (bancos, retail, consultoras locales), solicitar más de **$3.800.000 - $4.000.000 CLP líquidos** suele requerir roles de arquitectura o liderazgo formal. Para aspirar a **$4.500.000+ CLP equivalentes ($4.500+ USD)**, el camino óptimo es la modalidad **Contractor internacional remoto**.",
+        "> **💡 IMPORTANTE:** En empresas locales chilenas (bancos, retail, consultoras locales), solicitar más de **$3.800.000 - $4.000.000 CLP líquidos** suele requerir roles de arquitectura o liderazgo formal. Para aspirar a **$4.500.000+ CLP equivalentes ($4.500+ USD)**, el camino óptimo es la modalidad **Contractor internacional remoto**.",
         "",
         "---",
         "",
