@@ -16,6 +16,10 @@ search_filters:
   locations:
     - "Chile"
     - "Santiago"
+    - "Valparaíso"
+    - "Valparaiso"
+    - "Viña del Mar"
+    - "Vina del Mar"
   max_job_age_days: 30   # Ventana de 30 días hacia atrás
   experience_level: "4"  # Nivel de experiencia LinkedIn (f_E=4: Mid-Senior Level)
   limit_per_source: 35

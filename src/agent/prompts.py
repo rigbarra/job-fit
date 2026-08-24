@@ -29,7 +29,7 @@ class MatchEvaluation(BaseModel):
     )
     recommended_salary_ask: str | None = Field(
         None,
-        description="Estimación de expectativa salarial óptima recomendada a pedir (ej: '$3.200.000 CLP / mes' o '$3.500 USD / mes') para maximizar la oferta según el stack y nivel de complejidad.",
+        description="Expectativa salarial realista y óptima a pedir. Para empleos en Chile, expresar estrictamente en CLP líquidos (ej: '$3.000.000 - $3.600.000 CLP líquidos / mes'). Para ofertas internacionales en USD, en USD brutos. Si la oferta publica un rango real, sugerir la parte alta de dicho rango.",
     )
     key_technologies: list[str] | None = Field(
         default_factory=list,

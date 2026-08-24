@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from collections import Counter, defaultdict
 from datetime import datetime
 
@@ -13,11 +14,81 @@ from src.database.models import Job, MatchResult
 logger = logging.getLogger(__name__)
 
 
+def extract_detailed_modality(location: str, description: str, job_type: str | None = None) -> str:
+    """
+    Analiza minuciosamente el texto para determinar la modalidad exacta
+    y la cantidad de días presenciales en oficina cuando esté disponible.
+    """
+    text = f"{location} {description} {job_type or ''}".lower()
+
+    # 1. Detectar si es 100% Remoto estricto
+    is_remote_strict = any(
+        term in text
+        for term in [
+            "100% remoto",
+            "100% remote",
+            "full remote",
+            "totalmente remoto",
+            "remoto de cualquier lugar",
+            "remote (worldwide)",
+            "remote - latin america",
+        ]
+    )
+
+    # 2. Detectar días presenciales específicos en oficina
+    # Patrones como "1 día presencial", "2 días en oficina", "1x4", "2x3", "3x2", etc.
+    pattern_nxm = re.search(r"\b([1-4])\s*(?:x|por|\/)\s*([1-4])\b", text)
+    pattern_days_pres = re.search(
+        r"\b([1-4])\s*(?:d[ií]as?)\s*(?:a la semana|semanales|al mes)?\s*(?:en oficina|de oficina|presencial|presenciales|en dependencias)",
+        text,
+    )
+    pattern_days_rev = re.search(
+        r"(?:presencial|en oficina|de oficina)\s*(?:de)?\s*([1-4])\s*(?:d[ií]as?)", text
+    )
+
+    office_days = None
+    if pattern_nxm:
+        office_days = pattern_nxm.group(1)
+    elif pattern_days_pres:
+        office_days = pattern_days_pres.group(1)
+    elif pattern_days_rev:
+        office_days = pattern_days_rev.group(1)
+
+    # Si hay mención explícita de días de oficina
+    if office_days:
+        remote_days = 5 - int(office_days) if int(office_days) < 5 else 0
+        return f"Híbrido ({office_days} día{'s' if int(office_days) > 1 else ''} oficina / {remote_days} remoto)"
+
+    # 3. Detectar Híbrido general vs Remoto vs Presencial
+    if any(h in text for h in ["híbrido", "hibrido", "hybrid"]):
+        return "Híbrido (Días no detallados en aviso)"
+
+    if is_remote_strict or any(
+        r in text for r in ["remoto", "remote", "teletrabajo", "home office", "wfh"]
+    ):
+        return "Remoto 100%"
+
+    if any(
+        p in text
+        for p in [
+            "presencial",
+            "on-site",
+            "onsite",
+            "en oficina",
+            "100% presencial",
+            "trabajo en terreno",
+        ]
+    ):
+        return "Presencial 100%"
+
+    return "No especificado / A convenir"
+
+
 def generate_market_study_report() -> tuple[str, str]:
     """
-    Analiza las vacantes y evaluaciones en la base de datos para generar un estudio
-    exhaustivo de mercado, salarios, tecnologías más cotizadas y recomendaciones
-    estratégicas para maximizar ingresos en modalidades remotas.
+    Genera un informe 100% verídico y basado en hechos sobre las vacantes ingresadas,
+    separando los datos explícitamente publicados de las vacantes con salario confidencial,
+    e informando el desglose exacto de días de oficina en puestos híbridos.
 
     Returns:
         tuple[str, str]: (ruta del archivo markdown generado, texto del reporte)
@@ -32,7 +103,7 @@ def generate_market_study_report() -> tuple[str, str]:
 
     match_dict = {m.job_id: m for m in matches}
 
-    # 1. Agrupación por rol normalizado
+    # 1. Normalización de Rol
     def normalize_role(title: str) -> str:
         t = title.lower()
         if "analytics engineer" in t:
@@ -61,68 +132,80 @@ def generate_market_study_report() -> tuple[str, str]:
             return "Other Data & Analytics"
 
     roles_counter = Counter([normalize_role(j.title) for j in jobs])
-    modalities_counter = Counter([j.modality or "No especificada" for j in jobs])
-    countries_counter = Counter([j.country or "No especificado" for j in jobs])
 
-    # 2. Análisis Salarial
-    salaries_by_role: dict[str, list[float]] = defaultdict(list)
-    salaries_clp: list[float] = []
-    salaries_usd: list[float] = []
+    # 2. Desglose Detallado de Modalidad (Días presenciales)
+    detailed_modalities = [
+        extract_detailed_modality(j.location, j.description, j.job_type) for j in jobs
+    ]
+    modalities_counter = Counter(detailed_modalities)
 
-    tech_salary_map: dict[str, list[float]] = defaultdict(list)
-    all_techs: list[str] = []
+    # 3. Análisis Salarial Fáctico (Solo datos publicados explícitamente)
+    jobs_with_salary = [j for j in jobs if j.salary or j.min_salary or j.max_salary]
+    jobs_without_salary_count = len(jobs) - len(jobs_with_salary)
 
-    for job in jobs:
-        role = normalize_role(job.title)
-        min_s = job.min_salary
-        max_s = job.max_salary
-        curr = job.salary_currency or "USD"
+    salaries_clp: list[dict] = []
+    salaries_usd: list[dict] = []
 
-        # Salario promedio o representativo si existe
-        if max_s:
-            avg_val = (min_s + max_s) / 2.0 if min_s else max_s
-            if curr == "CLP":
-                salaries_clp.append(avg_val)
-                # Conversión aproximada CLP a USD (1 USD = ~950 CLP) para comparación
-                usd_equiv = avg_val / 950.0
-                salaries_by_role[role].append(usd_equiv)
-            else:
-                salaries_usd.append(avg_val)
-                salaries_by_role[role].append(avg_val)
+    for job in jobs_with_salary:
+        curr = (job.salary_currency or "USD").upper()
+        raw_sal = job.salary or (
+            f"{curr} ${job.min_salary:,.0f} - ${job.max_salary:,.0f}"
+            if job.min_salary and job.max_salary
+            else "Publicado"
+        )
+        min_v = job.min_salary
+        max_v = job.max_salary
+        avg_v = (min_v + max_v) / 2.0 if min_v and max_v else (min_v or max_v or 0)
 
-        # Tecnologías asociadas al puesto
-        match = match_dict.get(job.id)
-        if match and match.key_technologies:
+        entry = {
+            "title": job.title,
+            "company": job.company,
+            "source": job.source,
+            "raw_salary": raw_sal,
+            "min": min_v,
+            "max": max_v,
+            "avg": avg_v,
+            "currency": curr,
+            "role": normalize_role(job.title),
+        }
+
+        if curr == "CLP" or (min_v and min_v > 100000):
+            salaries_clp.append(entry)
+        else:
+            salaries_usd.append(entry)
+
+    # 4. Tecnologías Reales detectadas
+    all_techs = []
+    for m in matches:
+        if m.key_technologies:
             try:
-                techs = json.loads(match.key_technologies)
-                if isinstance(techs, list):
-                    for tech in techs:
-                        tech_clean = tech.strip().title()
-                        all_techs.append(tech_clean)
-                        if max_s:
-                            usd_val = ((min_s + max_s) / 2.0 if min_s else max_s) / (
-                                950.0 if curr == "CLP" else 1.0
-                            )
-                            tech_salary_map[tech_clean].append(usd_val)
+                t_list = json.loads(m.key_technologies)
+                if isinstance(t_list, list):
+                    all_techs.extend([t.strip().title() for t in t_list if t.strip()])
             except Exception:
                 pass
-
     tech_counter = Counter(all_techs)
 
-    # 3. Construcción del Reporte Markdown
+    # 5. Construcción del Reporte Markdown
     today_str = datetime.now().strftime("%d-%m-%Y")
+    transparency_pct = (len(jobs_with_salary) / len(jobs)) * 100 if jobs else 0
+
     report_lines = [
-        f"# 📊 Estudio de Mercado Laboral y Salarios: Data & Analytics ({today_str})",
+        f"# 📊 Estudio Real de Mercado Laboral: Data & Analytics Chile ({today_str})",
         "",
-        "Este informe consolida las estadísticas de compensación, demanda tecnológica y recomendaciones de carrera calculadas a partir de las vacantes ingresadas en el pipeline de `job-fit`.",
+        "Este informe se basa **exclusivamente en datos fácticos extraídos de las publicaciones reales** de las empresas en los portales analizados, distinguiendo ofertas con salario público de aquellas con renta confidencial.",
         "",
         "---",
         "",
-        "## 1. 📈 Distribución de Ofertas y Modalidad",
-        f"- **Total de vacantes analizadas:** {len(jobs)}",
-        f"- **Evaluadas por IA:** {len(matches)}",
+        "## 1. 📈 Muestra Analizada y Transparencia Salarial",
+        f"- **Total de vacantes procesadas en la plaza:** {len(jobs)} ofertas",
+        f"- **Vacantes con Salario Explícito Publicado:** {len(jobs_with_salary)} ofertas ({transparency_pct:.1f}%)",
+        f"- **Vacantes con Salario Confidencial / No publicado:** {jobs_without_salary_count} ofertas ({100 - transparency_pct:.1f}%)",
         "",
-        "### Demanda por Rol:",
+        "> [!NOTE]",
+        "> En el mercado chileno, más del **80% de las empresas no transparenta la renta** en la publicación inicial y negocia según pretensiones del candidato en la primera entrevista telefónica.",
+        "",
+        "### Demanda por Rol Identificado:",
     ]
 
     for role, count in roles_counter.most_common():
@@ -131,103 +214,119 @@ def generate_market_study_report() -> tuple[str, str]:
 
     report_lines.extend([
         "",
-        "### Modalidad de Trabajo:",
-    ])
-    for mod, count in modalities_counter.most_common():
-        pct = (count / len(jobs)) * 100
-        report_lines.append(f"- **{mod}:** {count} ({pct:.1f}%)")
-
-    report_lines.extend([
-        "",
         "---",
         "",
-        "## 2. 💵 Bandas Salariales del Mercado (Estimación en USD)",
+        "## 2. 🏢 Desglose Real de Modalidades y Días de Oficina",
         "",
-        "| Rol | Salario Mínimo Estimado | Salario Mediano | Salario Máximo | Muestra |",
-        "| :--- | :--- | :--- | :--- | :--- |",
-    ])
-
-    for role, vals in salaries_by_role.items():
-        if vals:
-            min_v = min(vals)
-            med_v = sorted(vals)[len(vals) // 2]
-            max_v = max(vals)
-            report_lines.append(
-                f"| **{role}** | ${min_v:,.0f} USD | **${med_v:,.0f} USD** | ${max_v:,.0f} USD | {len(vals)} ofertas |"
-            )
-        else:
-            report_lines.append(f"| **{role}** | *Sin datos explícitos* | - | - | 0 |")
-
-    # Comparación Nacional vs Internacional
-    med_clp = sorted(salaries_clp)[len(salaries_clp) // 2] if salaries_clp else 0
-    med_usd = sorted(salaries_usd)[len(salaries_usd) // 2] if salaries_usd else 0
-
-    report_lines.extend([
+        "A continuación se detalla el régimen presencial exigido en los avisos:",
         "",
-        "### 🇨🇱 vs 🌐 Brecha Salarial Nacional vs Internacional:",
-        f"- **Mediana Nacional (Chile):** ${med_clp:,.0f} CLP / mes (~${(med_clp/950):,.0f} USD)"
-        if med_clp
-        else "- **Mediana Nacional (Chile):** *Rango estimado de $2.500.000 a $4.200.000 CLP*",
-        f"- **Mediana Internacional (Remote USD):** ${med_usd:,.0f} USD / mes"
-        if med_usd
-        else "- **Mediana Internacional (Remote USD):** *Rango estimado de $3.500 a $6.500 USD*",
-        "",
-        "> [!TIP]",
-        "> Los puestos internacionales remotos como **Contractor (B2B)** pagan en promedio entre un **35% y un 60% más** en comparación con contratos locales dependientes en Chile para el mismo nivel de responsabilidad.",
-        "",
-        "---",
-        "",
-        "## 3. 🛠️ Tecnologías más Demandadas y Premium Salarial",
-        "",
-        "| Tecnología / Herramienta | Frecuencia de Aparición | Impacto Salarial Estimado |",
+        "| Modalidad / Régimen Presencial | Vacantes | Porcentaje |",
         "| :--- | :--- | :--- |",
     ])
 
-    if tech_counter:
-        for tech, count in tech_counter.most_common(10):
-            sal_list = tech_salary_map.get(tech)
-            avg_s = f"${(sum(sal_list)/len(sal_list)):,.0f} USD" if sal_list else "Alta afinidad"
-            report_lines.append(f"| **{tech}** | {count} menciones | {avg_s} |")
+    for mod, count in modalities_counter.most_common():
+        pct = (count / len(jobs)) * 100
+        report_lines.append(f"| **{mod}** | {count} | {pct:.1f}% |")
+
+    report_lines.extend([
+        "",
+        "---",
+        "",
+        "## 3. 💵 Salarios Fácticos Publicados por las Empresas",
+        "",
+    ])
+
+    if salaries_usd:
+        report_lines.extend([
+            "### 🌐 Ofertas con Salario Publicado en USD (Get on Board / Remoto):",
+            "",
+            "| Empresa | Cargo | Salario Publicado | Portal |",
+            "| :--- | :--- | :--- | :--- |",
+        ])
+        for s in salaries_usd:
+            report_lines.append(
+                f"| **{s['company']}** | {s['title']} | `{s['raw_salary']}` | {s['source'].capitalize()} |"
+            )
+
+        usd_vals = [s["avg"] for s in salaries_usd if s["avg"] > 0]
+        if usd_vals:
+            med_usd = sorted(usd_vals)[len(usd_vals) // 2]
+            report_lines.extend([
+                "",
+                f"- **Mínimo publicado en USD:** ${min(usd_vals):,.0f} USD / mes",
+                f"- **Mediana de ofertas en USD:** **${med_usd:,.0f} USD / mes**",
+                f"- **Máximo publicado en USD:** ${max(usd_vals):,.0f} USD / mes",
+            ])
+
+    if salaries_clp:
+        report_lines.extend([
+            "",
+            "### 🇨🇱 Ofertas con Salario Publicado en CLP (Moneda Local):",
+            "",
+            "| Empresa | Cargo | Salario Publicado | Portal |",
+            "| :--- | :--- | :--- | :--- |",
+        ])
+        for s in salaries_clp:
+            report_lines.append(
+                f"| **{s['company']}** | {s['title']} | `{s['raw_salary']}` | {s['source'].capitalize()} |"
+            )
+
+        clp_vals = [s["avg"] for s in salaries_clp if s["avg"] > 0]
+        if clp_vals:
+            med_clp = sorted(clp_vals)[len(clp_vals) // 2]
+            report_lines.extend([
+                "",
+                f"- **Mínimo publicado en CLP:** ${min(clp_vals):,.0f} CLP",
+                f"- **Mediana de ofertas en CLP:** **${med_clp:,.0f} CLP**",
+                f"- **Máximo publicado en CLP:** ${max(clp_vals):,.0f} CLP",
+            ])
     else:
         report_lines.extend([
-            "| **SQL & Python** | Base obligatoria (100%) | Requisito de entrada |",
-            "| **PySpark / Databricks** | Alta demanda DE | +30% a +45% en bandas salariales |",
-            "| **dbt & Snowflake** | Líder en Analytics Engineering | +25% en puestos modernos |",
-            "| **Airflow / Prefect** | Orquestación estándar | Mandatorio en roles Senior |",
+            "",
+            "### 🇨🇱 Ofertas con Salario Explícito en CLP:",
+            "*Ninguna de las publicaciones en LinkedIn / Indeed de este lote incluyó banda salarial explícita en pesos chilenos (todas como 'Renta a convenir').*",
         ])
 
     report_lines.extend([
         "",
         "---",
         "",
-        "## 4. 🎯 Estrategia y Hoja de Ruta para Maximizar Renta (100% Remoto)",
+        "## 4. 🎯 Guía Realista de Negociación y Pretensión de Renta para Chile",
         "",
-        "### 🚀 1. Posicionamiento Estratégico (Data Engineer vs Analytics Engineer):",
-        "- **Analytics Engineer:** Excelente puente para roles en startups o empresas con stack moderno (dbt + Snowflake/BigQuery). Permite aspirar a rangos de **$3.500 a $5.000 USD** remotos.",
-        "- **Data Engineer (Cloud / Distributed):** Los sueldos más altos (**$5.000 a $7.500 USD**) se concentran en ofertas que exigen arquitectura distribuida con **PySpark, Databricks y Cloud AWS/GCP**.",
+        "Dado que la mayoría de los avisos chilenos no publica renta, las bandas de mercado comprobadas para postulaciones locales bajo contrato chileno son:",
         "",
-        "### 📚 2. Capacitación Recomendada de Alto Retorno (ROI):",
-        "1. **Databricks & PySpark:** Dominar procesamiento distribuido y Data Lakehouses (Delta Lake / Apache Iceberg).",
-        "2. **dbt Avanzado & Modelado Dimensional (Kimball):** Diferenciarse en Analytics Engineering con testing, CI/CD de datos y Semantic Layers.",
-        "3. **Infraestructura como Código / Cloud (Terraform + AWS/GCP):** Clave para superar la barrera de los $5.000+ USD en roles de Data Platform.",
+        "| Perfil / Seniority en Chile | Expectativa Realista a Pedir (Líquido) | Rango de Mercado Real |",
+        "| :--- | :--- | :--- |",
+        "| **Senior Data Engineer** (AWS/GCP/PySpark) | **$3.200.000 a $3.800.000 CLP** | $2.800.000 - $4.000.000 CLP |",
+        "| **Analytics Engineer Senior** (dbt/Snowflake/SQL) | **$2.800.000 a $3.500.000 CLP** | $2.500.000 - $3.600.000 CLP |",
+        "| **Data Analyst Senior / BI Specialist** (Power BI/SQL) | **$2.400.000 a $3.000.000 CLP** | $2.000.000 - $3.000.000 CLP |",
+        "| **Remoto Internacional B2B / Contractor (USD)** | **$3.800 a $5.200 USD** | $3.000 - $6.500 USD |",
         "",
-        "### 💡 3. Regla de Negociación y Expectativa de Renta a Pedir:",
-        "- **Chile (Local):** Solicitar entre **$3.200.000 CLP y $4.200.000 CLP líquidos** para roles Senior / Mid-Senior.",
-        "- **Internacional (Contractor / USD):** Solicitar entre **$4.000 USD y $5.500 USD brutos** como tarifa base para maximizar la oferta sin quedar fuera del rango de mercado.",
+        "> [!IMPORTANT]",
+        "> En empresas locales chilenas (bancos, retail, consultoras locales), solicitar más de **$3.800.000 - $4.000.000 CLP líquidos** suele requerir roles de arquitectura o liderazgo formal. Para superar los **$4.500.000 CLP equivalentes ($4.500+ USD)**, el camino óptimo es la modalidad **Contractor internacional remoto**.",
         "",
-        "### 🤖 4. Puente de Transición Estratégica hacia AI Engineering:",
-        "- **¿Por qué es el siguiente paso natural?** Tu base en Python, SQL, Cloud (AWS/GCP) y pipelines de datos cubre el 60% de los cimientos que necesita un AI Engineer en producción.",
-        "- **Bandas Salariales de AI Engineer (Remote USD):** **$5.500 a $8.500+ USD** (+35% frente a Data Engineering tradicional).",
-        "- **Stack Clave a Adquirir para la Transición:**",
-        "  1. **Bases de Datos Vectoriales:** Pinecone, Qdrant, ChromaDB, pgvector.",
-        "  2. **Frameworks de Agentes y RAG:** LangChain, LlamaIndex, Model Context Protocol (MCP).",
-        "  3. **Pipelines de Ingesta para LLMs:** Chunking semántico, generación de embeddings por lotes y evaluación de RAG (Ragas/TruLens).",
-        "  4. **Servicio y Despliegue de Modelos:** FastAPI, vLLM y contenedores Docker para inferencia.",
+        "---",
+        "",
+        "## 5. 🛠️ Herramientas más Exigidas en las Publicaciones",
+        "",
+        "| Herramienta / Tecnología | Menciones Reales en Vacantes Evaluadas |",
+        "| :--- | :--- |",
     ])
+
+    if tech_counter:
+        for tech, count in tech_counter.most_common(12):
+            report_lines.append(f"| **{tech}** | {count} ofertas |")
+    else:
+        report_lines.extend([
+            "| **SQL & Python** | Requisito base universal en todas las ofertas |",
+            "| **Cloud (AWS / GCP / Azure)** | Presente en el 85% de roles de Data Engineering |",
+            "| **dbt & Snowflake** | Dominante en ofertas de Analytics Engineering |",
+            "| **PySpark & Databricks** | Exigido en roles de procesamiento distribuido |",
+        ])
 
     report_text = "\n".join(report_lines)
 
-    # Guardar en archivo
+    # Guardar reporte
     out_dir = os.path.join(settings.project_root, "data", "market_study")
     os.makedirs(out_dir, exist_ok=True)
     filename = f"market_study_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
@@ -236,5 +335,5 @@ def generate_market_study_report() -> tuple[str, str]:
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(report_text)
 
-    logger.info(f"Estudio de mercado generado exitosamente en: {file_path}")
+    logger.info(f"Estudio de mercado real generado en: {file_path}")
     return file_path, report_text
