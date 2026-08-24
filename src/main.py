@@ -174,7 +174,21 @@ def main():
         for job in pending_jobs:
             if job.source != source_name:
                 continue
-            if is_local_location(job.location) == is_local:
+            is_job_local = is_local_location(job.location)
+
+            # Si estamos en scope chile y la vacante es internacional, descartar de inmediato
+            if search_scope == "chile" and not is_job_local:
+                auto_discard = MatchResult(
+                    job_id=job.id,
+                    score=0.0,
+                    tier=3,
+                    rationale="Descarte automático: Ubicación fuera de Chile.",
+                    missing_keywords="[]",
+                )
+                save_match_result(auto_discard)
+                continue
+
+            if is_job_local == is_local:
                 group_pending_jobs.append(job)
 
         if not group_pending_jobs:

@@ -64,20 +64,21 @@ Antes de llamar al LLM, el sistema descarta localmente vacantes irrelevantes:
 * **Filtro por Descripción:** Exige presencia obligatoria de la habilidad clave `sql`.
 * **Filtro Estricto de Modalidad:** Descarta vacantes 100% presenciales o con 3+ días en oficina en Chile.
 
-### 3. Fábrica Multi-Proveedor de LLM (`src/agent/providers.py`)
-* **Google Gemini API (Antigravity):** Integración nativa con `gemini-2.0-flash` o `gemini-2.5-flash` usando tu API Key oficial o cuenta PRO.
-* **OpenRouter:** Soporte para modelos libres o pagados (`google/gemma-3-27b-it:free`, `anthropic/claude-3.5-sonnet`).
-* **OpenAI / Endpoints Locales:** Soporte para OpenAI o servidores locales (`vllm`, `ollama`).
+### 3. Fábrica Universal y Agnóstica de LLM (`src/agent/providers.py`)
+* **Google Gemini API:** Integración nativa con `gemini-3.5-flash-lite`, `gemini-3.5-flash` o `gemini-3.1-pro` usando tu API Key oficial.
+* **OpenRouter:** Soporte para modelos libres o pagados (`google/gemma-3-27b-it:free`, `anthropic/claude-3.5-sonnet`, `deepseek/deepseek-r1`).
+* **OpenAI / DeepSeek / Groq / Ollama Local:** Soporte para endpoints compatibles (`LLM_BASE_URL`).
 
 ### 4. Evaluación Multidimensional (5 Dimensiones)
 * **Compuertas de Elegibilidad e Idioma (Hard Gates):** Mismatches de residencia o idioma asignan descarte directo (< 60%).
 * **Technical Skills Match (30%):** Coincidencia en stack principal (SQL, Python, PySpark, dbt, Cloud AWS/GCP/Azure, Airflow, Kimball Data Modeling).
 * **Experience Match (25%), Behavioral Fit (15%), Career Alignment (30%).**
 
-### 5. Motores de Documentos Automáticos
+### 5. Motores de Documentos y Estudio de Mercado
 * **CV Engine (`src/cv_engine/`):** Genera código `.tex` bilingüe Jinja2 y compila con `pdflatex` sin depender de binarios externos raros.
 * **Cover Letter Engine (`src/cover_engine/`):** Genera cartas de presentación profesionales de 1 página compiladas en PDF.
 * **Interview Prep Engine (`src/interview_engine/`):** Genera guías Markdown completas con 10-12 preguntas técnicas con código y 4 escenarios STAR.
+* **Continuous Market Study (`src/market_engine/`):** Genera y actualiza automáticamente el informe vivo consolidado en `data/market_study/market_study.md`.
 
 ---
 
@@ -87,26 +88,24 @@ Antes de llamar al LLM, el sistema descarta localmente vacantes irrelevantes:
 job-fit/
 ├── AGENTS.md            # Guía de habilidades para Antigravity CLI
 ├── config/              # Configuración general y del perfil
-│   ├── config.yaml      # Filtros de búsqueda, fuentes, antigüedad y notification_rules
+│   ├── config.yaml      # Filtros de búsqueda, fuentes, search_scope, y notification_rules
 │   ├── loader.py        # Cargador de YAML con caché en memoria
 │   ├── profile.yaml     # Perfil del candidato (skills, experiencia, antecedentes)
 │   └── settings.py      # Variables de entorno gestionadas por Pydantic Settings
-├── data/                # Almacenamiento local (SQLite BD, PDFs y Guías de entrevista)
-├── docs/                # Documentación técnica de arquitectura y guía paso a paso
-│   ├── ARCHITECTURE.md  # Diagramas de secuencia y esquemas de base de datos
-│   └── TECHNICAL_GUIDE.md # Guía técnica detallada paso a paso
+├── data/                # Almacenamiento local (SQLite BD, PDFs, Estudio de mercado vivo)
 ├── src/                 # Código fuente principal
-│   ├── agent/           # Evaluador LLM, pre-filtro algorítmico, proveedores y cuotas
-│   ├── cli.py           # Entrypoint CLI interactivo (apply, interview, cover-letter, scrape)
+│   ├── agent/           # Evaluador LLM agnóstico, pre-filtro algorítmico, proveedores y cuotas
+│   ├── cli.py           # Entrypoint CLI interactivo (apply, interview, cover-letter, scrape, market-study)
 │   ├── cover_engine/    # Generador y compilador de Cartas de Presentación LaTeX
 │   ├── cv_engine/       # Builder de plantillas LaTeX y compilador pdflatex
 │   ├── database/        # Modelos ORM (SQLModel) y repositorio SQLite
 │   ├── interview_engine/# Generador de Guías de Entrevista Técnica en Markdown
+│   ├── market_engine/   # Analizador continuo de mercado laboral y salarios reales
 │   ├── notifier/        # Despachador de Webhooks a Discord (Multipart PDF upload)
-│   ├── scraper/         # Scrapers (Get on Board API, LinkedIn, Indeed, Remotive)
+│   ├── scraper/         # Scrapers (Get on Board API, LinkedIn, Indeed vía JobSpy, Remotive)
 │   └── main.py          # Orquestador del pipeline end-to-end
 ├── templates/           # Plantillas LaTeX (.tex) para CV y Cover Letters
-└── tests/               # Suite de 29 pruebas unitarias completas (pytest)
+└── tests/               # Suite de 39 pruebas unitarias completas (pytest)
 ```
 
 ---
@@ -137,7 +136,7 @@ job-fit/
    ```bash
    cp .env.example .env
    ```
-   Edita `.env` agregando tu `GEMINI_API_KEY` u `OPENROUTER_API_KEY` y `DISCORD_WEBHOOK_URL`.
+   Edita `.env` agregando tu `LLM_API_KEY` (Gemini, OpenRouter, DeepSeek) y `DISCORD_WEBHOOK_URL`.
 
 5. Ejecutar la suite de pruebas unitarias:
    ```bash
