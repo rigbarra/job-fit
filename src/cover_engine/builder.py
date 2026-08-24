@@ -57,7 +57,11 @@ def build_cover_letter_tex(
     Genera el código LaTeX compilable (.tex) para la carta de presentación adaptada a la vacante.
     """
     profile = load_profile(language=language, profile_path=profile_path)
-    cand_info = profile.get("candidate", {})
+    cand_name = profile.get("name", "Rigoberto Barra")
+    cand_loc = profile.get("location", "Chile")
+    cand_email = profile.get("email", "rigbarra@outlook.com")
+    cand_phone = profile.get("phone", "+56-996974170")
+    cand_linkedin = profile.get("linkedin", "https://www.linkedin.com/in/rigbarra")
 
     lang_display = "ESPAÑOL" if language == "es" else "ENGLISH"
     prompt_user = f"""
@@ -65,10 +69,10 @@ def build_cover_letter_tex(
     Redacta la carta de presentación 100% en **{lang_display}**.
 
     ### CANDIDATO
-    Nombre: {cand_info.get('name', 'Rigoberto Barra')}
-    Ubicación: {cand_info.get('location', 'Chile')}
-    Email: {cand_info.get('email', 'rigbarra@outlook.com')}
-    LinkedIn: {cand_info.get('linkedin', 'https://www.linkedin.com/in/rigbarra')}
+    Nombre: {cand_name}
+    Ubicación: {cand_loc}
+    Email: {cand_email}
+    LinkedIn: {cand_linkedin}
     Perfil técnico: {yaml.dump(profile.get('skills', {}), allow_unicode=True)}
 
     ### PUESTO OBJETIVO
@@ -131,11 +135,11 @@ def build_cover_letter_tex(
     template = env.get_template("cover_template.tex")
 
     context = {
-        "candidate_name": escape_latex(cand_info.get("name", "Rigoberto Barra")),
-        "candidate_location": escape_latex(cand_info.get("location", "Viña del Mar, Chile")),
-        "candidate_email": escape_latex(cand_info.get("email", "rigbarra@outlook.com")),
-        "candidate_phone": escape_latex(cand_info.get("phone", "+56-996974170")),
-        "candidate_linkedin": escape_latex(cand_info.get("linkedin", "https://www.linkedin.com/in/rigbarra")),
+        "candidate_name": escape_latex(cand_name),
+        "candidate_location": escape_latex(cand_loc),
+        "candidate_email": escape_latex(cand_email),
+        "candidate_phone": escape_latex(cand_phone),
+        "candidate_linkedin": escape_latex(cand_linkedin),
         "date_str": escape_latex(datetime.now().strftime("%d de %B de %Y" if language == "es" else "%B %d, %Y")),
         "company_name": escape_latex(job.company),
         "job_title": escape_latex(job.title),

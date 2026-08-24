@@ -92,6 +92,8 @@ class RemotiveScraper:
                         "pipeline",
                         "intelligence",
                         "datos",
+                        "ia",
+                        "ai",
                     ]
                     if not any(kw in job_title_lower for kw in data_keywords):
                         continue

@@ -76,15 +76,16 @@ def generate_interview_prep(
         str: Ruta absoluta del archivo Markdown generado (.md).
     """
     profile = load_profile(language=language, profile_path=profile_path)
-    cand_info = profile.get("candidate", {})
+    cand_name = profile.get("name", "Rigoberto Barra")
+    cand_title = profile.get("title", "Analytics Engineer / Data Engineer")
 
     lang_display = "ESPAÑOL" if language == "es" else "ENGLISH"
     prompt_user = f"""
     ### IDIOMA DE SALIDA: **{lang_display}**
 
     ### CANDIDATO
-    Nombre: {cand_info.get('name', 'Rigoberto Barra')}
-    Perfil: {cand_info.get('title', 'Analytics Engineer / Data Engineer')}
+    Nombre: {cand_name}
+    Perfil: {cand_title}
     Experiencia y Stack: {yaml.dump(profile.get('skills', {}), allow_unicode=True)}
 
     ### VACANTE A PREPARAR

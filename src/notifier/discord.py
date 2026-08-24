@@ -105,6 +105,15 @@ def send_job_notification(
             }
         )
 
+    if match_result.recommended_salary_ask:
+        fields.append(
+            {
+                "name": "💡 Renta Sugerida a Pedir",
+                "value": f"**{match_result.recommended_salary_ask}**",
+                "inline": True,
+            }
+        )
+
     fields.append(
         {
             "name": "🔗 Enlace de Postulación",

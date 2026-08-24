@@ -53,9 +53,9 @@ def main():
     local_locs = [loc for loc in locations if is_local_location(loc)]
     intl_locs = [loc for loc in locations if loc not in local_locs]
 
-    api_key_configured = (
-        settings.openrouter_api_key
-        and settings.openrouter_api_key != "tu_api_key_de_openrouter_aqui"
+    api_key_configured = bool(
+        (settings.llm_api_key and settings.llm_api_key != "tu_api_key_aqui")
+        or (settings.openrouter_api_key and settings.openrouter_api_key != "tu_api_key_de_openrouter_aqui")
     )
 
     # Definir el orden estricto de ejecución para priorizar cuotas
