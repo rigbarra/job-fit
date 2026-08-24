@@ -41,67 +41,34 @@ def test_remotive_scraper(mocker):
 
 
 def test_indeed_scraper(mocker):
-    """Prueba unitaria de IndeedScraper simulando búsqueda y descarga de descripción."""
-    mock_search_html = """
-    <html>
-      <head>
-        <script>
-          window.mosaic.providerData["mosaic-provider-jobcards"] = {
-            "metaData": {
-              "mosaicProviderJobCardsModel": {
-                "results": [
-                  {
-                    "jobkey": "indkey999",
-                    "title": "Lead Data Engineer",
-                    "company": "Indeed Inc",
-                    "formattedLocation": "Remote",
-                    "salarySnippet": {"text": "$150k"},
-                    "pubDate": 1786689600000
-                  }
-                ]
-              }
-            }
-          };
-        </script>
-      </head>
-      <body></body>
-    </html>
-    """
-
-    mock_detail_html = """
-    <html>
-      <body>
-        <div id="jobDescriptionText">
-          Requisitos: Spark, SQL, Airflow y Python.
-        </div>
-      </body>
-    </html>
-    """
-
-    mock_search_res = mocker.Mock()
-    mock_search_res.status_code = 200
-    mock_search_res.text = mock_search_html
-
-    mock_detail_res = mocker.Mock()
-    mock_detail_res.status_code = 200
-    mock_detail_res.text = mock_detail_html
-
-    mocker.patch("src.scraper.base.is_duplicate", return_value=False)
-
-    # Mock de requests.get en base.py (donde WebScraper lo invoca)
-    mock_get = mocker.patch("src.scraper.base.requests.get")
-    mock_get.side_effect = [mock_search_res, mock_detail_res]
-    mocker.patch("time.sleep")
-
+    """Prueba unitaria de IndeedScraper simulando llamada a JobSpy."""
+    import pandas as pd
+    from datetime import date
+    
+    mock_df = pd.DataFrame([{
+        "title": "Lead Data Engineer",
+        "company": "Indeed Inc",
+        "job_url": "https://cl.indeed.com/viewjob?jk=indkey999",
+        "description": "Requisitos: Spark, SQL, Airflow y Python.",
+        "location": "Remote",
+        "date_posted": date(2026, 8, 19),
+        "min_amount": 150000,
+        "max_amount": 150000,
+        "currency": "USD",
+        "job_type": "fulltime"
+    }])
+    
+    mocker.patch("src.scraper.indeed.scrape_jobs", return_value=mock_df)
+    
     scraper = IndeedScraper()
     jobs = scraper.fetch_jobs(keywords=["Lead Data Engineer"], locations=["Remote"], limit=1)
-
+    
     assert len(jobs) == 1
     job = jobs[0]
     assert job.title == "Lead Data Engineer"
     assert job.company == "Indeed Inc"
     assert job.location == "Remote"
-    assert job.salary == "$150k"
+    assert "USD $150000" in job.salary
     assert job.source == "indeed"
     assert "Requisitos: Spark" in job.description
 

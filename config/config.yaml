@@ -27,7 +27,7 @@ match_thresholds:
 sources:
   getonboard: true       # API REST de Get on Board para Chile (muy estable)
   linkedin: true         # Endpoints públicos guest de LinkedIn
-  indeed: false          # Indeed (Desactivado temporalmente para evitar bloqueos 403 de IP)
+  indeed: true          # Indeed (Habilitado vía JobSpy)
   remotive: true         # API REST para vacantes internacionales remotas globales
 
 # Control de Notificaciones y Evaluación por Ubicación y Tier
