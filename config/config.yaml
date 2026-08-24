@@ -26,6 +26,7 @@ match_thresholds:
 
 # Fuentes activas de scraping
 sources:
+  getonboard: true       # API REST de Get on Board para Chile y LATAM (muy estable)
   remotive: true         # API REST, muy estable
   indeed: false          # Desactivado por defecto por seguridad de IP
   linkedin: true         # Endpoints públicos guest de LinkedIn con throttling

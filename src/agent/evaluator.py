@@ -5,10 +5,10 @@ import re
 from typing import Any
 
 import yaml
-from curl_cffi import requests
 
 from config.settings import settings
 from src.agent.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, MatchEvaluation
+from src.agent.providers import get_llm_provider
 from src.agent.quota import RateLimitError, call_with_retry
 from src.cv_engine.builder import load_profile
 from src.cv_engine.compiler import detect_job_language
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def normalize_llm_json(raw_json_str: str) -> dict[str, Any]:
     """
     Parsea y normaliza respuestas JSON del LLM manejando sinónimos de campos comunes
-    y variaciones de estructura devueltas por modelos gratuitos (ej. match_score -> score).
+    y variaciones de estructura devueltas por modelos (ej. match_score -> score).
     """
     if not isinstance(raw_json_str, str):
         raise ValueError(f"El LLM retornó un tipo no texto: {type(raw_json_str)}")
@@ -37,7 +37,7 @@ def normalize_llm_json(raw_json_str: str) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"El LLM retornó un tipo no JSON dict: {type(data)}")
 
-    # 1. Normalizar score (score, match_score, matchScore, match_percentage, etc.)
+    # 1. Normalizar score
     score_val = None
     for key in ["score", "match_score", "matchScore", "match_percentage", "compatibility_score"]:
         if key in data and isinstance(data[key], (int, float)):
@@ -46,7 +46,7 @@ def normalize_llm_json(raw_json_str: str) -> dict[str, Any]:
     if score_val is None:
         score_val = 0.0
 
-    # 2. Normalizar rationale (rationale, evaluation, justification, summary, explanation)
+    # 2. Normalizar rationale
     rationale_val = ""
     for key in ["rationale", "evaluation", "justification", "explanation", "summary", "reason"]:
         if key in data and isinstance(data[key], str):
@@ -63,14 +63,28 @@ def normalize_llm_json(raw_json_str: str) -> dict[str, Any]:
                 missing_kw = [x.strip() for x in data[key].split(",") if x.strip()]
             break
 
-    # 4. Normalizar adapted_summary
+    # 4. Normalizar strengths y gaps (opcionales)
+    strengths_val = data.get("strengths", [])
+    if isinstance(strengths_val, str):
+        strengths_val = [strengths_val]
+
+    gaps_val = data.get("gaps", [])
+    if isinstance(gaps_val, str):
+        gaps_val = [gaps_val]
+
+    # 5. Normalizar dimension_scores (opcional)
+    dim_scores = data.get("dimension_scores")
+    if not isinstance(dim_scores, dict):
+        dim_scores = None
+
+    # 6. Normalizar adapted_summary
     adapted_summary = (
         data.get("adapted_summary") or data.get("adaptedSummary") or data.get("resumen_adaptado")
     )
     if not isinstance(adapted_summary, str):
         adapted_summary = None
 
-    # 5. Normalizar adapted_bullets (dict, list[dict], or list[str])
+    # 7. Normalizar adapted_bullets
     raw_bullets = (
         data.get("adapted_bullets") or data.get("adaptedBullets") or data.get("bullets_adaptadas")
     )
@@ -98,6 +112,9 @@ def normalize_llm_json(raw_json_str: str) -> dict[str, Any]:
         "score": score_val,
         "rationale": rationale_val,
         "missing_keywords": missing_kw,
+        "strengths": strengths_val,
+        "gaps": gaps_val,
+        "dimension_scores": dim_scores,
         "adapted_summary": adapted_summary,
         "adapted_bullets": normalized_bullets if normalized_bullets else None,
     }
@@ -110,16 +127,8 @@ def evaluate_job(
 ) -> MatchResult:
     """
     Evalúa la compatibilidad de una vacante frente al perfil del candidato
-    usando la API de OpenRouter con el modelo Gemma configurado.
+    usando el proveedor de LLM configurado (OpenRouter, Gemini o OpenAI).
     """
-    if (
-        not settings.openrouter_api_key
-        or settings.openrouter_api_key == "tu_api_key_de_openrouter_aqui"
-    ):
-        raise RuntimeError(
-            "OpenRouter API: OPENROUTER_API_KEY no está configurada. Configúrala en el archivo .env."
-        )
-
     # 1. Detectar idioma de la oferta laboral
     job_lang = language or detect_job_language(job)
     lang_display = "ESPAÑOL" if job_lang == "es" else "ENGLISH"
@@ -135,74 +144,32 @@ def evaluate_job(
         with open(profile_path, encoding="utf-8") as f:
             profile_text = f.read()
 
-    # 3. Construir prompt con indicación explícita de idioma
+    # 3. Construir prompt
     user_prompt = USER_PROMPT_TEMPLATE.format(
         job_language=lang_display,
         candidate_profile=profile_text,
         job_description=job.description,
     )
 
-    model_to_use = settings.openrouter_model or "google/gemma-3-27b-it:free"
+    # 4. Obtener proveedor de LLM según configuración
+    provider = get_llm_provider()
 
-    def _make_openrouter_call():
-        headers = {
-            "Authorization": f"Bearer {settings.openrouter_api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/rigbarra/job-fit",
-            "X-Title": "Job Fit",
-        }
-
-        payload = {
-            "model": model_to_use,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.1,
-        }
-
-        try:
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=60,
-            )
-
-            if response.status_code == 429:
-                raise RateLimitError(f"OpenRouter API: 429 Too Many Requests en {model_to_use}")
-            elif response.status_code != 200:
-                raise RuntimeError(
-                    f"OpenRouter API retornó error {response.status_code}: {response.text}"
-                )
-
-            return response.json()
-
-        except Exception as err:
-            if isinstance(err, RateLimitError):
-                raise err
-            raise RuntimeError(f"Error de red/conexión con OpenRouter: {err}")
+    def _make_llm_call():
+        return provider.generate(SYSTEM_PROMPT, user_prompt)
 
     logger.info(
-        f"OpenRouter: Evaluando vacante '{job.title}' @ '{job.company}' [{lang_display}] usando el modelo '{model_to_use}'..."
+        f"LLM [{settings.llm_provider.upper()}]: Evaluando '{job.title}' @ '{job.company}' [{lang_display}]..."
     )
 
-    response_data = call_with_retry(_make_openrouter_call)
-
-    try:
-        content_text = response_data["choices"][0]["message"]["content"]
-    except (KeyError, IndexError) as e:
-        logger.error(f"OpenRouter: Payload de respuesta inesperado: {response_data}")
-        raise ValueError(f"Respuesta inesperada de OpenRouter: {e}")
+    content_text = call_with_retry(_make_llm_call)
 
     try:
         normalized_data = normalize_llm_json(content_text)
         evaluation = MatchEvaluation.model_validate(normalized_data)
     except Exception as e:
-        logger.error(f"OpenRouter: Error de validación de esquema en la respuesta JSON: {e}")
+        logger.error(f"Error de validación de esquema en respuesta LLM: {e}")
         logger.debug(f"Texto JSON crudo recibido: {content_text}")
-        raise ValueError(f"La respuesta de OpenRouter no cumple con el esquema requerido: {e}")
+        raise ValueError(f"La respuesta del LLM no cumple con el esquema requerido: {e}")
 
     score = evaluation.score
     if score >= 85.0:

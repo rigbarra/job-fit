@@ -5,9 +5,22 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # LLM Settings
+    # LLM Provider Configuration ("openrouter", "gemini", "openai", "antigravity")
+    llm_provider: str = Field("openrouter", validation_alias="LLM_PROVIDER")
+
+    # OpenRouter Settings
     openrouter_api_key: str | None = Field(None, validation_alias="OPENROUTER_API_KEY")
     openrouter_model: str = Field("google/gemma-3-27b-it:free", validation_alias="OPENROUTER_MODEL")
+
+    # Native Google Gemini Settings (for Antigravity / Direct Gemini Pro API)
+    gemini_api_key: str | None = Field(None, validation_alias="GEMINI_API_KEY")
+    gemini_model: str = Field("gemini-2.0-flash", validation_alias="GEMINI_MODEL")
+
+    # OpenAI Settings (for GPT-4o / custom endpoint)
+    openai_api_key: str | None = Field(None, validation_alias="OPENAI_API_KEY")
+    openai_model: str = Field("gpt-4o-mini", validation_alias="OPENAI_MODEL")
+    openai_api_base: str = Field("https://api.openai.com/v1", validation_alias="OPENAI_API_BASE")
+
     llm_max_calls_per_day: int = Field(150, validation_alias="LLM_MAX_CALLS_PER_DAY")
     llm_max_calls_per_minute: int = Field(10, validation_alias="LLM_MAX_CALLS_PER_MINUTE")
 

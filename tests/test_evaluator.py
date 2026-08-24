@@ -35,7 +35,7 @@ def test_evaluate_job_tier_2(mocker):
     }
 
     # Mockear requests.post en evaluator
-    mocker.patch("src.agent.evaluator.requests.post", return_value=mock_response)
+    mocker.patch("src.agent.providers.requests.post", return_value=mock_response)
 
     # 3. Ejecutar la evaluación
     match_result = evaluate_job(job)
@@ -83,7 +83,7 @@ def test_evaluate_job_tier_3(mocker):
         "choices": [{"message": {"content": json.dumps(mock_json_response, ensure_ascii=False)}}]
     }
 
-    mocker.patch("src.agent.evaluator.requests.post", return_value=mock_response)
+    mocker.patch("src.agent.providers.requests.post", return_value=mock_response)
 
     match_result = evaluate_job(job)
 

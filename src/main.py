@@ -59,10 +59,11 @@ def main():
     )
 
     # Definir el orden estricto de ejecución para priorizar cuotas
-    # 1. Indeed Chile, 2. LinkedIn Chile, 3. Remotive (API Int.), 4. Indeed Int., 5. LinkedIn Int.
+    # 1. GetOnBoard Chile (API), 2. LinkedIn Chile, 3. Indeed Chile, 4. Remotive (API Int.), 5. Indeed Int., 6. LinkedIn Int.
     execution_groups = [
-        ("indeed", True),
+        ("getonboard", True),
         ("linkedin", True),
+        ("indeed", True),
         ("remotive", False),
         ("indeed", False),
         ("linkedin", False),
@@ -92,9 +93,9 @@ def main():
             continue
 
         # Verificar si la fuente de datos está activa
-        if not active_sources.get(source_name, False) and source_name != "remotive":
+        if not active_sources.get(source_name, False) and source_name not in ["remotive", "getonboard"]:
             continue
-        if source_name == "remotive" and not active_sources.get("remotive", True):
+        if source_name in ["remotive", "getonboard"] and not active_sources.get(source_name, True):
             continue
 
         # Remotive es siempre internacional (ignorar en paso local)
@@ -103,14 +104,18 @@ def main():
 
         # Seleccionar ubicaciones para este grupo
         group_locs = local_locs if is_local else intl_locs
-        if not group_locs and source_name != "remotive":
+        if not group_locs and source_name not in ["remotive", "getonboard"]:
             continue
 
         logger.info(f"=== INICIANDO EJECUCIÓN GRUPO: {source_name.upper()} (Local={is_local}) ===")
 
         # A. Inicializar Scraper
         scraper = None
-        if source_name == "remotive":
+        if source_name == "getonboard":
+            from src.scraper.getonboard import GetOnBoardScraper
+
+            scraper = GetOnBoardScraper(rate_limit_config=rate_limiting)
+        elif source_name == "remotive":
             from src.scraper.remotive import RemotiveScraper
 
             scraper = RemotiveScraper()

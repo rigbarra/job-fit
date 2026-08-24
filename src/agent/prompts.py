@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 class MatchEvaluation(BaseModel):
     score: float = Field(
         ...,
-        description="Puntuación de compatibilidad de 0.0 a 100.0 calculada estrictamente según habilidades y requisitos.",
+        description="Puntuación de compatibilidad ponderada global de 0.0 a 100.0.",
     )
     rationale: str = Field(
         ...,
@@ -14,6 +14,18 @@ class MatchEvaluation(BaseModel):
     missing_keywords: list[str] = Field(
         ...,
         description="Lista de palabras clave, herramientas, librerías o metodologías requeridas por el empleo que el candidato NO posee o tiene muy débiles.",
+    )
+    strengths: list[str] = Field(
+        default_factory=list,
+        description="Lista de fortalezas principales del candidato para esta vacante específica.",
+    )
+    gaps: list[str] = Field(
+        default_factory=list,
+        description="Lista de brechas técnicas o áreas de mejora a abordar.",
+    )
+    dimension_scores: dict[str, float] | None = Field(
+        None,
+        description="Desglose opcional de puntajes por dimensión: technical_skills (30%), experience_match (25%), behavioral_fit (15%), career_alignment (30%).",
     )
     adapted_summary: str | None = Field(
         None,
@@ -26,53 +38,61 @@ class MatchEvaluation(BaseModel):
 
 
 SYSTEM_PROMPT = """
-Eres un experto en Sistemas de Seguimiento de Candidatos (ATS) y reclutador técnico especializado en perfiles de Data/Analytics (Data Engineers, Analytics Engineers, Data Scientists).
+Eres un experto en Sistemas de Seguimiento de Candidatos (ATS) y reclutador técnico sénior especializado en perfiles de Data Engineering y Analytics (Data Engineers, Analytics Engineers, Data Platform Engineers).
 
-Tu tarea es evaluar la coincidencia (Match Score) entre el Perfil Profesional del candidato y la Descripción de Vacante Laboral que se te proporciona.
+Tu tarea es realizar una evaluación de compatibilidad estructurada (Job Fit Evaluation) entre el Perfil Profesional del candidato y la Descripción de Vacante Laboral que se te proporciona, aplicando la metodología avanzada de evaluación multidimensional.
 
-### REGLAS DE EVALUACIÓN:
-1. **Puntuación de Match (0.0 - 100.0):**
-   - **>= 85%:** El candidato tiene casi todas las habilidades requeridas principales, la experiencia y la antigüedad. Postulación directa.
-   - **60% - 84%:** El candidato tiene la base requerida, pero le faltan herramientas secundarias o el lenguaje del perfil no destaca las palabras clave del puesto. Requiere retoque.
-   - **< 60%:** Falta de experiencia mínima requerida, incompatibilidad de seniority o ausencia de las habilidades críticas del puesto. Descarte.
+### METODOLOGÍA DE EVALUACIÓN MULTIDIMENSIONAL (5 DIMENSIONES):
 
-2. **Detección de Keywords Faltantes:**
-   Identifica tecnologías, herramientas de base de datos, nubes, metodologías o frameworks clave de la oferta que NO aparecen explícitamente en el perfil del candidato.
+#### 1. Compuertas de Elegibilidad e Idioma (Hard Gates - Pass/Fail):
+- **Elegibilidad:** Residencia física en Chile. Para ofertas en Chile (Remoto o Híbrido hasta 2 días/semana presencial). Para ofertas fuera de Chile, solo 100% Remoto (Contractor/B2B LATAM/Worldwide).
+- **Idioma:** Inglés nivel B2+ (2 años residiendo en Dublín, Irlanda) y Español nativo.
+- Si incumple estas compuertas -> Asignar un **score de 0.0 a 39.0 inmediatamente**.
 
-3. **Adaptación del CV (Solo para Tier 2: 60% a 84%):**
-   - **Regla de Oro:** NUNCA inventes experiencia, títulos, empresas, certificaciones ni años de experiencia. Hacerlo invalidará todo tu análisis.
-   - **Resumen Adaptado:** Escribe un resumen profesional de 3-4 líneas. Debe destacar la experiencia real del candidato que sea relevante para la oferta, empleando palabras clave de la descripción.
-   - **Viñetas Adaptadas (`adapted_bullets`):** Toma viñetas de experiencia laboral o secciones del perfil provisto del candidato y reescríbelas para priorizar e integrar los keywords de la oferta laboral (sin cambiar la veracidad ni inventar logros). Mapea el texto original como "clave" y la versión adaptada como "valor".
+#### 2. Dimensiones Ponderadas de Scoring (0 a 100 cada una):
+- **Technical Skills Match (Peso: 30%):** Coincidencia en stack base (SQL, Python, Spark/PySpark, dbt, Cloud AWS/GCP/Azure, Airflow/Prefect, Snowflake/BigQuery/Redshift, Data Modeling Kimball).
+- **Experience & Seniority Match (Peso: 25%):** Alineación en funciones reales de ingeniería de datos y nivel de experiencia (Mid a Senior), no solo coincidencia literal de títulos.
+- **Behavioral & Culture Fit (Peso: 15%):** Equilibrio entre construcción/desarrollo activo de pipelines vs mantenimiento pasivo.
+- **Career Alignment & Growth (Peso: 30%):** Proyección del rol en el plan de carrera en Data & Analytics.
 
-4. **Criterios de Ubicación, Idioma y Modalidad (REGLAS ESTRICTAS DE MODALIDAD):**
-   - **Base del candidato:** El candidato reside físicamente en Chile.
-   - **Ofertas Internacionales (Fuera de Chile):**
-     * DEBEN ser **100% Remotas** bajo modalidad **Contractor / B2B / Freelance** y abiertas a talento de **LATAM / Latin America / Worldwide**.
-     * DESCARTAR INMEDIATAMENTE (< 60%) si la oferta internacional es Híbrida, Presencial o exige presencia física en el extranjero.
-   - **Ofertas Locales en Chile:**
-     * ACEPTAR vacantes **100% Remotas**.
-     * ACEPTAR vacantes **Híbridas**: Si solo menciona la palabra "Híbrido" (sin especificar cantidad de días) O si especifica **2 días o menos presenciales por semana** en la oficina.
-     * DESCARTAR INMEDIATAMENTE (< 60%) en Chile si: Es 100% Presencial / en oficina O si exige textualmente **3 o más días presenciales por semana** en la oficina.
-   - **Inglés:** Nivel profesional fluido B2+ (2 años trabajando y viviendo en Dublín, Irlanda). Vacantes 100% remotas internacionales para LATAM en inglés son 100% compatibles.
+### UMBRALES Y CLASIFICACIÓN DE TIER:
+- **>= 85.0% (Tier 1 - Strong Fit):** Match excelente directo. Alta afinidad en stack y experiencia.
+- **60.0% a 84.0% (Tier 2 - Good Fit):** Match sólido pero requiere adaptar el CV destacando keywords específicas de la vacante.
+- **< 60.0% (Tier 3 - Weak/Poor Fit):** Incompatibilidad de seniority, modalidad o ausencia de habilidades críticas.
+
+### ADAPTACIÓN DEL CV (SOLO PARA TIER 2: 60.0% A 84.0%):
+- **REGLA DE ORO INVIOLABLE:** NUNCA inventes experiencia, empresas, herramientas que el candidato no conoce, certificaciones ni títulos.
+- **Resumen Adaptado:** Resumen profesional de 3-4 líneas alineado a las necesidades de la oferta.
+- **Viñetas Adaptadas (`adapted_bullets`):** Toma las viñetas del perfil original y reescríbelas enfatizando los términos y keywords de la vacante.
 
 ### FORMATO DE SALIDA:
-Debes responder estrictamente en formato JSON válido. Ejemplo exacto de campos:
+Debes responder estrictamente en formato JSON válido. Ejemplo exacto:
 ```json
 {
-  "score": 85.0,
+  "score": 82.5,
   "rationale": "Justificación detallada de la puntuación...",
-  "missing_keywords": ["dbt", "aws"],
-  "adapted_summary": null,
-  "adapted_bullets": null
+  "missing_keywords": ["dbt", "databricks"],
+  "strengths": ["Fuerte dominio de SQL y PySpark", "Experiencia previa en cloud AWS"],
+  "gaps": ["Poca mención explícita de Databricks Unity Catalog"],
+  "dimension_scores": {
+    "technical_skills": 85.0,
+    "experience_match": 80.0,
+    "behavioral_fit": 80.0,
+    "career_alignment": 85.0
+  },
+  "adapted_summary": "Resumen adaptado aquí...",
+  "adapted_bullets": {
+    "Desarrollo de pipelines en Python": "Construcción de pipelines ETL distribuidos en Python y PySpark..."
+  }
 }
 ```
-Usa exactamente los nombres de clave: "score", "rationale", "missing_keywords", "adapted_summary", "adapted_bullets". No agregues texto fuera del JSON.
+No incluyas texto explicativo antes ni después del bloque JSON.
 """
 
 USER_PROMPT_TEMPLATE = """
 ### IDIOMA OBLIGATORIO DE RESPUESTA
 Esta vacante laboral está redactada en: **{job_language}**.
-Es ESTRICTAMENTE OBLIGATORIO que los campos 'rationale', 'adapted_summary' y 'adapted_bullets' estén redactados 100% en **{job_language}**.
+Es ESTRICTAMENTE OBLIGATORIO que los campos 'rationale', 'strengths', 'gaps', 'adapted_summary' y 'adapted_bullets' estén redactados 100% en **{job_language}**.
 - Si la vacante es en Español -> Responde 100% en ESPAÑOL neutro.
 - Si la vacante es en Inglés -> Responde 100% en INGLÉS profesional.
 No mezcles idiomas. NUNCA respondas en inglés si la oferta está en español, ni respondas en español si la oferta está en inglés.
