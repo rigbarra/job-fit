@@ -11,19 +11,20 @@ def test_should_evaluate_job_passes():
         description="Looking for a Senior Data Engineer. Required: Python, SQL, and AWS Step Functions.",
         url="https://example.com/job/ok",
         source="test",
+        salary="USD $4000 - $6000 / mes",
     )
     passed, reason = should_evaluate_job(job)
     assert passed
     assert reason == ""
 
 
-def test_should_evaluate_job_fails_title():
+def test_should_evaluate_job_fails_title_not_data():
     """Valida el descarte si el título no coincide con el rubro de datos."""
     job = Job(
         title="Remote Office Assistant",
         company="AdminCorp",
         location="Remote",
-        description="Assist the office with administrative tasks. Requires SQL data entry knowledge.",
+        description="Assist the office with administrative tasks. Requires SQL and Python.",
         url="https://example.com/job/fail-title",
         source="test",
     )
@@ -33,8 +34,23 @@ def test_should_evaluate_job_fails_title():
     assert "Assistant" in reason
 
 
-def test_should_evaluate_job_fails_description():
-    """Valida el descarte si la descripción no contiene palabras obligatorias (SQL)."""
+def test_should_evaluate_job_fails_title_blacklist():
+    """Valida el descarte si el título contiene palabras en la lista negra (ej. Scientist, Manager)."""
+    job = Job(
+        title="Data Scientist",
+        company="AdminCorp",
+        location="Remote",
+        description="Data Science position. Requires SQL and Python.",
+        url="https://example.com/job/fail-blacklist",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "término excluido" in reason
+
+
+def test_should_evaluate_job_fails_description_sql():
+    """Valida el descarte si la descripción no contiene SQL."""
     job = Job(
         title="Data Engineer Specialist",
         company="CloudTech",
@@ -46,6 +62,52 @@ def test_should_evaluate_job_fails_description():
     passed, reason = should_evaluate_job(job)
     assert not passed
     assert "La descripción no contiene la palabra clave obligatoria 'sql'" in reason
+
+
+def test_should_evaluate_job_fails_description_python():
+    """Valida el descarte si la descripción no contiene Python."""
+    job = Job(
+        title="Data Engineer Specialist",
+        company="CloudTech",
+        location="Remote",
+        description="Manage pipelines and API integrations using SQL and AWS Glue.",
+        url="https://example.com/job/fail-desc-py",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "La descripción no contiene la palabra clave obligatoria 'python'" in reason
+
+
+def test_should_evaluate_job_fails_junior_experience():
+    """Valida el descarte si la oferta está dirigida a juniors (0 a 2 años de experiencia)."""
+    job = Job(
+        title="Data Engineer",
+        company="TechCorp",
+        location="Remote",
+        description="Entry level role for graduates. Required: Python, SQL. 0-2 years of experience.",
+        url="https://example.com/job/junior",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "perfiles junior" in reason
+
+
+def test_should_evaluate_job_fails_low_salary():
+    """Valida el descarte si el salario es inferior al mínimo de $2.5M CLP o $2500 USD."""
+    job = Job(
+        title="Data Engineer",
+        company="TechCorp",
+        location="Remote",
+        description="Required: Python, SQL.",
+        url="https://example.com/job/low-salary",
+        source="test",
+        salary="USD $1500 - $2000 / mes",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "Salario máximo" in reason
 
 
 def test_should_evaluate_job_fails_international_hybrid():
@@ -60,7 +122,7 @@ def test_should_evaluate_job_fails_international_hybrid():
     )
     passed, reason = should_evaluate_job(job)
     assert not passed
-    assert "100% remota" in reason or "híbrida" in reason
+    assert "híbrida/física" in reason
 
 
 def test_should_evaluate_job_fails_international_domestic_restriction():
@@ -75,7 +137,7 @@ def test_should_evaluate_job_fails_international_domestic_restriction():
     )
     passed, reason = should_evaluate_job(job)
     assert not passed
-    assert "sin sponsorship/visa" in reason or "autorización de trabajo local" in reason
+    assert "residencia local obligatoria" in reason
 
 
 def test_should_evaluate_job_fails_chile_3plus_days_onsite():

@@ -7,8 +7,6 @@ from src.database.models import Job
 
 logger = logging.getLogger(__name__)
 
-# Constante compartida: términos que identifican ubicaciones en Chile.
-# Importar desde aquí en lugar de duplicar en cada módulo.
 CHILE_TERMS = [
     "chile",
     "santiago",
@@ -21,6 +19,31 @@ CHILE_TERMS = [
     "las condes",
     "providencia",
 ]
+
+
+def is_salary_too_low(salary_str: str) -> tuple[bool, str]:
+    """Determina si un rango de salario expresado en texto está por debajo de los mínimos ($2.5M CLP o $2500 USD)."""
+    if not salary_str:
+        return False, ""
+
+    # Extraer todos los números eliminando separadores de miles
+    clean_str = salary_str.replace(".", "").replace(",", "")
+    nums = [int(n) for n in re.findall(r"\d+", clean_str)]
+    if not nums:
+        return False, ""
+
+    max_val = max(nums)
+    # Si tiene la palabra usd o el valor es muy bajo, asumimos USD. De lo contrario CLP.
+    is_usd = "usd" in salary_str.lower() or max_val < 100000
+
+    if is_usd:
+        if max_val < 2500:
+            return True, f"Salario máximo de {max_val} USD es menor a 2500 USD."
+    else:
+        if max_val < 2500000:
+            return True, f"Salario máximo de {max_val} CLP es menor a 2.500.000 CLP."
+
+    return False, ""
 
 
 def _get_filter_config() -> dict:
@@ -42,7 +65,7 @@ def _get_filter_config() -> dict:
                 "analista",
                 "ingeniero",
             ],
-            "description_keywords_all": ["sql"],
+            "description_keywords_all": ["sql", "python"],
         },
     )
 
@@ -63,24 +86,60 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
     location_lower = (job.location or "").lower()
     text_combined = f"{title} {location_lower} {description}".lower()
 
-    # 1. Validar palabras clave en el título (cualquiera de la lista)
-    title_keywords = filter_config.get("title_keywords_any", [])
+    # 1. Lista Negra de Títulos (Roles excluidos y cargos de gerencia/liderazgo de equipos)
+    title_blacklist = [
+        "cientifico de datos",
+        "cientista de datos",
+        "data science",
+        "data scientist",
+        "machine learning",
+        "ml engineer",
+        "arquitecto datos",
+        "control de gestion",
+        "manager",
+        "lead",
+        "junior",
+        "jr",
+    ]
+    for term in title_blacklist:
+        if term in title:
+            return False, f"Descarte algorítmico: El título contiene término excluido '{term}'."
 
+    # 2. Validar palabras clave en el título (cualquiera de la lista permitida)
+    title_keywords = filter_config.get("title_keywords_any", [])
     if title_keywords and not any(kw.lower() in title for kw in title_keywords):
         return (
             False,
             f"Descarte algorítmico: El título '{job.title}' no contiene palabras clave de datos requeridas.",
         )
 
-    # 2. Validar palabras clave obligatorias en la descripción (todas las de la lista)
-    for kw in filter_config.get("description_keywords_all", []):
+    # 3. Validar palabras clave obligatorias en la descripción (todas)
+    mandatory_keywords = filter_config.get("description_keywords_all", ["sql", "python"])
+    for kw in mandatory_keywords:
         if kw.lower() not in description:
             return (
                 False,
                 f"Descarte algorítmico: La descripción no contiene la palabra clave obligatoria '{kw}'.",
             )
 
-    # 3. Validar antigüedad máxima de la oferta en días
+    # 4. Descarte de experiencia junior/recién egresado (0 a 2 años de experiencia)
+    junior_regexes = [
+        r"\b0\s*(a|-|to)\s*2\s*(años|anios|years)\b",
+        r"\b(recién|recien)\s+(egresado|titulado)\b",
+        r"\bsin\s+experiencia\b",
+        r"\bentry\s*level\b",
+        r"\bno\s+experience\s+required\b",
+    ]
+    for pattern in junior_regexes:
+        if re.search(pattern, description, re.IGNORECASE):
+            return False, f"Descarte algorítmico: Oferta dirigida a perfiles junior (menciona '{pattern}')."
+
+    # 5. Filtrar por Salario mínimo
+    too_low, salary_reason = is_salary_too_low(job.salary)
+    if too_low:
+        return False, f"Descarte algorítmico: {salary_reason}"
+
+    # 6. Validar antigüedad máxima de la oferta en días
     max_age_days = config.get("search_filters", {}).get("max_job_age_days", 3)
     if job.posted_at:
         now = datetime.now(tz=UTC)
@@ -92,15 +151,14 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
         if age_days > max_age_days:
             return (
                 False,
-                f"Descarte algorítmico: La oferta fue publicada hace {int(age_days)} días (máximo permitido: {max_age_days} días).",
+                f"Descarte algorítmico: La oferta fue publicada hace {int(age_days)} días (máximo: {max_age_days} días).",
             )
 
-    # 4. Validar modalidad Híbrida / Presencial / Remota
+    # 7. Validar modalidad Híbrida / Presencial / Remota
     is_chile_location = any(term in location_lower for term in CHILE_TERMS)
 
-    # A) Oferta Internacional (fuera de Chile): DEBE ser 100% remota y abierta a talento global
+    # A) Oferta Internacional: DEBE ser 100% remota y abierta a talento global
     if not is_chile_location:
-        # Descartar si menciona requerimientos presenciales / híbridos en el extranjero
         hybrid_onsite_terms = [
             "hybrid",
             "híbrido",
@@ -120,10 +178,9 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
         if any(term in text_combined for term in hybrid_onsite_terms):
             return (
                 False,
-                f"Descarte algorítmico: Oferta internacional en '{job.location}' requiere presencia híbrida/física (debe ser 100% remota).",
+                f"Descarte algorítmico: Oferta internacional en '{job.location}' requiere presencia híbrida/física.",
             )
 
-        # Descartar si exige residencia obligatoria local o restricciones de visa doméstica en EE.UU./UK/etc.
         domestic_restriction_terms = [
             "must reside in the us",
             "must reside in the united states",
@@ -143,14 +200,11 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
         if any(term in text_combined for term in domestic_restriction_terms):
             return (
                 False,
-                f"Descarte algorítmico: Oferta en '{job.location}' exige autorización de trabajo local exclusiva (sin sponsorship/visa).",
+                f"Descarte algorítmico: Oferta en '{job.location}' exige residencia local obligatoria.",
             )
 
-    # B) Oferta Local (Chile):
-    # - Permitir 100% remota o híbrida general (o con 1 o 2 días presenciales).
-    # - Descartar si es 100% presencial o si exige 3 o más días presenciales a la semana.
+    # B) Oferta Local (Chile)
     else:
-        # Descarte si es 100% presencial
         pure_onsite_terms = [
             "100% presencial",
             "100% presencialidad",
@@ -165,7 +219,6 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
                 "Descarte algorítmico: Vacante en Chile descartada por ser 100% presencial.",
             )
 
-        # Descarte si menciona 3, 4 o 5 días presenciales / en oficina
         pattern_3plus_days = r"\b([345]|tres|cuatro|cinco)\s*(días|dias|days)\s*(presenciales|de\s+presencialidad|en\s+oficina|on-site|onsite|in-office)\b"
         if re.search(pattern_3plus_days, text_combined):
             return (
