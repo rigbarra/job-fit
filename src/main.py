@@ -92,10 +92,9 @@ def main():
             )
             continue
 
-        # Verificar si la fuente de datos está activa
-        if not active_sources.get(source_name, False) and source_name not in ["remotive", "getonboard"]:
-            continue
-        if source_name in ["remotive", "getonboard"] and not active_sources.get(source_name, True):
+        # Verificar si la fuente de datos está activa en config.yaml
+        if not active_sources.get(source_name, False):
+            logger.info(f"Saltando fuente '{source_name}' (desactivada en config.yaml).")
             continue
 
         # Remotive es siempre internacional (ignorar en paso local)

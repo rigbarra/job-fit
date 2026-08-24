@@ -114,6 +114,12 @@ def detect_job_language(job: Job) -> str:
     return "es"
 
 
+def sanitize_filename(name: str) -> str:
+    """Sanitiza nombres de archivo eliminando caracteres especiales e incómodos."""
+    clean = re.sub(r"[^\w\s-]", "", name or "", flags=re.UNICODE)
+    return re.sub(r"[-\s]+", "_", clean).strip("_")
+
+
 def generate_cv_for_job(
     job: Job, match_result: MatchResult, language: str | None = None
 ) -> CVSnapshot:
@@ -132,11 +138,11 @@ def generate_cv_for_job(
     tex_content = build_cv_tex(match_result=match_result, language=language)
 
     # 2. Construir nombre del archivo de salida
-    sanitized_company = re.sub(r"[^a-zA-Z0-9_-]", "_", job.company).strip("_")
+    sanitized_company = sanitize_filename(job.company)
     date_str = datetime.now().strftime("%Y%m%d")
     tier_label = f"T{match_result.tier}"
     filename = (
-        f"CV_Rigoberto_Barra_{sanitized_company}_{job.id}_{tier_label}_{language}_{date_str}.pdf"
+        f"CV_Rigoberto_Barra_{sanitized_company}_{job.id or '1'}_{tier_label}_{language}_{date_str}.pdf"
     )
 
     output_dir = os.path.join(settings.project_root, settings.output_pdf_dir.lstrip("./"))

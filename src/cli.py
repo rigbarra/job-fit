@@ -32,7 +32,8 @@ def handle_apply(args):
     logger.info(f"Score: {match_result.score}% | Tier: {match_result.tier}")
 
     logger.info("--- 2. Generando CV Adaptado (PDF) ---")
-    cv_pdf, cv_tex = generate_cv_for_job(job, match_result)
+    cv_snapshot = generate_cv_for_job(job, match_result)
+    cv_pdf = cv_snapshot.pdf_path
     logger.info(f"CV generado: {cv_pdf}")
 
     logger.info("--- 3. Generando Carta de Presentación (PDF) ---")

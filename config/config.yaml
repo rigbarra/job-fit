@@ -1,4 +1,4 @@
-# Configuración general del pipeline de búsqueda de empleo
+# Configuración general del pipeline de búsqueda de empleo (ENFOQUE 100% CHILE)
 
 # Filtros de búsqueda para scraping
 search_filters:
@@ -7,15 +7,12 @@ search_filters:
     - "Data Engineer"
     - "Ingeniero de Datos"
   locations:
-    - "Remote"
-    - "Remoto"
     - "Chile"
     - "Santiago"
-    - "LATAM"
-    - "Latin America"
-    - "Worldwide"
+    - "Remote"
+    - "Remoto"
   max_job_age_days: 1    # Solo evaluar vacantes publicadas en las últimas 24 horas (ventana de 1 día)
-  experience_level: "4"  # Nivel de experiencia LinkedIn (f_E=4: Mid-Senior Level. Descarta prácticas 1 y entry-level 2)
+  experience_level: "4"  # Nivel de experiencia LinkedIn (f_E=4: Mid-Senior Level)
   limit_per_source: 20
 
 # Umbrales de clasificación de coincidencia (Match Score)
@@ -24,12 +21,12 @@ match_thresholds:
   tier_2_medium: 60      # 60% a 84% -> Requiere Retoque de CV
   # < 60% es Tier 3 -> Descarte
 
-# Fuentes activas de scraping
+# Fuentes activas de scraping (Solo portales que operan en Chile)
 sources:
-  getonboard: true       # API REST de Get on Board para Chile y LATAM (muy estable)
-  remotive: true         # API REST, muy estable
-  indeed: false          # Desactivado por defecto por seguridad de IP
-  linkedin: true         # Endpoints públicos guest de LinkedIn con throttling
+  getonboard: true       # API REST de Get on Board para Chile (muy estable)
+  linkedin: true         # Endpoints públicos guest de LinkedIn Chile
+  indeed: true           # Indeed Chile (cl.indeed.com)
+  remotive: false        # Desactivado (fuente puramente internacional)
 
 # Control de Notificaciones y Evaluación por Ubicación y Tier
 notification_rules:
@@ -37,13 +34,13 @@ notification_rules:
     allow_tier_1: true    # 🇨🇱 Match Directo Chile
     allow_tier_2: true    # 🇨🇱 Match con Retoque Chile
   international:
-    allow_tier_1: true    # 🌐 Match Directo Internacional
-    allow_tier_2: false   # 🌐 Match con Retoque Internacional (Desactivado hoy para ahorrar tokens)
+    allow_tier_1: false   # 🌐 Desactivado completamente por urgencia en Chile
+    allow_tier_2: false   # 🌐 Desactivado completamente
 
 # Cautela y Control de Bloqueos (Rate Limiting)
 rate_limiting:
-  min_delay_seconds: 5.0  # Tiempo mínimo de espera entre llamadas a páginas de detalle
-  max_delay_seconds: 10.0 # Tiempo máximo de espera entre llamadas
+  min_delay_seconds: 4.0  # Tiempo mínimo de espera entre llamadas a páginas de detalle
+  max_delay_seconds: 7.0  # Tiempo máximo de espera entre llamadas
   max_errors_before_circuit_break: 1 # Detener inmediatamente el scraper si detecta 403 o 429
 
 # Filtro Algorítmico Local (Ahorro de Tokens del LLM)
@@ -62,5 +59,3 @@ algorithmic_filter:
     - "ingeniero"
   description_keywords_all:
     - "sql"
-
-

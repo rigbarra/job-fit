@@ -9,6 +9,7 @@ from config.settings import settings
 from src.agent.providers import get_llm_provider
 from src.agent.quota import call_with_retry
 from src.cv_engine.builder import load_profile
+from src.cv_engine.compiler import sanitize_filename
 from src.database.models import Job
 
 logger = logging.getLogger(__name__)

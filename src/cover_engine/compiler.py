@@ -5,16 +5,10 @@ from datetime import datetime
 
 from config.settings import settings
 from src.cover_engine.builder import build_cover_letter_tex
-from src.cv_engine.compiler import compile_tex_to_pdf, detect_job_language
+from src.cv_engine.compiler import compile_tex_to_pdf, detect_job_language, sanitize_filename
 from src.database.models import Job
 
 logger = logging.getLogger(__name__)
-
-
-def sanitize_filename(name: str) -> str:
-    """Sanitiza nombres de archivo eliminando caracteres especiales e incómodos."""
-    clean = re.sub(r"[^\w\s-]", "", name, flags=re.UNICODE)
-    return re.sub(r"[-\s]+", "_", clean).strip("_")
 
 
 def generate_cover_letter_for_job(
