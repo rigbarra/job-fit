@@ -1,5 +1,8 @@
 # Configuración general del pipeline de búsqueda de empleo (Chile + Internacional Fallback)
 
+# Ámbito de búsqueda activo: 'chile' (solo nacional), 'international' (solo internacional), o 'all' (ambos)
+search_scope: "chile"
+
 # Filtros de búsqueda para scraping
 search_filters:
   keywords:
@@ -13,11 +16,6 @@ search_filters:
   locations:
     - "Chile"
     - "Santiago"
-    - "Remote"
-    - "Remoto"
-    - "LATAM"
-    - "Latin America"
-    - "Worldwide"
   max_job_age_days: 30   # Ventana de 30 días hacia atrás
   experience_level: "4"  # Nivel de experiencia LinkedIn (f_E=4: Mid-Senior Level)
   limit_per_source: 35
@@ -32,7 +30,7 @@ sources:
   getonboard: true       # API REST de Get on Board para Chile (muy estable)
   linkedin: true         # Endpoints públicos guest de LinkedIn
   indeed: true          # Indeed (Habilitado vía JobSpy)
-  remotive: true         # API REST para vacantes internacionales remotas globales
+  remotive: false        # API REST para vacantes internacionales (desactivado temporalmente)
 
 # Control de Notificaciones y Evaluación por Ubicación y Tier
 notification_rules:

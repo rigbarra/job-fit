@@ -77,11 +77,26 @@ def main():
     logger.info(f"Ubicaciones locales (Chile): {local_locs}")
     logger.info(f"Reglas de notificación cargadas: {notification_rules}")
 
+    search_scope = config.get("search_scope", "all").lower().strip()
+    logger.info(f"Ámbito de búsqueda configurado: '{search_scope.upper()}'")
+
     # 4. Iniciar ejecución secuencial por grupos prioritarios
     for source_name, is_local in execution_groups:
         if quota_exhausted:
             logger.warning(
                 f"Saltando grupo ({source_name.upper()}, Local={is_local}) porque la cuota diaria o límite de tasa fue alcanzado."
+            )
+            continue
+
+        # Filtrar grupos según search_scope ('chile', 'international', 'all')
+        if search_scope == "chile" and not is_local:
+            logger.info(
+                f"Saltando grupo internacional ({source_name.upper()}) porque search_scope='chile'."
+            )
+            continue
+        elif search_scope == "international" and is_local:
+            logger.info(
+                f"Saltando grupo local ({source_name.upper()}) porque search_scope='international'."
             )
             continue
 
