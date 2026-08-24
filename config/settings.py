@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     llm_provider: str | None = Field(None, validation_alias="LLM_PROVIDER")
     openai_api_base: str = Field("https://api.openai.com/v1", validation_alias="OPENAI_API_BASE")
 
+    # Backward Compatibility Fallbacks
+    openrouter_api_key: str | None = Field(None, validation_alias="OPENROUTER_API_KEY")
+    openrouter_model: str | None = Field(None, validation_alias="OPENROUTER_MODEL")
+
     llm_max_calls_per_day: int = Field(150, validation_alias="LLM_MAX_CALLS_PER_DAY")
     llm_max_calls_per_minute: int = Field(10, validation_alias="LLM_MAX_CALLS_PER_MINUTE")
 

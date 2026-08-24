@@ -147,12 +147,16 @@ class OpenAIProvider(BaseLLMProvider):
 
 def get_llm_provider() -> BaseLLMProvider:
     """Factory para instanciar el proveedor de LLM según la configuración o auto-detección."""
-    api_key = settings.llm_api_key
+    api_key = settings.llm_api_key or settings.openrouter_api_key
     model = settings.llm_model
+    # Fallback si se usa el modelo anterior de openrouter
+    if not settings.llm_api_key and settings.openrouter_model:
+        model = settings.openrouter_model
+        
     provider_name = (settings.llm_provider or "").lower().strip()
 
     if not api_key:
-        raise RuntimeError("No se ha configurado LLM_API_KEY en el archivo .env")
+        raise RuntimeError("No se ha configurado LLM_API_KEY u OPENROUTER_API_KEY en el archivo .env")
 
     # Auto-detección del proveedor basado en el prefijo de la API Key si no está configurado explícitamente
     if not provider_name:
