@@ -214,6 +214,15 @@ def generate_market_study_report() -> tuple[str, str]:
         "### 💡 3. Regla de Negociación y Expectativa de Renta a Pedir:",
         "- **Chile (Local):** Solicitar entre **$3.200.000 CLP y $4.200.000 CLP líquidos** para roles Senior / Mid-Senior.",
         "- **Internacional (Contractor / USD):** Solicitar entre **$4.000 USD y $5.500 USD brutos** como tarifa base para maximizar la oferta sin quedar fuera del rango de mercado.",
+        "",
+        "### 🤖 4. Puente de Transición Estratégica hacia AI Engineering:",
+        "- **¿Por qué es el siguiente paso natural?** Tu base en Python, SQL, Cloud (AWS/GCP) y pipelines de datos cubre el 60% de los cimientos que necesita un AI Engineer en producción.",
+        "- **Bandas Salariales de AI Engineer (Remote USD):** **$5.500 a $8.500+ USD** (+35% frente a Data Engineering tradicional).",
+        "- **Stack Clave a Adquirir para la Transición:**",
+        "  1. **Bases de Datos Vectoriales:** Pinecone, Qdrant, ChromaDB, pgvector.",
+        "  2. **Frameworks de Agentes y RAG:** LangChain, LlamaIndex, Model Context Protocol (MCP).",
+        "  3. **Pipelines de Ingesta para LLMs:** Chunking semántico, generación de embeddings por lotes y evaluación de RAG (Ragas/TruLens).",
+        "  4. **Servicio y Despliegue de Modelos:** FastAPI, vLLM y contenedores Docker para inferencia.",
     ])
 
     report_text = "\n".join(report_lines)
