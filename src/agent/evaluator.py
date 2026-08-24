@@ -158,7 +158,7 @@ def evaluate_job(
         return provider.generate(SYSTEM_PROMPT, user_prompt)
 
     logger.info(
-        f"LLM [{settings.llm_provider.upper()}]: Evaluando '{job.title}' @ '{job.company}' [{lang_display}]..."
+        f"LLM [{settings.llm_provider.upper() if settings.llm_provider else 'AUTO'}]: Evaluando '{job.title}' @ '{job.company}' [{lang_display}]..."
     )
 
     content_text = call_with_retry(_make_llm_call)
