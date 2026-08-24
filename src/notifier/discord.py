@@ -65,7 +65,7 @@ def send_job_notification(
     # 2. Determinar etiqueta de ubicación (Chile vs Internacional)
     loc_lower = (job.location or "").lower()
     is_local = any(term in loc_lower for term in CHILE_TERMS)
-    loc_tag = "🇨🇱 [CHILE]" if is_local else "🌐 [INTL]"
+    loc_tag = "[CHILE]" if is_local else "[INTL]"
 
     # 3. Formatear palabras clave faltantes
     missing_kw_str = "Ninguna detectada"
@@ -80,7 +80,7 @@ def send_job_notification(
     # 4. Construir campos del Embed
     fields = [
         {
-            "name": "📊 Match Score",
+            "name": "Match Score",
             "value": f"**{match_result.score:.1f}%** ({tier_icon} {tier_title})",
             "inline": True,
         },
@@ -90,7 +90,7 @@ def send_job_notification(
             "inline": True,
         },
         {
-            "name": "🌐 Portal / Fuente",
+            "name": "Portal / Fuente",
             "value": job.source.capitalize(),
             "inline": True,
         },
@@ -108,7 +108,7 @@ def send_job_notification(
     if match_result.recommended_salary_ask:
         fields.append(
             {
-                "name": "💡 Renta Sugerida a Pedir",
+                "name": "Renta Sugerida a Pedir",
                 "value": f"**{match_result.recommended_salary_ask}**",
                 "inline": True,
             }
@@ -124,7 +124,7 @@ def send_job_notification(
 
     fields.append(
         {
-            "name": "🔍 Keywords Faltantes",
+            "name": "Keywords Faltantes",
             "value": missing_kw_str[:1024],
             "inline": False,
         }
@@ -161,7 +161,7 @@ def send_job_notification(
     }
 
     payload = {
-        "content": f"🚨 {loc_tag} **Nueva vacante recomendada:** [{job.title}]({job.url})",
+        "content": f"{loc_tag} **Nueva vacante recomendada:** [{job.title}]({job.url})",
         "embeds": [embed],
     }
 

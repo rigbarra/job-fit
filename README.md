@@ -1,4 +1,4 @@
-# 🚀 job-fit
+# job-fit
 
 Sistema autónomo e interactivo de ingesta de ofertas laborales, evaluación de compatibilidad de fit (*match score*) mediante IA, compilación automatizada de **CV y Cartas de Presentación en LaTeX**, y generación de **Guías de Entrevista Técnica** para perfiles de **Data & Analytics (Data Engineer / Analytics Engineer / Data Platform)** en Chile y LATAM.
 
@@ -6,7 +6,7 @@ Diseñado bajo la filosofía **Ponytail (Minimalismo y YAGNI)**: arquitectura de
 
 ---
 
-## 💻 Comandos Rápidos CLI (`src/cli.py`)
+## Comandos Rápidos CLI (`src/cli.py`)
 
 Puedes interactuar con el sistema directamente mediante su interfaz de comandos:
 
@@ -29,11 +29,11 @@ python -m src.cli market-study
 
 ---
 
-## 🏗️ Diagrama de Flujo del Pipeline
+## Diagrama de Flujo del Pipeline
 
 ```mermaid
 flowchart TD
-    A[⏰ Cron Diario / CLI] --> B[src/main.py: Orquestador Secuencial]
+    A[Cron Diario / CLI] --> B[src/main.py: Orquestador Secuencial]
     
     subgraph Grupo Chile (Prioritario)
         B --> C1[Scraping Get on Board API, LinkedIn Chile & Indeed Chile]
@@ -42,16 +42,16 @@ flowchart TD
         E1 --> F1[Evaluador Multidimensional LLM]
     end
 
-    F1 -->|Match Tier 1 o 2| G1[📄 CV Engine: Compilación LaTeX pdflatex]
-    F1 -->|Con opción apply| G2[✉️ Cover Engine: Carta de Presentación pdflatex]
-    F1 -->|Con opción interview| G3[🎯 Interview Engine: Guía Técnica Markdown]
+    F1 -->|Match Tier 1 o 2| G1[CV Engine: Compilación LaTeX pdflatex]
+    F1 -->|Con opción apply| G2[Cover Engine: Carta de Presentación pdflatex]
+    F1 -->|Con opción interview| G3[Interview Engine: Guía Técnica Markdown]
 
-    G1 --> H[🔔 Notificación Discord con Embed + PDF Adjunto]
+    G1 --> H[Notificación Discord con Embed + PDF Adjunto]
 ```
 
 ---
 
-## 📋 Características Principales
+## Características Principales
 
 ### 1. Ingesta Especializada para Chile
 * **Get on Board API REST:** Ingesta directa de la API v0 oficial de `getonbrd.com`, extrayendo salarios explícitos (USD/CLP) y nombres de empresas con caché en memoria.
@@ -82,7 +82,7 @@ Antes de llamar al LLM, el sistema descarta localmente vacantes irrelevantes:
 
 ---
 
-## 📂 Estructura del Repositorio
+## Estructura del Repositorio
 
 ```
 job-fit/
@@ -110,7 +110,7 @@ job-fit/
 
 ---
 
-## 🛠️ Requisitos e Instalación
+## Requisitos e Instalación
 
 ### Pasos de Instalación
 1. Clonar el repositorio:

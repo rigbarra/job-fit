@@ -40,9 +40,9 @@ def handle_apply(args):
     cover_pdf, cover_tex = generate_cover_letter_for_job(job)
     logger.info(f"Carta de Presentación generada: {cover_pdf}")
 
-    print("\n✅ ¡Aplicación preparada exitosamente!")
-    print(f"📄 CV PDF: {cv_pdf}")
-    print(f"✉️ Carta de Presentación PDF: {cover_pdf}")
+    print("\n¡Aplicación preparada exitosamente!")
+    print(f"CV PDF: {cv_pdf}")
+    print(f"Carta de Presentación PDF: {cover_pdf}")
 
 
 def handle_interview(args):
@@ -55,7 +55,7 @@ def handle_interview(args):
 
     logger.info(f"--- Generando Guía de Entrevista Técnica para '{job.title}' @ '{job.company}' ---")
     prep_md = generate_interview_prep(job)
-    print(f"\n🎯 Guía de Entrevista Técnica generada exitosamente en:\n{prep_md}")
+    print(f"\nGuía de Entrevista Técnica generada exitosamente en:\n{prep_md}")
 
 
 def handle_cover_letter(args):
@@ -68,7 +68,7 @@ def handle_cover_letter(args):
 
     logger.info(f"--- Generando Carta de Presentación para '{job.title}' @ '{job.company}' ---")
     cover_pdf, cover_tex = generate_cover_letter_for_job(job)
-    print(f"\n✉️ Carta de Presentación PDF generada en:\n{cover_pdf}")
+    print(f"\nCarta de Presentación PDF generada en:\n{cover_pdf}")
 
 
 from src.market_engine.analytics import generate_market_study_report
@@ -80,10 +80,10 @@ def handle_market_study(args):
     logger.info("--- Generando Estudio de Mercado y Análisis Salarial ---")
     file_path, report_text = generate_market_study_report()
     if file_path:
-        print(f"\n📊 Reporte de Mercado generado exitosamente en:\n{file_path}\n")
+        print(f"\nReporte de Mercado generado exitosamente en:\n{file_path}\n")
         print(report_text)
     else:
-        print(f"\n⚠️ {report_text}")
+        print(f"\n{report_text}")
 
 
 def _get_or_create_job(target: str) -> Job | None:

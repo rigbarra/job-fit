@@ -39,11 +39,11 @@ sources:
 # Control de Notificaciones y Evaluación por Ubicación y Tier
 notification_rules:
   national:
-    allow_tier_1: true    # 🇨🇱 Match Directo Chile
-    allow_tier_2: true    # 🇨🇱 Match con Retoque Chile
+    allow_tier_1: true    # Match Directo Chile
+    allow_tier_2: true    # Match con Retoque Chile
   international:
-    allow_tier_1: true    # 🌐 Match Directo Internacional (LATAM / Contractor)
-    allow_tier_2: true    # 🌐 Match con Retoque Internacional (Activado para calibración)
+    allow_tier_1: true    # Match Directo Internacional (LATAM / Contractor)
+    allow_tier_2: true    # Match con Retoque Internacional (Activado para calibración)
 
 # Cautela y Control de Bloqueos (Rate Limiting)
 rate_limiting:

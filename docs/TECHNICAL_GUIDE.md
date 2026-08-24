@@ -49,7 +49,7 @@ Cuando el sistema se ejecuta (a las 9:00 AM vía `crontab` o mediante `PYTHONPAT
 4. **Pre-Filtrado Algorítmico Local (`should_evaluate_job`):** Evalúa título, palabras clave obligatorias (`sql`), ventana de publicación (24h) y modalidad (híbrido presencial en Chile vs 100% remoto internacional). Si falla, se marca como Tier 3 directamente en la BD sin gastar tokens de LLM.
 5. **Evaluación ATS con LLM (`evaluate_job`):** Las vacantes aprobadas se envían a OpenRouter. El LLM retorna `score` (0-100), `rationale`, `missing_keywords`, y si el score está entre 60 y 84 (Tier 2), retorna `adapted_summary` y `adapted_bullets`.
 6. **Compilación de CV (`generate_cv_for_job`):** Si la oferta califica según las `notification_rules` (Tier 1 o Tier 2), Jinja2 renderiza la plantilla LaTeX (`cv_base_es.tex` o `cv_base_en.tex`) aplicando escapado de caracteres TeX, y `pdflatex` genera el PDF en un entorno temporal aislado.
-7. **Notificación en Discord (`send_job_notification`):** Se envía un Embed formateado a Discord con etiqueta `🇨🇱 [CHILE]` o `🌐 [INTL]`, indicador de color por Tier y el archivo PDF adjunto vía `multipart/form-data`.
+7. **Notificación en Discord (`send_job_notification`):** Se envía un Embed formateado a Discord con etiqueta `[CHILE]` o `[INTL]`, indicador de color por Tier y el archivo PDF adjunto vía `multipart/form-data`.
 
 ---
 
@@ -105,7 +105,7 @@ El modelo utiliza **SQLModel** (híbrido entre SQLAlchemy 2.0 y Pydantic):
 ### 3.6 Módulo de Notificaciones Discord (`src/notifier/`)
 
 * **`discord.py` (`send_job_notification`):**
-  * Asigna prefijo visual `🇨🇱 [CHILE]` o `🌐 [INTL]`.
+  * Asigna prefijo visual `[CHILE]` o `[INTL]`.
   * Asigna color al Embed: 🟩 Verde (`0x2ECC71`) para Tier 1 o 🟨 Dorado (`0xF1C40F`) para Tier 2.
   * Construye una petición HTTP `POST` multipart (`multipart/form-data`) usando `urllib.request` nativo de Python con boundary `uuid.uuid4().hex` para adjuntar el PDF compilado directamente a la notificación de Discord.
 

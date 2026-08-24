@@ -192,16 +192,16 @@ def generate_market_study_report() -> tuple[str, str]:
     transparency_pct = (len(jobs_with_salary) / len(jobs)) * 100 if jobs else 0
 
     report_lines = [
-        "# 📊 Estudio Histórico de Mercado Laboral: Data & Analytics Chile (Acumulado Vivo)",
+        "# Estudio Histórico de Mercado Laboral: Data & Analytics Chile (Acumulado Vivo)",
         "",
-        f"> **📅 Periodo Histórico Acumulado:** Desde `{first_date_str}` hasta `{now_str}`  ",
-        f"> **📈 Total de Ofertas Registradas en BD:** **{len(jobs)} vacantes** recopiladas de forma acumulativa y continua.",
+        f"> **Periodo Histórico Acumulado:** Desde `{first_date_str}` hasta `{now_str}`  ",
+        f"> **Total de Ofertas Registradas en BD:** **{len(jobs)} vacantes** recopiladas de forma acumulativa y continua.",
         "",
         "Este informe se actualiza **automáticamente en cada corrida** y consolida la inteligencia histórica de mercado sin descartar los hallazgos de semanas o meses anteriores.",
         "",
         "---",
         "",
-        "## 1. 🏛️ Fuentes de Información y Transparencia Salarial",
+        "## 1. Fuentes de Información y Transparencia Salarial",
         f"- **Total de vacantes acumuladas en la BD:** {len(jobs)} ofertas",
         f"- **Vacantes con Salario Explícito Publicado:** {len(jobs_with_salary)} ofertas ({transparency_pct:.1f}%)",
         f"- **Vacantes con Salario Confidencial / 'A convenir':** {jobs_without_salary_count} ofertas ({100 - transparency_pct:.1f}%)",
@@ -226,7 +226,7 @@ def generate_market_study_report() -> tuple[str, str]:
         "",
         "---",
         "",
-        "## 2. 🏢 Modalidad de Trabajo y Presencialidad en Oficina",
+        "## 2. Modalidad de Trabajo y Presencialidad en Oficina",
         "",
         "Régimen presencial observado en las publicaciones de la muestra acumulada:",
         "",
@@ -242,13 +242,13 @@ def generate_market_study_report() -> tuple[str, str]:
         "",
         "---",
         "",
-        "## 3. 💵 Registro Histórico de Salarios Reales Publicados",
+        "## 3. Registro Histórico de Salarios Reales Publicados",
         "",
     ])
 
     if salaries_usd:
         report_lines.extend([
-            "### 🌐 Ofertas con Salario Publicado en USD (Get on Board / Remoto):",
+            "### Ofertas con Salario Publicado en USD (Get on Board / Remoto):",
             "",
             "| Empresa | Cargo | Salario Publicado | Portal |",
             "| :--- | :--- | :--- | :--- |",
@@ -271,7 +271,7 @@ def generate_market_study_report() -> tuple[str, str]:
     if salaries_clp:
         report_lines.extend([
             "",
-            "### 🇨🇱 Ofertas con Salario Publicado en CLP (Moneda Local):",
+            "### Ofertas con Salario Publicado en CLP (Moneda Local):",
             "",
             "| Empresa | Cargo | Salario Publicado | Portal |",
             "| :--- | :--- | :--- | :--- |",
@@ -293,7 +293,7 @@ def generate_market_study_report() -> tuple[str, str]:
     else:
         report_lines.extend([
             "",
-            "### 🇨🇱 Ofertas con Salario Explícito en CLP:",
+            "### Ofertas con Salario Explícito en CLP:",
             "*Ninguna de las publicaciones en LinkedIn / Indeed de este lote incluyó banda salarial explícita en pesos chilenos (todas como 'Renta a convenir').*",
         ])
 
@@ -301,7 +301,7 @@ def generate_market_study_report() -> tuple[str, str]:
         "",
         "---",
         "",
-        "## 4. 🎯 Guía Realista de Negociación y Pretensión de Renta para Chile",
+        "## 4. Guía Realista de Negociación y Pretensión de Renta para Chile",
         "",
         "Dado que la gran mayoría de ofertas locales en Chile no publica salario, las bandas de mercado comprobadas para postulaciones locales bajo contrato chileno son:",
         "",
@@ -317,7 +317,7 @@ def generate_market_study_report() -> tuple[str, str]:
         "",
         "---",
         "",
-        "## 5. 🛠️ Tecnologías más Exigidas en las Publicaciones",
+        "## 5. Tecnologías más Exigidas en las Publicaciones",
         "",
         "| Herramienta / Tecnología | Menciones Reales en Vacantes Evaluadas |",
         "| :--- | :--- |",

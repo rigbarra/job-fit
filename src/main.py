@@ -241,7 +241,7 @@ def main():
                             snapshot = None
                             try:
                                 snapshot = generate_cv_for_job(job, match_result)
-                                logger.info(f"📄 CV PDF generado exitosamente: {snapshot.pdf_path}")
+                                logger.info(f"CV PDF generado exitosamente: {snapshot.pdf_path}")
                             except Exception as ce:
                                 logger.error(
                                     f"Error generando CV en PDF para vacante {job.id}: {ce}"
@@ -285,7 +285,7 @@ def main():
     try:
         from src.market_engine.analytics import generate_market_study_report
         canonical_path, _ = generate_market_study_report()
-        logger.info(f"📊 Estudio de Mercado Histórico actualizado en: {canonical_path}")
+        logger.info(f"Estudio de Mercado Histórico actualizado en: {canonical_path}")
     except Exception as me:
         logger.error(f"Error actualizando estudio de mercado: {me}")
 
