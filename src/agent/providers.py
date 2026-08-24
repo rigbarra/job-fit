@@ -65,7 +65,11 @@ class GeminiProvider(BaseLLMProvider):
 
     def __init__(self, api_key: str, model: str):
         self.api_key = api_key
-        self.model = model if model and "gemini" in model else "gemini-2.0-flash"
+        # Si el modelo provisto es gemini-2.0-flash, lo forzamos a gemini-3.6-flash ya que 2.0 fue retirado
+        if model == "gemini-2.0-flash" or not model or "gemini" not in model:
+            self.model = "gemini-3.6-flash"
+        else:
+            self.model = model
         self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
