@@ -152,11 +152,23 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
 
     # 2. Validar palabras clave en el título (cualquiera de la lista permitida)
     title_keywords = filter_config.get("title_keywords_any", [])
-    if title_keywords and not any(kw.lower() in title for kw in title_keywords):
-        return (
-            False,
-            f"Descarte algorítmico: El título '{job.title}' no contiene palabras clave de datos requeridas.",
-        )
+    if title_keywords:
+        matches_any = False
+        for kw in title_keywords:
+            kw_clean = kw.lower()
+            if len(kw_clean) <= 2:
+                if re.search(r"\b" + re.escape(kw_clean) + r"\b", title):
+                    matches_any = True
+                    break
+            elif kw_clean in title:
+                matches_any = True
+                break
+
+        if not matches_any:
+            return (
+                False,
+                f"Descarte algorítmico: El título '{job.title}' no contiene palabras clave de datos requeridas.",
+            )
 
     # 3. Validar palabras clave obligatorias en la descripción (todas)
     mandatory_keywords = filter_config.get("description_keywords_all", ["sql", "python"])

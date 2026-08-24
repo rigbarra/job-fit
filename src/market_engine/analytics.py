@@ -37,6 +37,20 @@ def generate_market_study_report() -> tuple[str, str]:
         t = title.lower()
         if "analytics engineer" in t:
             return "Analytics Engineer"
+        elif any(
+            k in t
+            for k in [
+                "ia engineer",
+                "ai engineer",
+                "ingeniero ia",
+                "ingeniero de ia",
+                "inteligencia artificial",
+                "especialista ia",
+                "ai specialist",
+                "llm engineer",
+            ]
+        ):
+            return "AI / LLM Engineer"
         elif "data engineer" in t or "ingeniero de datos" in t or "datos" in t:
             return "Data Engineer"
         elif "bi" in t or "business intelligence" in t or "power bi" in t:

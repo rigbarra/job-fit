@@ -18,6 +18,22 @@ def test_should_evaluate_job_passes():
     assert reason == ""
 
 
+def test_should_evaluate_job_passes_ai_engineer():
+    """Valida que una vacante de AI Engineer con SQL y Python pase el filtro."""
+    job = Job(
+        title="AI Engineer",
+        company="AI Labs Chile",
+        location="Santiago, Chile",
+        description="Construcción de agentes y RAG. Requerido: Python, SQL y APIs LLM.",
+        url="https://example.com/job/ai-ok",
+        source="test",
+        salary="CLP $4.000.000 / mes",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert passed
+    assert reason == ""
+
+
 def test_should_evaluate_job_fails_title_not_data():
     """Valida el descarte si el título no coincide con el rubro de datos."""
     job = Job(

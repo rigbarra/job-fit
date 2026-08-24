@@ -6,6 +6,10 @@ search_filters:
     - "Analytics Engineer"
     - "Data Engineer"
     - "Ingeniero de Datos"
+    - "AI Engineer"
+    - "Ingeniero IA"
+    - "Data Analyst"
+    - "Analista BI"
   locations:
     - "Chile"
     - "Santiago"
@@ -59,6 +63,9 @@ algorithmic_filter:
     - "datos"
     - "analista"
     - "ingeniero"
+    - "ia"
+    - "ai"
+    - "inteligencia artificial"
   description_keywords_all:
     - "sql"
     - "python"
