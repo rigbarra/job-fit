@@ -19,9 +19,17 @@ def test_get_llm_provider_gemini(mocker):
 
 
 def test_get_llm_provider_autodetect_gemini(mocker):
-    """Verifica la auto-detección de Gemini basado en la API Key."""
+    """Verifica la auto-detección de Gemini basado en la API Key tradicional."""
     mocker.patch.object(settings, "llm_provider", None)
     mocker.patch.object(settings, "llm_api_key", "AIzaSy_SomeSecretKey")
+    provider = get_llm_provider()
+    assert isinstance(provider, GeminiProvider)
+
+
+def test_get_llm_provider_autodetect_gemini_aq(mocker):
+    """Verifica la auto-detección de Gemini basado en el nuevo formato de API Key (AQ.)."""
+    mocker.patch.object(settings, "llm_provider", None)
+    mocker.patch.object(settings, "llm_api_key", "AQ.Ab8_SomeSecureKey")
     provider = get_llm_provider()
     assert isinstance(provider, GeminiProvider)
 

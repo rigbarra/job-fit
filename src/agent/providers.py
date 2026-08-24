@@ -156,7 +156,7 @@ def get_llm_provider() -> BaseLLMProvider:
 
     # Auto-detección del proveedor basado en el prefijo de la API Key si no está configurado explícitamente
     if not provider_name:
-        if api_key.startswith("AIzaSy"):
+        if api_key.startswith(("AIzaSy", "AQ.")):
             provider_name = "gemini"
         elif api_key.startswith("sk-or-"):
             provider_name = "openrouter"
