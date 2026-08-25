@@ -2,7 +2,7 @@ import logging
 import re
 from datetime import UTC, datetime
 
-from config.loader import load_config
+from config.settings import load_config
 from src.database.models import Job
 
 logger = logging.getLogger(__name__)

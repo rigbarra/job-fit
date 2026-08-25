@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import yaml
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -37,3 +38,31 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ---------------------------------------------------------------------------
+# Carga de config.yaml — fusionado desde config/loader.py (eliminado)
+# Cache en memoria para evitar re-lecturas de disco en cada vacante procesada.
+# ---------------------------------------------------------------------------
+_cached_config: dict | None = None
+
+
+def load_config(force_reload: bool = False) -> dict:
+    """Carga y cachea los parámetros del archivo config.yaml."""
+    global _cached_config
+    if _cached_config is not None and not force_reload:
+        return _cached_config
+
+    config_path = Path(settings.project_root) / "config" / "config.yaml"
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            _cached_config = yaml.safe_load(f)
+    except Exception:
+        _cached_config = {
+            "search_filters": {
+                "keywords": ["Analytics Engineer", "Data Engineer"],
+                "locations": ["Remote"],
+                "limit_per_source": 10,
+            },
+            "sources": {"remotive": True, "indeed": False},
+        }
+    return _cached_config

@@ -343,11 +343,5 @@ def generate_market_study_report() -> tuple[str, str]:
     with open(canonical_file_path, "w", encoding="utf-8") as f:
         f.write(report_text)
 
-    # Guardar también snapshot histórico fechado
-    timestamp_filename = f"market_study_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-    timestamp_file_path = os.path.join(out_dir, timestamp_filename)
-    with open(timestamp_file_path, "w", encoding="utf-8") as f:
-        f.write(report_text)
-
-    logger.info(f"Estudio de mercado vivo actualizado en: {canonical_file_path}")
+    logger.info(f"Estudio de mercado actualizado en: {canonical_file_path}")
     return canonical_file_path, report_text

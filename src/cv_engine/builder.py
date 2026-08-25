@@ -122,29 +122,26 @@ def build_cv_tex(
     lang_key = "en" if language.lower() in ("en", "english", "ingles") else "es"
     profile = copy.deepcopy(profile_override or load_profile(language=lang_key))
 
+    title = profile.get("title", "")
     summary = profile.get("summary", "")
     experiences: list[dict[str, Any]] = profile.get("experience", [])
     education: list[dict[str, Any]] = profile.get("education", [])
 
-    # 1. Si existe evaluación de Tier 2, inyectar el resumen adaptado
+    # 1. Adaptar título principal si existe en match_result (Tier 2)
+    if match_result and getattr(match_result, "adapted_title", None):
+        logger.info("Inyectando título profesional adaptado por el LLM en la plantilla LaTeX.")
+        title = escape_latex(match_result.adapted_title)
+    else:
+        title = escape_latex(title)
+
+    # 2. Adaptar resumen profesional si existe en match_result (Tier 2)
     if match_result and match_result.adapted_summary:
         logger.info("Inyectando resumen adaptado por el LLM en la plantilla LaTeX.")
         summary = escape_latex(match_result.adapted_summary)
     else:
         summary = escape_latex(summary)
 
-    # 2. Si existen viñetas adaptadas, reemplazar en las experiencias correspondientes
-    adapted_bullets_map: dict[str, str] = {}
-    if match_result and match_result.adapted_bullets:
-        try:
-            if isinstance(match_result.adapted_bullets, str):
-                adapted_bullets_map = json.loads(match_result.adapted_bullets)
-            elif isinstance(match_result.adapted_bullets, dict):
-                adapted_bullets_map = match_result.adapted_bullets
-        except Exception as e:
-            logger.warning(f"No se pudo parsear adapted_bullets como JSON: {e}")
-
-    # Procesar viñetas de experiencia con matching robusto
+    # 3. Conservar viñetas de experiencia 100% originales (respetando métricas y tono original)
     for exp in experiences:
         exp["role"] = escape_latex(exp.get("role", ""))
         exp["company"] = escape_latex(exp.get("company", ""))
@@ -153,28 +150,7 @@ def build_cv_tex(
         if "company_description" in exp:
             exp["company_description"] = escape_latex(exp.get("company_description", ""))
 
-        processed_bullets = []
-        for bullet in exp.get("bullets", []):
-            final_bullet = bullet
-            bullet_clean = bullet.lower().strip()
-
-            # Verificar si esta viñeta fue adaptada por el LLM
-            for original_key, adapted_val in adapted_bullets_map.items():
-                orig_clean = original_key.lower().strip()
-                # Coincidencia flexible: substring, inclusión inversa o prefijo de 25 caracteres
-                if (
-                    orig_clean in bullet_clean
-                    or bullet_clean in orig_clean
-                    or (len(orig_clean) >= 20 and orig_clean[:25] in bullet_clean)
-                    or (len(bullet_clean) >= 20 and bullet_clean[:25] in orig_clean)
-                ):
-                    logger.info(
-                        f"Reemplazando viñeta adaptada en '{exp['company']}': {original_key[:35]}..."
-                    )
-                    final_bullet = adapted_val
-                    break
-            processed_bullets.append(escape_latex(final_bullet))
-        exp["bullets"] = processed_bullets
+        exp["bullets"] = [escape_latex(b) for b in exp.get("bullets", [])]
 
     # Procesar educación
     for edu in education:
@@ -197,7 +173,7 @@ def build_cv_tex(
 
     context = {
         "name": profile.get("name", "Rigoberto Barra"),
-        "title": profile.get("title", "Analytics Engineer / Data Engineer"),
+        "title": title,
         "summary": summary,
         "experiences": experiences,
         "education": education,

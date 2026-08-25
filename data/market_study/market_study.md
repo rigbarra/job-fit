@@ -1,6 +1,6 @@
 # Estudio Histórico de Mercado Laboral: Data & Analytics Chile (Acumulado Vivo)
 
-> **Periodo Histórico Acumulado:** Desde `24/08/2026` hasta `24/08/2026 17:28`  
+> **Periodo Histórico Acumulado:** Desde `25/08/2026` hasta `24/08/2026 20:38`  
 > **Total de Ofertas Registradas en BD:** **2 vacantes** recopiladas de forma acumulativa y continua.
 
 Este informe se actualiza **automáticamente en cada corrida** y consolida la inteligencia histórica de mercado sin descartar los hallazgos de semanas o meses anteriores.
@@ -13,46 +13,32 @@ Este informe se actualiza **automáticamente en cada corrida** y consolida la in
 - **Vacantes con Salario Confidencial / 'A convenir':** 0 ofertas (0.0%)
 
 ### Aportes por Portal de Empleo:
-- **Test:** 2 vacantes (100.0%)
+- **Test:** 2 vacantes (200.0%)
 
 ### Demanda Acumulada por Rol Identificado:
-- **Data Engineer:** 1 vacantes (50.0%)
-- **Analytics Engineer:** 1 vacantes (50.0%)
+- **Data Engineer:** 1 vacantes (100.0%)
+- **Analytics Engineer:** 1 vacantes (100.0%)
 
 ---
 
 ## 2. Modalidad de Trabajo y Presencialidad en Oficina
 
-Régimen presencial observado en las publicaciones de la muestra acumulada:
+> **Nota de Relevancia:** Estos porcentajes se calculan **únicamente sobre vacantes Tier 1 y Tier 2** (aquellas donde tu perfil tiene un Match directo o competitivo), descartando el ruido de empleos remotos que exigen stacks no dominados.
 
 | Modalidad / Régimen Presencial | Vacantes Acumuladas | Porcentaje |
 | :--- | :--- | :--- |
-| **No especificado / A convenir** | 1 | 50.0% |
-| **Remoto 100%** | 1 | 50.0% |
+| **No especificado / A convenir** | 1 | 100.0% |
 
 ---
 
 ## 3. Registro Histórico de Salarios Reales Publicados
 
-### Ofertas con Salario Publicado en USD (Get on Board / Remoto):
+Todos los salarios han sido unificados a **Pesos Chilenos (CLP)** (Tasa ref. 1 USD = $950 CLP).
 
-| Empresa | Cargo | Salario Publicado | Portal |
-| :--- | :--- | :--- | :--- |
-| **US Tech** | Analytics Engineer | `USD $5000 / mes` | Test |
-
-- **Mínimo real en USD:** $5,000 USD / mes
-- **Mediana de ofertas en USD:** **$5,000 USD / mes**
-- **Máximo real en USD:** $5,000 USD / mes
-
-### Ofertas con Salario Publicado en CLP (Moneda Local):
-
-| Empresa | Cargo | Salario Publicado | Portal |
-| :--- | :--- | :--- | :--- |
-| **TechCorp Chile** | Senior Data Engineer | `CLP $3.800.000 / mes` | Test |
-
-- **Mínimo real en CLP:** $3,800,000 CLP
-- **Mediana de ofertas en CLP:** **$3,800,000 CLP**
-- **Máximo real en CLP:** $3,800,000 CLP
+| Cargo Analizado | Muestras | Mínimo (CLP) | Mediana (CLP) | Máximo (CLP) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Analytics Engineer** | 1 | $4,750,000 | **$4,750,000** | $4,750,000 |
+| **Data Engineer** | 1 | $3,800,000 | **$3,800,000** | $3,800,000 |
 
 ---
 
@@ -67,8 +53,7 @@ Dado que la gran mayoría de ofertas locales en Chile no publica salario, las ba
 | **Data Analyst Senior / BI Specialist** (Power BI/SQL) | **$2.400.000 a $3.000.000 CLP** | $2.000.000 - $3.000.000 CLP |
 | **Remoto Internacional B2B / Contractor (USD)** | **$3.800 a $5.200 USD** | $3.000 - $6.500 USD |
 
-> [!IMPORTANT]
-> En empresas locales chilenas (bancos, retail, consultoras locales), solicitar más de **$3.800.000 - $4.000.000 CLP líquidos** suele requerir roles de arquitectura o liderazgo formal. Para aspirar a **$4.500.000+ CLP equivalentes ($4.500+ USD)**, el camino óptimo es la modalidad **Contractor internacional remoto**.
+> **💡 IMPORTANTE:** En empresas locales chilenas (bancos, retail, consultoras locales), solicitar más de **$3.800.000 - $4.000.000 CLP líquidos** suele requerir roles de arquitectura o liderazgo formal. Para aspirar a **$4.500.000+ CLP equivalentes ($4.500+ USD)**, el camino óptimo es la modalidad **Contractor internacional remoto**.
 
 ---
 

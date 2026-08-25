@@ -48,6 +48,7 @@ class MatchResult(SQLModel, table=True):
     key_technologies: str | None = None  # Lista JSON de tecnologías requeridas (ej: ["dbt", "Snowflake", "Airflow"])
     seniority_level: str | None = None  # Junior, Mid, Senior, Lead
 
+    adapted_title: str | None = None  # Título profesional adaptado por LLM si es Tier 2
     adapted_summary: str | None = None  # Resumen redactado por LLM si es Tier 2
     adapted_bullets: str | None = None  # Viñetas redactadas en formato JSON
     created_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))

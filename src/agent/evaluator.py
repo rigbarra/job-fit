@@ -77,7 +77,12 @@ def normalize_llm_json(raw_json_str: str) -> dict[str, Any]:
     if not isinstance(dim_scores, dict):
         dim_scores = None
 
-    # 6. Normalizar adapted_summary
+    # 6. Normalizar adapted_title
+    adapted_title = data.get("adapted_title") or data.get("adaptedTitle")
+    if not isinstance(adapted_title, str):
+        adapted_title = None
+
+    # 7. Normalizar adapted_summary
     adapted_summary = (
         data.get("adapted_summary") or data.get("adaptedSummary") or data.get("resumen_adaptado")
     )
@@ -115,6 +120,7 @@ def normalize_llm_json(raw_json_str: str) -> dict[str, Any]:
         "strengths": strengths_val,
         "gaps": gaps_val,
         "dimension_scores": dim_scores,
+        "adapted_title": adapted_title,
         "adapted_summary": adapted_summary,
         "adapted_bullets": normalized_bullets if normalized_bullets else None,
     }
@@ -182,7 +188,7 @@ def evaluate_job(
     missing_keywords_json = json.dumps(evaluation.missing_keywords, ensure_ascii=False)
     adapted_bullets_json = (
         json.dumps(evaluation.adapted_bullets, ensure_ascii=False)
-        if evaluation.adapted_bullets
+        if hasattr(evaluation, "adapted_bullets") and evaluation.adapted_bullets
         else None
     )
 
@@ -201,6 +207,7 @@ def evaluate_job(
         recommended_salary_ask=evaluation.recommended_salary_ask,
         key_technologies=key_technologies_json,
         seniority_level=evaluation.seniority_level,
+        adapted_title=evaluation.adapted_title,
         adapted_summary=evaluation.adapted_summary,
         adapted_bullets=adapted_bullets_json,
     )

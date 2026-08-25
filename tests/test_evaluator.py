@@ -21,10 +21,8 @@ def test_evaluate_job_tier_2(mocker):
         "score": 75.0,
         "rationale": "El candidato tiene buena base en Python y dbt, pero le falta Airflow.",
         "missing_keywords": ["Airflow"],
+        "adapted_title": "Senior Data Platform Engineer",
         "adapted_summary": "Analytics Engineer con experiencia en Snowflake y dbt...",
-        "adapted_bullets": {
-            "Liderazgo en la migración de pipelines legacy": "Liderazgo en la migración de pipelines orquestados con Airflow"
-        },
     }
 
     # 2. Configurar mock de curl_cffi.requests.post para OpenRouter
@@ -53,11 +51,7 @@ def test_evaluate_job_tier_2(mocker):
         match_result.adapted_summary == "Analytics Engineer con experiencia en Snowflake y dbt..."
     )
 
-    adapted_bullets = json.loads(match_result.adapted_bullets)
-    assert (
-        adapted_bullets["Liderazgo en la migración de pipelines legacy"]
-        == "Liderazgo en la migración de pipelines orquestados con Airflow"
-    )
+    assert match_result.adapted_title == 'Senior Data Platform Engineer'
 
 
 def test_evaluate_job_tier_3(mocker):

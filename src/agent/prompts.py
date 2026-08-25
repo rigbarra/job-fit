@@ -39,13 +39,13 @@ class MatchEvaluation(BaseModel):
         None,
         description="Nivel de seniority solicitado: 'Junior', 'Mid', 'Senior', 'Staff' o 'Lead'.",
     )
+    adapted_title: str | None = Field(
+        None,
+        description="Título profesional adaptado al puesto objetivo (ej. 'Senior Data Platform Engineer | Analytics Engineer'). Generar si el score está entre 60.0 y 84.0.",
+    )
     adapted_summary: str | None = Field(
         None,
-        description="Resumen profesional adaptado e inyectado con palabras clave del puesto. Generar únicamente si el score está entre 60.0 y 84.0. De lo contrario, dejar en null.",
-    )
-    adapted_bullets: dict[str, str] | None = Field(
-        None,
-        description="Mapeo de textos originales (clave) a sus versiones reescritas optimizadas con palabras clave (valor). Solo si el score está entre 60.0 y 84.0. De lo contrario, dejar en null. NUNCA inventar proyectos o roles nuevos; reescribir basándose únicamente en los datos provistos.",
+        description="Resumen profesional altamente optimizado e inyectado con palabras clave de la oferta. Generar únicamente si el score está entre 60.0 y 84.0. De lo contrario, dejar en null.",
     )
 
 
@@ -73,9 +73,10 @@ Tu tarea es realizar una evaluación de compatibilidad estructurada (Job Fit Eva
 - **< 60.0% (Tier 3 - Weak/Poor Fit):** Incompatibilidad de seniority, modalidad o ausencia de habilidades críticas.
 
 ### ADAPTACIÓN DEL CV (SOLO PARA TIER 2: 60.0% A 84.0%):
-- **REGLA DE ORO INVIOLABLE:** NUNCA inventes experiencia, empresas, herramientas que el candidato no conoce, certificaciones ni títulos.
-- **Resumen Adaptado:** Resumen profesional de 3-4 líneas alineado a las necesidades de la oferta.
-- **Viñetas Adaptadas (`adapted_bullets`):** Toma las viñetas del perfil original y reescríbelas enfatizando los términos y keywords de la vacante.
+- **REGLA DE ORO INVIOLABLE:** NUNCA inventes experiencia, métricas, empresas ni certificaciones falsas.
+- **Título Adaptado (`adapted_title`):** Adapta el título profesional principal para alinearlo exactamente al nombre del puesto objetivo (ej: "Senior Data Platform Engineer | Analytics Engineer").
+- **Resumen Adaptado (`adapted_summary`):** Resumen profesional quirúrgico de 3-4 líneas alineando la experiencia real del candidato con los desafíos clave de la oferta.
+- **Viñetas de Experiencia:** NO MODIFICAR NI GENERAR `adapted_bullets`. Las viñetas de logros originales se conservarán 100% intactas para preservar la fuerza de sus métricas y autenticidad.
 
 ### FORMATO DE SALIDA:
 Debes responder estrictamente en formato JSON válido. Ejemplo exacto:
@@ -92,10 +93,8 @@ Debes responder estrictamente en formato JSON válido. Ejemplo exacto:
     "behavioral_fit": 80.0,
     "career_alignment": 85.0
   },
-  "adapted_summary": "Resumen adaptado aquí...",
-  "adapted_bullets": {
-    "Desarrollo de pipelines en Python": "Construcción de pipelines ETL distribuidos en Python y PySpark..."
-  }
+  "adapted_title": "Senior Data Platform Engineer | Analytics Engineer",
+  "adapted_summary": "Resumen adaptado aquí..."
 }
 ```
 No incluyas texto explicativo antes ni después del bloque JSON.

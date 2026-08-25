@@ -71,11 +71,10 @@ def test_build_cv_tex_base():
 
 
 def test_build_cv_tex_tier_2_adapted():
-    """Valida la inyección de resumen y viñetas adaptadas para Tier 2 en español e inglés."""
+    """Valida la inyección de título y resumen adaptados quirúrgicamente para Tier 2 en español e inglés."""
     # Test en Español
+    adapted_title_es = "Senior Data Platform Engineer | Analytics Engineer"
     adapted_summary_es = "Ingeniero especializado con alto dominio de Airflow, Snowflake y dbt..."
-    adapted_bullet_orig_es = "Lideré la migración y remodelación de flujos de datos"
-    adapted_bullet_repl_es = "Lideré la migración de pipelines hacia Redshift usando Airflow"
 
     match_result_es = MatchResult(
         job_id=1,
@@ -83,18 +82,17 @@ def test_build_cv_tex_tier_2_adapted():
         tier=2,
         rationale="Match moderado con retoque.",
         missing_keywords='["Airflow"]',
+        adapted_title=adapted_title_es,
         adapted_summary=adapted_summary_es,
-        adapted_bullets=f'{{"{adapted_bullet_orig_es}": "{adapted_bullet_repl_es}"}}',
     )
 
     tex_es = build_cv_tex(match_result=match_result_es, language="es")
+    assert adapted_title_es in tex_es
     assert adapted_summary_es in tex_es
-    assert adapted_bullet_repl_es in tex_es
 
     # Test en Inglés
+    adapted_title_en = "Senior Data Platform Engineer"
     adapted_summary_en = "Senior Analytics Engineer with deep expertise in Airflow and dbt..."
-    adapted_bullet_orig_en = "Spearheaded the migration and remodeling of legacy data flows"
-    adapted_bullet_repl_en = "Spearheaded data migration towards Redshift orchestrated with Airflow"
 
     match_result_en = MatchResult(
         job_id=2,
@@ -102,13 +100,13 @@ def test_build_cv_tex_tier_2_adapted():
         tier=2,
         rationale="Moderate match.",
         missing_keywords='["Airflow"]',
+        adapted_title=adapted_title_en,
         adapted_summary=adapted_summary_en,
-        adapted_bullets=f'{{"{adapted_bullet_orig_en}": "{adapted_bullet_repl_en}"}}',
     )
 
     tex_en = build_cv_tex(match_result=match_result_en, language="en")
+    assert adapted_title_en in tex_en
     assert adapted_summary_en in tex_en
-    assert adapted_bullet_repl_en in tex_en
 
 
 @pytest.mark.skipif(not shutil.which("pdflatex"), reason="pdflatex no está instalado en el sistema")

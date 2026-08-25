@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from config.loader import load_config
+from config.settings import load_config
 from config.settings import settings
 from src.agent.evaluator import evaluate_job
 from src.agent.filter import CHILE_TERMS, should_evaluate_job

@@ -4,15 +4,17 @@ email: "rigbarra@outlook.com"
 linkedin: "linkedin.com/in/rigbarra"
 
 skills:
-  languages: 
-    - "Python (Pandas, Polars)"
+  languages:
+    - "Python (Pandas, Polars, PySpark)"
     - "SQL (Complex Joins, CTEs, Window Functions)"
     - "R"
-  databases_cloud: 
+  databases_cloud:
     - "AWS (Lambda, Step Functions, Glue, Athena, S3, Redshift, IAM)"
     - "GCP (BigQuery)"
+    - "Azure SQL Database"
+    - "PostgreSQL"
     - "DuckDB"
-  data_engineering: 
+  data_engineering:
     - "dbt (data build tool)"
     - "Dagster"
     - "Docker"
@@ -21,10 +23,15 @@ skills:
     - "Apache Superset"
     - "Quarto (HTML)"
     - "Figma (UX Layouts)"
-  quality_governance: 
+    - "Looker"
+    - "Tableau"
+  quality_governance:
     - "Git (GitHub)"
     - "Testing (Pytest)"
     - "CI/CD Pipelines (GitHub Actions)"
+  agile_project_management:
+    - "Jira (Agile / Scrum / Kanban)"
+    - "Confluence"
 
 work_preferences:
   modality: "International: 100% Remote / Contractor B2B ONLY. Local Chile: 100% Remote or Hybrid (max 2 days on-site per week)"
@@ -64,7 +71,7 @@ es:
       bullets:
         - "Diseñé e implementé la arquitectura de datos relacional local utilizando DuckDB y dbt para centralizar, transformar y modelar flujos globales fragmentados de información académica multi-región, estructuras de precios y conversión de divisas en una Única Fuente de Verdad (SSOT)."
         - "Orquesté pipelines end-to-end mediante Dagster a nivel local, automatizando la ingesta diaria de datos operacionales desde APIs externas, el manejo de dependencias de archivos y la ejecución de scripts de transformación en Python."
-        - "Diseñé y automatizé un cotizador interactivo y reportes operacionales mediante Quarto, generando aplicaciones HTML dinámicas embebidas que redujeron drásticamente los tiempos de respuesta del equipo de ventas, operando al 100% en un entorno en inglés."
+        - "Diseñé y automaticé un cotizador interactivo y reportes operacionales mediante Quarto, generando aplicaciones HTML dinámicas embebidas que redujeron drásticamente los tiempos de respuesta del equipo de ventas, operando al 100% en un entorno en inglés."
     - company: "CHEK (Banco Ripley)"
       company_type: "FinTech & Billetera Digital"
       company_description: "FinTech y billetera digital líder (+1M usuarios) de Grupo Ripley"
@@ -83,7 +90,7 @@ es:
       period: "Jun 2021 – Sep 2022"
       location: "Santiago, Chile"
       bullets:
-        - "Orquestó la unificación de datos transaccionales mediante pipelines en Python y R, estableciendo con éxito una Única Fuente de Verdad (SSOT) para toda la organización."
+        - "Orquesté la unificación de datos transaccionales mediante pipelines en Python y R, estableciendo con éxito una Única Fuente de Verdad (SSOT) para toda la organización."
         - "Desarrollé e implementé un framework de valor incremental (Lift) para clientes de la tarjeta Unipay, impulsando un aumento del 40% en el gasto promedio de los grupos segmentados vs. control."
         - "Lideré el diseño técnico de metodologías de A/B Testing, aumentando el engagement de usuarios en un 12% al alinear la arquitectura de datos con los objetivos comerciales de conversión."
         - "Garanticé la calidad de la entrega técnica y desarrollé indicadores clave de comportamiento para stakeholders ejecutivos de la división de crédito del grupo."
@@ -127,7 +134,7 @@ es:
 # PERFIL EN INGLÉS (Para ofertas internacionales o redactadas en inglés)
 # ==============================================================================
 en:
-  title: "Analytics Engineer | Data Engineer (AWS Serverless Specialist)"
+  title: "Analytics Engineer | Data Engineer"
   location: "Viña del Mar, Chile (Open to Relocation & Remote)"
   summary: "Industrial Engineer with 10+ years of experience acting as a strategic bridge between technical and business units. Specialized in designing scalable data architectures and high-impact analytical products using the Modern Data Stack (SQL, Python, AWS Serverless, dbt, Power BI). Proven track record in aligning technical execution with business strategy, leading cloud migrations and large-scale automation projects. Holds Postgraduate Diplomas in Data Science (PUC) and Business Intelligence (U. de Chile). Professional English (B2+) backed by 2 years of living and working experience in Dublin, Ireland."
   experience:
@@ -191,7 +198,7 @@ en:
       location: "Santiago, Chile"
       bullets:
         - "Developed a GIS data ecosystem in Power BI to drive commercial and operational strategies based on location-aware KPIs."
-        - "Audited technical processes through SQL and SPSS Modeler, successfully eliminating 12.000 redundant monthly customer calls."
+        - "Audited technical processes through SQL and SPSS Modeler, successfully eliminating 12,000 redundant monthly customer calls."
   education:
     - degree: "General English Course"
       school: "ISI Dublin English School"
