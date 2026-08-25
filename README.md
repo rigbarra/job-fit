@@ -6,25 +6,28 @@ Diseñado bajo la filosofía **Ponytail (Minimalismo y YAGNI)**: arquitectura de
 
 ---
 
-## Comandos Rápidos CLI (`src/cli.py`)
+## Comandos Rápidos CLI (`src/cli.py`) & Operación Diaria
 
-Puedes interactuar con el sistema directamente mediante su interfaz de comandos:
+> 📖 **Guía Completa de Operación:** Consulta el [**Manual Operativo y Cheat Sheet**](docs/CHEATSHEET.md) para ver todos los comandos de configuración, re-compilación manual, mantenimiento de cron y reinicio limpio.
 
 ```bash
 # 1. Iniciar ingesta y scraping (Get on Board Chile, LinkedIn Chile, Indeed Chile)
-python -m src.cli scrape
+PYTHONPATH=. .venv/bin/python -m src.cli scrape
 
 # 2. Generar evaluación, CV adaptado (.pdf) y Carta de Presentación (.pdf) para una vacante (ID o URL)
-python -m src.cli apply 3
+PYTHONPATH=. .venv/bin/python -m src.cli apply 39
 
 # 3. Generar la Guía de Entrevista Técnica (.md) con 12 preguntas de código/SQL y escenarios STAR
-python -m src.cli interview 3
+PYTHONPATH=. .venv/bin/python -m src.cli interview 39
 
 # 4. Generar únicamente la Carta de Presentación (.pdf)
-python -m src.cli cover-letter 3
+PYTHONPATH=. .venv/bin/python -m src.cli cover-letter 39
 
-# 5. Generar informe analítico de mercado y estudio salarial (.md)
-python -m src.cli market-study
+# 5. Generar/Actualizar informe analítico de mercado y estudio salarial (.md)
+PYTHONPATH=. .venv/bin/python -m src.cli market-study
+
+# 6. Recompilar manualmente un CV (.tex modificado a .pdf en 1 segundo)
+pdflatex -output-directory=data/generated_cvs data/generated_cvs/NOMBRE_DEL_ARCHIVO.tex
 ```
 
 ---
