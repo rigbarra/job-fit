@@ -28,11 +28,11 @@ def generate_cover_letter_for_job(
     out_directory = output_dir or settings.output_pdf_dir
     os.makedirs(out_directory, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d")
-    company_clean = sanitize_filename(job.company)
-    title_clean = sanitize_filename(job.title)
+    timestamp = datetime.now().strftime("%y%m%d")
+    company_clean = sanitize_filename(job.company, max_words=3, max_len=20)
+    title_clean = sanitize_filename(job.title, max_words=4, max_len=30)
 
-    filename_base = f"CoverLetter_Rigoberto_Barra_{company_clean}_{job.id or '1'}_{job_lang}_{timestamp}"
+    filename_base = f"CoverLetter_Rigoberto_Barra_{title_clean}_{company_clean}_{timestamp}"
     tex_path = os.path.join(out_directory, f"{filename_base}.tex")
     pdf_path = os.path.join(out_directory, f"{filename_base}.pdf")
 

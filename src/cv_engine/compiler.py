@@ -114,10 +114,16 @@ def detect_job_language(job: Job) -> str:
     return "es"
 
 
-def sanitize_filename(name: str) -> str:
-    """Sanitiza nombres de archivo eliminando caracteres especiales e incómodos."""
+def sanitize_filename(name: str, max_words: int = 4, max_len: int = 35) -> str:
+    """Sanitiza nombres de archivo eliminando caracteres especiales, limitando palabras y longitud."""
     clean = re.sub(r"[^\w\s-]", "", name or "", flags=re.UNICODE)
-    return re.sub(r"[-\s]+", "_", clean).strip("_")
+    words = clean.strip().split()
+    if len(words) > max_words:
+        clean = " ".join(words[:max_words])
+    slug = re.sub(r"[-\s]+", "_", clean).strip("_")
+    if len(slug) > max_len:
+        slug = slug[:max_len].rstrip("_")
+    return slug or "General"
 
 
 def generate_cv_for_job(
@@ -137,13 +143,11 @@ def generate_cv_for_job(
     # 1. Renderizar código fuente LaTeX
     tex_content = build_cv_tex(match_result=match_result, language=language)
 
-    # 2. Construir nombre del archivo de salida
-    sanitized_company = sanitize_filename(job.company)
-    date_str = datetime.now().strftime("%Y%m%d")
-    tier_label = f"T{match_result.tier}"
-    filename = (
-        f"CV_Rigoberto_Barra_{sanitized_company}_{job.id or '1'}_{tier_label}_{language}_{date_str}.pdf"
-    )
+    # 2. Construir nombre del archivo: CV_Rigoberto_Barra_{cargo}_{empresa}_{yymmdd}.pdf
+    role_slug = sanitize_filename(job.title, max_words=4, max_len=30)
+    company_slug = sanitize_filename(job.company, max_words=3, max_len=20)
+    date_str = datetime.now().strftime("%y%m%d")
+    filename = f"CV_Rigoberto_Barra_{role_slug}_{company_slug}_{date_str}.pdf"
 
     output_dir = os.path.join(settings.project_root, settings.output_pdf_dir.lstrip("./"))
     output_pdf_path = os.path.join(output_dir, filename)
