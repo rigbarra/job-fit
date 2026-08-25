@@ -190,14 +190,17 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
                 f"Descarte algorítmico: El título '{job.title}' no contiene palabras clave de datos requeridas.",
             )
 
-    # 3. Validar palabras clave obligatorias en la descripción (todas)
-    mandatory_keywords = filter_config.get("description_keywords_all", ["sql", "python"])
-    for kw in mandatory_keywords:
-        if kw.lower() not in description:
-            return (
-                False,
-                f"Descarte algorítmico: La descripción no contiene la palabra clave obligatoria '{kw}'.",
-            )
+    # 3. Validar palabras clave en la descripción (al menos una — OR logic)
+    # Se usa OR en vez de AND para no descartar avisos con descripciones cortas o truncadas de Indeed.
+    desc_keywords = filter_config.get(
+        "description_keywords_any",
+        filter_config.get("description_keywords_all", ["sql", "python", "data", "datos"]),
+    )
+    if not any(kw.lower() in description for kw in desc_keywords):
+        return (
+            False,
+            "Descarte algorítmico: La descripción no contiene ninguna palabra clave de datos.",
+        )
 
     # 4. Descarte de experiencia junior/recién egresado (0 a 2 años de experiencia)
     junior_regexes = [

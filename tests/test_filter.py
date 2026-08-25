@@ -65,34 +65,33 @@ def test_should_evaluate_job_fails_title_blacklist():
     assert "término excluido" in reason
 
 
-def test_should_evaluate_job_fails_description_sql():
-    """Valida el descarte si la descripción no contiene SQL."""
+def test_should_evaluate_job_passes_description_with_pipeline():
+    """Con OR logic, una descripción que tenga 'pipeline' pasa aunque no tenga SQL ni Python."""
     job = Job(
         title="Data Engineer Specialist",
         company="CloudTech",
         location="Remote",
-        description="Manage pipelines and API integrations using Python and AWS Glue.",
-        url="https://example.com/job/fail-desc",
+        description="Manage pipelines and API integrations using AWS Glue.",
+        url="https://example.com/job/desc-pipeline",
         source="test",
     )
-    passed, reason = should_evaluate_job(job)
-    assert not passed
-    assert "La descripción no contiene la palabra clave obligatoria 'sql'" in reason
+    passed, _ = should_evaluate_job(job)
+    assert passed
 
 
-def test_should_evaluate_job_fails_description_python():
-    """Valida el descarte si la descripción no contiene Python."""
+def test_should_evaluate_job_fails_description_no_data_keywords():
+    """Una descripción sin NINGUNA palabra clave de datos debe ser descartada."""
     job = Job(
         title="Data Engineer Specialist",
         company="CloudTech",
         location="Remote",
-        description="Manage pipelines and API integrations using SQL and AWS Glue.",
-        url="https://example.com/job/fail-desc-py",
+        description="Manage projects and coordinate teams with agile methodologies.",
+        url="https://example.com/job/fail-desc-none",
         source="test",
     )
     passed, reason = should_evaluate_job(job)
     assert not passed
-    assert "La descripción no contiene la palabra clave obligatoria 'python'" in reason
+    assert "ninguna palabra clave" in reason
 
 
 def test_should_evaluate_job_fails_junior_experience():

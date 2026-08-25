@@ -54,20 +54,32 @@ rate_limiting:
 # Filtro Algorítmico Local (Ahorro de Tokens del LLM)
 algorithmic_filter:
   enabled: true
+  # El título DEBE contener al menos una de estas palabras.
+  # IMPORTANTE: Ser específico aquí evita capturar basura de Indeed (técnicos, electricistas, RRHH).
+  # 'ingeniero' fue eliminado intencionalmente — es demasiado amplio y captura roles no relacionados.
   title_keywords_any:
     - "data"
     - "analytics"
+    - "datos"
+    - "analista"
     - "bi"
     - "dbt"
     - "etl"
     - "pipeline"
     - "intelligence"
-    - "datos"
-    - "analista"
-    - "ingeniero"
-    - "ia"
-    - "ai"
     - "inteligencia artificial"
-  description_keywords_all:
+    - "machine learning"
+    - "mlops"
+    - "ia engineer"
+    - "ai engineer"
+  # La descripción debe contener AL MENOS UNA de estas palabras (OR, no AND).
+  # Antes era AND (sql Y python) lo que rechazaba avisos legítimos con descripciones cortas.
+  description_keywords_any:
     - "sql"
     - "python"
+    - "spark"
+    - "dbt"
+    - "airflow"
+    - "pipeline"
+    - "datos"
+    - "data"
