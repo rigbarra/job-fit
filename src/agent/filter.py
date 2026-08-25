@@ -161,8 +161,6 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
         "ml engineer",
         "arquitecto datos",
         "control de gestion",
-        "manager",
-        "lead",
         "junior",
         "jr",
     ]

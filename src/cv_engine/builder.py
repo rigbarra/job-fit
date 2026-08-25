@@ -173,6 +173,10 @@ def build_cv_tex(
 
     context = {
         "name": profile.get("name", "Rigoberto Barra"),
+        "phone": profile.get("phone", ""),
+        "email": profile.get("email", ""),
+        "linkedin": profile.get("linkedin", ""),
+        "location": profile.get("location", ""),
         "title": title,
         "summary": summary,
         "experiences": experiences,

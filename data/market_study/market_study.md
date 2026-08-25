@@ -1,6 +1,6 @@
 # Estudio Histórico de Mercado Laboral: Data & Analytics Chile (Acumulado Vivo)
 
-> **Periodo Histórico Acumulado:** Desde `25/08/2026` hasta `24/08/2026 20:52`  
+> **Periodo Histórico Acumulado:** Desde `25/08/2026` hasta `24/08/2026 21:06`  
 > **Total de Ofertas Registradas en BD:** **2 vacantes** recopiladas de forma acumulativa y continua.
 
 Este informe se actualiza **automáticamente en cada corrida** y consolida la inteligencia histórica de mercado sin descartar los hallazgos de semanas o meses anteriores.
