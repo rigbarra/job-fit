@@ -172,11 +172,11 @@ def build_cv_tex(
         template = env.get_template("cv_base.tex")
 
     context = {
-        "name": profile.get("name", "Rigoberto Barra"),
-        "phone": profile.get("phone", ""),
-        "email": profile.get("email", ""),
-        "linkedin": profile.get("linkedin", ""),
-        "location": profile.get("location", ""),
+        "name": escape_latex(profile.get("name", "Rigoberto Barra")),
+        "phone": escape_latex(profile.get("phone", "")),
+        "email": escape_latex(profile.get("email", "")),
+        "linkedin": escape_latex(profile.get("linkedin", "")),
+        "location": escape_latex(profile.get("location", "")),
         "title": title,
         "summary": summary,
         "experiences": experiences,
