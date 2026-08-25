@@ -27,13 +27,12 @@ def test_evaluate_job_tier_2(mocker):
 
     # 2. Configurar mock de curl_cffi.requests.post para OpenRouter
     mock_response = mocker.Mock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
+    mock_api_data = {
         "choices": [{"message": {"content": json.dumps(mock_json_response, ensure_ascii=False)}}]
     }
 
-    # Mockear requests.post y settings de LLM en evaluator
-    mocker.patch("src.agent.providers.requests.post", return_value=mock_response)
+    # Mockear _http_post_json y settings de LLM en evaluator
+    mocker.patch("src.agent.providers._http_post_json", return_value=mock_api_data)
     from config.settings import settings
     mocker.patch.object(settings, "llm_api_key", "sk-or-testkey")
     mocker.patch.object(settings, "llm_provider", "openrouter")
@@ -74,13 +73,11 @@ def test_evaluate_job_tier_3(mocker):
         "adapted_bullets": None,
     }
 
-    mock_response = mocker.Mock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
+    mock_api_data = {
         "choices": [{"message": {"content": json.dumps(mock_json_response, ensure_ascii=False)}}]
     }
 
-    mocker.patch("src.agent.providers.requests.post", return_value=mock_response)
+    mocker.patch("src.agent.providers._http_post_json", return_value=mock_api_data)
     from config.settings import settings
     mocker.patch.object(settings, "llm_api_key", "sk-or-testkey")
     mocker.patch.object(settings, "llm_provider", "openrouter")

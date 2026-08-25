@@ -1,6 +1,6 @@
 # Estudio Histórico de Mercado Laboral: Data & Analytics Chile (Acumulado Vivo)
 
-> **Periodo Histórico Acumulado:** Desde `25/08/2026` hasta `25/08/2026 10:45`  
+> **Periodo Histórico Acumulado:** Desde `25/08/2026` hasta `25/08/2026 11:05`  
 > **Total de Ofertas Registradas en BD:** **97 vacantes** recopiladas de forma acumulativa y continua.
 
 Este informe se actualiza **automáticamente en cada corrida** y consolida la inteligencia histórica de mercado sin descartar los hallazgos de semanas o meses anteriores.
@@ -13,10 +13,9 @@ Este informe se actualiza **automáticamente en cada corrida** y consolida la in
 - **Vacantes con Salario Confidencial / 'A convenir':** 79 ofertas (81.4%)
 
 ### Afinidad con tu Perfil (Clasificación ATS):
-- **Match Directo (Tier 1 >= 85%):** 0 vacantes (0.0%)
-- **Match con Adaptación (Tier 2 60-84%):** 3 vacantes (3.1%)
+- **Match Directo (Tier 1 >= 85%):** 3 vacantes (3.1%)
+- **Match con Adaptación (Tier 2 60-84%):** 7 vacantes (7.2%)
 - **Descarte Algorítmico / Bajo Fit (Tier 3 < 60%):** 87 vacantes (89.7%)
-- **Pendientes de Evaluación LLM:** 7 vacantes (7.2%)
 
 ### Aportes por Portal de Empleo:
 - **Indeed:** 41 vacantes (42.3%)
@@ -85,9 +84,10 @@ Frecuencia de mención de herramientas técnicas sobre el universo total analiza
 
 | Modalidad / Régimen Presencial | Vacantes Afines | Porcentaje |
 | :--- | :--- | :--- |
-| **Presencial 100%** | 1 | **33.3%** |
-| **Remoto 100%** | 1 | **33.3%** |
-| **No especificado / A convenir** | 1 | **33.3%** |
+| **No especificado / A convenir** | 7 | **70.0%** |
+| **Híbrido (2 días oficina / 3 remoto)** | 1 | **10.0%** |
+| **Presencial 100%** | 1 | **10.0%** |
+| **Remoto 100%** | 1 | **10.0%** |
 
 ---
 

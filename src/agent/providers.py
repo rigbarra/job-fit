@@ -1,13 +1,44 @@
+import json
 import logging
+import urllib.error
+import urllib.request
 from abc import ABC, abstractmethod
 from typing import Any
-
-from curl_cffi import requests
 
 from config.settings import settings
 from src.agent.quota import RateLimitError
 
 logger = logging.getLogger(__name__)
+
+
+import time
+
+def _http_post_json(url: str, headers: dict[str, str], payload: dict[str, Any], timeout: int = 60, retries: int = 2) -> dict:
+    """Envía un POST HTTP con JSON usando urllib.request con reintentos automáticos."""
+    data_bytes = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data_bytes, headers=headers, method="POST")
+
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                body = resp.read().decode("utf-8")
+                return json.loads(body)
+        except urllib.error.HTTPError as he:
+            err_body = he.read().decode("utf-8", errors="ignore")
+            if he.code == 429:
+                if attempt < retries:
+                    time.sleep(2.0 * (attempt + 1))
+                    continue
+                raise RateLimitError(f"Rate limit alcanzado (HTTP 429): {err_body[:200]}")
+            if attempt < retries and he.code in (500, 502, 503, 504):
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            raise RuntimeError(f"Error HTTP {he.code}: {err_body[:300]}")
+        except (urllib.error.URLError, TimeoutError) as ue:
+            if attempt < retries:
+                time.sleep(2.0 * (attempt + 1))
+                continue
+            raise RuntimeError(f"Error de conexión con el proveedor LLM tras reintentos: {ue}")
 
 
 class BaseLLMProvider(ABC):
@@ -35,6 +66,7 @@ class OpenRouterProvider(BaseLLMProvider):
             "HTTP-Referer": "https://github.com/rigbarra/job-fit",
             "X-Title": "job-fit-evaluator",
             "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0",
         }
         payload = {
             "model": self.model,
@@ -45,15 +77,7 @@ class OpenRouterProvider(BaseLLMProvider):
             "temperature": 0.2,
         }
 
-        response = requests.post(self.url, headers=headers, json=payload, timeout=45)
-        if response.status_code == 429:
-            raise RateLimitError("Rate limit o cuota agotada en OpenRouter (HTTP 429)")
-        elif response.status_code != 200:
-            raise RuntimeError(
-                f"Error en OpenRouter API ({response.status_code}): {response.text[:300]}"
-            )
-
-        data = response.json()
+        data = _http_post_json(self.url, headers, payload, timeout=30)
         choices = data.get("choices", [])
         if not choices:
             raise RuntimeError("Respuesta vacía recibida de OpenRouter API")
@@ -78,7 +102,10 @@ class GeminiProvider(BaseLLMProvider):
         if not self.api_key:
             raise RuntimeError("API Key no provista para Gemini.")
 
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0",
+        }
         payload = {
             "contents": [
                 {
@@ -94,15 +121,7 @@ class GeminiProvider(BaseLLMProvider):
             },
         }
 
-        response = requests.post(self.url, headers=headers, json=payload, timeout=45)
-        if response.status_code == 429:
-            raise RateLimitError("Rate limit alcanzado en Google Gemini API (HTTP 429)")
-        elif response.status_code != 200:
-            raise RuntimeError(
-                f"Error en Gemini API ({response.status_code}): {response.text[:300]}"
-            )
-
-        data = response.json()
+        data = _http_post_json(self.url, headers, payload, timeout=30)
         candidates = data.get("candidates", [])
         if not candidates:
             raise RuntimeError("Respuesta vacía recibida de Google Gemini API")
@@ -128,6 +147,7 @@ class OpenAIProvider(BaseLLMProvider):
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0",
         }
         payload = {
             "model": self.model,
@@ -138,15 +158,7 @@ class OpenAIProvider(BaseLLMProvider):
             "temperature": 0.2,
         }
 
-        response = requests.post(self.url, headers=headers, json=payload, timeout=45)
-        if response.status_code == 429:
-            raise RateLimitError(f"Rate limit alcanzado en API OpenAI Compatible ({self.base_url})")
-        elif response.status_code != 200:
-            raise RuntimeError(
-                f"Error en OpenAI API ({response.status_code}): {response.text[:300]}"
-            )
-
-        data = response.json()
+        data = _http_post_json(self.url, headers, payload, timeout=30)
         choices = data.get("choices", [])
         if not choices:
             raise RuntimeError("Respuesta vacía recibida de OpenAI API")
