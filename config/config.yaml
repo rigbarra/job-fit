@@ -60,8 +60,9 @@ algorithmic_filter:
   title_keywords_any:
     - "data"
     - "analytics"
-    - "datos"
-    - "analista"
+    - "analista de datos"
+    - "analista bi"
+    - "analista data"
     - "bi"
     - "dbt"
     - "etl"

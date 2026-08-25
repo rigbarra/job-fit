@@ -235,7 +235,7 @@ def main():
                         group_key = "national" if is_job_local else "international"
                         tier_key = f"allow_tier_{match_result.tier}"
                         group_rules = notification_rules.get(group_key, {})
-                        should_notify = bool(group_rules.get(tier_key, True))
+                        should_notify = bool(group_rules.get(tier_key, False))
 
                         if should_notify:
                             snapshot = None
