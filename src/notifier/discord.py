@@ -201,12 +201,18 @@ def send_job_notification(
             post_data = json.dumps(payload).encode("utf-8")
             content_type = "application/json"
 
+        # Normalizar URL: discordapp.com es legacy y no acepta POST redirects
+        webhook_url = settings.discord_webhook_url.replace(
+            "https://discordapp.com/api/webhooks/",
+            "https://discord.com/api/webhooks/",
+        )
+
         req = urllib.request.Request(
-            settings.discord_webhook_url,
+            webhook_url,
             data=post_data,
             headers={
                 "Content-Type": content_type,
-                "User-Agent": "job-fit-notifier/1.0",
+                "User-Agent": "Mozilla/5.0",
             },
             method="POST",
         )
