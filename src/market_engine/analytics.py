@@ -397,25 +397,48 @@ def generate_market_study_report() -> tuple[str, str]:
             if parsed_curr:
                 curr = parsed_curr
 
+        # Buscar mención explícita de sueldo en la descripción si no está en job.salary
         if not min_v and not max_v and job.description:
-            min_v, max_v, parsed_curr = parse_salary_details(job.description)
-            if parsed_curr:
-                curr = parsed_curr
+            sal_match = re.search(
+                r"(?:sueldo|salario|remuneraci[oó]n|renta|salary|compensaci[oó]n)\s*(?:ofrecido|estimado|bruto|liquido|líquido)?\s*[:=]\s*([^\n\r\.\;]+)",
+                job.description,
+                re.IGNORECASE,
+            )
+            if sal_match:
+                min_v, max_v, parsed_curr = parse_salary_details(sal_match.group(1))
+                if parsed_curr:
+                    curr = parsed_curr
 
         if min_v or max_v:
-            avg_v = (min_v + max_v) / 2.0 if min_v and max_v else (min_v or max_v or 0)
+            min_raw = min_v or max_v or 0
+            max_raw = max_v or min_v or 0
+            avg_v = (min_raw + max_raw) / 2.0
+
             if avg_v > 0:
+                # Detectar salarios anuales en USD (ej. 40k-120k USD/año) y convertirlos a mensual
+                if (curr == "USD" or avg_v < 100000) and avg_v >= 20000:
+                    avg_v /= 12.0
+                    min_raw /= 12.0
+                    max_raw /= 12.0
+
+                # Detectar salarios anuales en CLP (ej. 30M-60M CLP/año) y convertirlos a mensual
+                elif curr == "CLP" and avg_v >= 18000000:
+                    avg_v /= 12.0
+                    min_raw /= 12.0
+                    max_raw /= 12.0
+
                 # Convertir a CLP si está en USD
                 if curr == "USD" or avg_v < 100000:
                     clp_avg = avg_v * USD_TO_CLP
-                    clp_min = (min_v or avg_v) * USD_TO_CLP
-                    clp_max = (max_v or avg_v) * USD_TO_CLP
+                    clp_min = min_raw * USD_TO_CLP
+                    clp_max = max_raw * USD_TO_CLP
                 else:
                     clp_avg = avg_v
-                    clp_min = min_v or avg_v
-                    clp_max = max_v or avg_v
+                    clp_min = min_raw
+                    clp_max = max_raw
 
-                if clp_avg >= 500000:  # Descartar montos inválidos o simbólicos
+                # Descartar montos espurios (fuera del rango mensual realista de $600k a $12M CLP)
+                if 600000 <= clp_avg <= 12000000:
                     jobs_with_salary.append({
                         "role": normalize_role(job.title),
                         "company": job.company,
