@@ -36,13 +36,13 @@ def handle_apply(args):
     cv_pdf = cv_snapshot.pdf_path
     logger.info(f"CV generado: {cv_pdf}")
 
-    logger.info("--- 3. Generando Carta de Presentación (PDF) ---")
-    cover_pdf, cover_tex = generate_cover_letter_for_job(job)
-    logger.info(f"Carta de Presentación generada: {cover_pdf}")
+    # (Cover Letter desactivado por preferencia del usuario; desmarcar si se requiere en el futuro)
+    # logger.info("--- 3. Generando Carta de Presentación (PDF) ---")
+    # cover_pdf, cover_tex = generate_cover_letter_for_job(job)
+    # logger.info(f"Carta de Presentación generada: {cover_pdf}")
 
     print("\n¡Aplicación preparada exitosamente!")
     print(f"CV PDF: {cv_pdf}")
-    print(f"Carta de Presentación PDF: {cover_pdf}")
 
 
 def handle_interview(args):

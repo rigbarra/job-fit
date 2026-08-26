@@ -96,125 +96,113 @@ def extract_detailed_modality(location: str, description: str, job_type: str | N
 def normalize_role(title: str) -> str:
     """
     Normaliza el título de la vacante en categorías estándar del mercado de datos.
-    El orden de evaluación es estricto para evitar clasificaciones erróneas.
+    Filtra ruido de búsqueda (puestos no relacionados a Datos/TI) y reconoce
+    variaciones en español e inglés (ej. /a, /o, arquitectura, ingeniería, etc.).
     """
+    if not title:
+        return "Excluded Non-Data Role"
+
     t = title.lower()
+    t_clean = re.sub(r"/(a|o)\b", "", t)
+    t_clean = re.sub(r"\((a|o)\)", "", t_clean)
+
+    # Exclusiones explícitas de ruido devuelto por scrapers generales
+    non_data_keywords = [
+        "restaurante", "prevención de riesgos", "prevencion de riesgos", "forestal",
+        "emisión", "emision", "seguridad vial", "propuestas de valor", "perforación",
+        "perforacion", "sap basis", "technical sales", "mineral processing", "desarrollo organizacional",
+        "topógrafo", "topografo", "ito ", "ito-", "obra civil", "medio ambiente", "ehs",
+        "automotriz", "asesor comercial", "geoconsultoría", "geoconsultoria", "riesgo de inversiones",
+        "riesgo financiero", "gestión y control de documentos", "diseñador", "designer", "ui/ux",
+        "carl's jr", "prevensón"
+    ]
+    for nd in non_data_keywords:
+        if nd in t_clean:
+            return "Excluded Non-Data Role"
 
     # 1. AI & LLM Engineer
     if any(
-        k in t
+        k in t_clean
         for k in [
-            "ia engineer",
-            "ai engineer",
-            "ingeniero ia",
-            "ingeniero de ia",
-            "inteligencia artificial",
-            "artificial intelligence",
-            "ai specialist",
-            "generative ai",
-            "genai",
-            "llm engineer",
-            "prompt engineer",
+            "ai engineer", "ia engineer", "llm", "genai", "prompt engineer",
+            "inteligencia artificial", "artificial intelligence", "generative ai",
+            "ai &", "& ai", "ai senior"
         ]
     ):
         return "AI & LLM Engineer"
 
     # 2. Machine Learning & MLOps
     if any(
-        k in t
+        k in t_clean
         for k in [
-            "machine learning",
-            "ml engineer",
-            "mlops",
-            "deep learning",
-            "ingeniero ml",
-            "ingeniero de machine learning",
+            "machine learning", "ml engineer", "mlops", "deep learning",
+            "aprendizaje automático", "aprendizaje automatico", "soluciones de aprendizaje"
         ]
     ):
         return "Machine Learning / MLOps Engineer"
 
-    # 3. Data Science
+    # 3. Analytics Engineer
     if any(
-        k in t
+        k in t_clean
         for k in [
-            "data scientist",
-            "cientifico de datos",
-            "científico de datos",
-            "cientista de datos",
-            "data science",
-        ]
-    ):
-        return "Data Scientist"
-
-    # 4. Analytics Engineering
-    if any(
-        k in t
-        for k in [
-            "analytics engineer",
-            "analytics engineering",
-            "ingeniero de analitica",
-            "ingeniero de analítica",
-            "ingeniero analitica",
-            "ingeniero analítica",
+            "analytics engineer", "analytics engineering",
+            "ingeniero de analitica", "ingeniero de analítica", "ingeniera de analítica"
         ]
     ):
         return "Analytics Engineer"
 
-    # 5. Data Architecture & Technical Leadership
+    # 4. Data Architect & Technical Leadership
     if any(
-        k in t
+        k in t_clean
         for k in [
-            "data architect",
-            "arquitecto de datos",
-            "arquitecto datos",
-            "data lead",
-            "analytics lead",
-            "data manager",
-            "head of data",
-            "director of data",
-            "data governance lead",
+            "data architect", "arquitecto de datos", "arquitecta de datos",
+            "arquitectura de datos", "head of data", "director of data",
+            "data lead", "analytics lead", "data manager", "data governance lead",
+            "plataforma de datos", "data analytics manager"
         ]
     ):
         return "Data Architect & Tech Lead"
 
-    # 6. Data Engineering
+    # 5. Data Engineer
     if any(
-        k in t
+        k in t_clean
         for k in [
-            "data engineer",
-            "ingeniero de datos",
-            "ingeniera de datos",
-            "ingeniero datos",
-            "big data engineer",
-            "data platform engineer",
-            "etl engineer",
-            "pipeline engineer",
+            "data engineer", "ingeniero de datos", "ingeniera de datos",
+            "ingeniería de datos", "big data", "etl engineer", "data platform",
+            "pipeline engineer", "data layer developer", "data operations engineer",
+            "ingeniero sql", "streaming/flink", "flink"
         ]
     ):
         return "Data Engineer"
 
-    # 7. Data Analysis & Business Intelligence
+    # 6. Data Scientist
     if any(
-        k in t
+        k in t_clean
         for k in [
-            "data analyst",
-            "analista de datos",
-            "analista datos",
-            "bi analyst",
-            "analista bi",
-            "business intelligence",
-            "power bi",
-            "tableau",
-            "looker",
-            "analytics specialist",
-            "analista analitica",
-            "analista analítica",
-            "analista de inteligencia",
+            "data scientist", "cientifico de datos", "científico de datos",
+            "cientista de datos", "data science"
+        ]
+    ):
+        return "Data Scientist"
+
+    # 7. Data Analyst & Business Intelligence
+    if any(
+        k in t_clean
+        for k in [
+            "data analyst", "analista de datos", "analista datos", "bi analyst",
+            "analista bi", "business intelligence", "power bi", "tableau", "looker",
+            "analytics specialist", "analista analitica", "analista analítica",
+            "data quality", "data steward", "adobe analytics", "business analyst",
+            "data enablement", "operations insights"
         ]
     ):
         return "Data Analyst & BI Specialist"
 
-    return "Other Data & Analytics"
+    # 8. Genérico de Datos & Analytics
+    if any(k in t_clean for k in ["data", "datos", "analytics", "analítica", "analitica"]):
+        return "Other Data & Analytics"
+
+    return "Excluded Non-Data Role"
 
 
 def scan_technologies(jobs: list[Job], matches: list[MatchResult]) -> list[tuple[str, int, float]]:
@@ -303,7 +291,7 @@ def compute_archetypes_breakdown(jobs: list[Job]) -> list[dict]:
             "role": "Data Analyst / BI",
             "focus": "Diseño de dashboards ejecutivos, visualización UX de KPIs, modelado tabular y análisis de negocio.",
             "stack": "Power BI (DAX, Power Query), Tableau, SQL, Quarto, Metabase, Figma",
-            "pattern": r"power\s*bi|dax|tableau|looker|dashboard|kpis|visualizaci|business intelligence",
+            "pattern": r"power\s*bi|dax|tableau|looker|business intelligence|metabase",
         },
         {
             "name": "Data Scientist & Predictive Analytics",
@@ -317,7 +305,7 @@ def compute_archetypes_breakdown(jobs: list[Job]) -> list[dict]:
             "role": "AI / GenAI",
             "focus": "Sistemas RAG, agentes conversacionales, extracción no estructurada y automatización con LLMs.",
             "stack": "LangChain, LlamaIndex, OpenAI/Claude/Gemini APIs, ChromaDB/Pinecone, Python",
-            "pattern": r"genai|llm|rag|langchain|llamaindex|inteligencia artificial|prompt engineer|vector",
+            "pattern": r"genai|llm|rag|langchain|llamaindex|inteligencia artificial|prompt engineer|vector database|chromadb|pinecone|qdrant",
         },
     ]
 
@@ -345,14 +333,14 @@ def compute_archetypes_breakdown(jobs: list[Job]) -> list[dict]:
     return results
 
 
-def generate_market_study_report() -> tuple[str, str]:
+def generate_market_study_report(output_path: str | None = None) -> tuple[str, str]:
     """
     Genera el Estudio de Mercado Histórico Acumulativo en vivo.
     Procesa todas las vacantes acumuladas en la base de datos histórica,
-    calculando tendencias, estadísticas salariales reales y matrices de especialización.
+    calculando matrices cruzadas por rol, penetración tecnológica, modalidad y salarios reales.
 
     Returns:
-        tuple[str, str]: (ruta del archivo markdown canónico generado, texto del reporte)
+        tuple[str, str]: (ruta del archivo markdown generado, texto del reporte)
     """
     with Session(repo.engine) as session:
         jobs = session.exec(select(Job)).all()
@@ -362,32 +350,33 @@ def generate_market_study_report() -> tuple[str, str]:
         logger.warning("No hay vacantes en la base de datos para generar el estudio de mercado.")
         return "", "No hay datos de vacantes suficientes en la base de datos."
 
-    total_jobs = len(jobs)
-    created_dates = [j.created_at for j in jobs if j.created_at]
-    first_date_str = min(created_dates).strftime("%d/%m/%Y") if created_dates else datetime.now().strftime("%d/%m/%Y")
-    now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+    total_jobs_db = len(jobs)
 
-    # 1. Conteo de fuentes y roles
-    sources_counter = Counter([j.source.capitalize() for j in jobs])
-    roles_counter = Counter([normalize_role(j.title) for j in jobs])
+    # Universo de análisis: todas las vacantes del dominio Data & Analytics (sin filtro de tier)
+    valid_data_jobs = [j for j in jobs if normalize_role(j.title) != "Excluded Non-Data Role"]
+    n_data = len(valid_data_jobs)
+    n_noise = total_jobs_db - n_data
+    n_base = n_data if n_data else 1  # denominador seguro
 
-    # 2. Desglose de Afinidad con el Perfil (Tiers)
+    # Fit personal acumulado histórico (Tier 1 + Tier 2, sobre toda la BD)
+    tier12_ids = {m.job_id for m in matches if m.tier in (1, 2)}
     tier1_count = sum(1 for m in matches if m.tier == 1)
     tier2_count = sum(1 for m in matches if m.tier == 2)
-    tier3_count = sum(1 for m in matches if m.tier == 3)
-    pending_count = total_jobs - len(matches)
+    n_fit = tier1_count + tier2_count
 
-    # 3. Desglose Detallado de Modalidad (Solo sobre Tier 1 y Tier 2 con Match)
-    tier12_job_ids = {m.job_id for m in matches if m.tier in [1, 2]}
-    tier12_jobs = [j for j in jobs if j.id in tier12_job_ids]
-    detailed_modalities = [
-        extract_detailed_modality(j.location, j.description, j.job_type) for j in tier12_jobs
-    ]
-    modalities_counter = Counter(detailed_modalities)
+    created_dates = [j.created_at for j in jobs if j.created_at]
+    first_date = min(created_dates).strftime("%d/%m/%Y") if created_dates else "N/D"
+    now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
 
-    # 4. Análisis Salarial Fáctico (Capturas reales)
+    # Roles
+    roles_counter = Counter([normalize_role(j.title) for j in valid_data_jobs])
+    top_roles = [r for r, _ in roles_counter.most_common()]
+
+    # ----------------------------------------------------------------
+    # SALARIOS REALES (universo completo de datos, histórico)
+    # ----------------------------------------------------------------
     jobs_with_salary: list[dict] = []
-    for job in jobs:
+    for job in valid_data_jobs:
         min_v = job.min_salary
         max_v = job.max_salary
         curr = (job.salary_currency or "CLP").upper()
@@ -397,7 +386,6 @@ def generate_market_study_report() -> tuple[str, str]:
             if parsed_curr:
                 curr = parsed_curr
 
-        # Buscar mención explícita de sueldo en la descripción si no está en job.salary
         if not min_v and not max_v and job.description:
             sal_match = re.search(
                 r"(?:sueldo|salario|remuneraci[oó]n|renta|salary|compensaci[oó]n)\s*(?:ofrecido|estimado|bruto|liquido|líquido)?\s*[:=]\s*([^\n\r\.\;]+)",
@@ -413,220 +401,229 @@ def generate_market_study_report() -> tuple[str, str]:
             min_raw = min_v or max_v or 0
             max_raw = max_v or min_v or 0
             avg_v = (min_raw + max_raw) / 2.0
-
             if avg_v > 0:
-                # Detectar salarios anuales en USD (ej. 40k-120k USD/año) y convertirlos a mensual
                 if (curr == "USD" or avg_v < 100000) and avg_v >= 20000:
-                    avg_v /= 12.0
-                    min_raw /= 12.0
-                    max_raw /= 12.0
-
-                # Detectar salarios anuales en CLP (ej. 30M-60M CLP/año) y convertirlos a mensual
+                    avg_v /= 12.0; min_raw /= 12.0; max_raw /= 12.0
                 elif curr == "CLP" and avg_v >= 18000000:
-                    avg_v /= 12.0
-                    min_raw /= 12.0
-                    max_raw /= 12.0
-
-                # Convertir a CLP si está en USD
+                    avg_v /= 12.0; min_raw /= 12.0; max_raw /= 12.0
                 if curr == "USD" or avg_v < 100000:
                     clp_avg = avg_v * USD_TO_CLP
                     clp_min = min_raw * USD_TO_CLP
                     clp_max = max_raw * USD_TO_CLP
                 else:
-                    clp_avg = avg_v
-                    clp_min = min_raw
-                    clp_max = max_raw
-
-                # Descartar montos espurios (fuera del rango mensual realista de $600k a $12M CLP)
+                    clp_avg = avg_v; clp_min = min_raw; clp_max = max_raw
                 if 600000 <= clp_avg <= 12000000:
                     jobs_with_salary.append({
                         "role": normalize_role(job.title),
-                        "company": job.company,
-                        "title": job.title,
-                        "source": job.source,
-                        "min_clp": clp_min,
-                        "avg_clp": clp_avg,
-                        "max_clp": clp_max,
+                        "min_clp": clp_min, "avg_clp": clp_avg, "max_clp": clp_max,
                     })
 
-    # Agrupar salarios por rol normalizado
-    salaries_by_role: dict[str, list[float]] = {}
+    salaries_by_role: dict[str, list[tuple[float, float, float]]] = {}
     for s in jobs_with_salary:
-        r = s["role"]
-        if r not in salaries_by_role:
-            salaries_by_role[r] = []
-        salaries_by_role[r].append(s["avg_clp"])
+        salaries_by_role.setdefault(s["role"], []).append((s["min_clp"], s["avg_clp"], s["max_clp"]))
 
-    # 5. Escaneo de Tecnologías y Matriz de Arquetipos
-    tech_rankings = scan_technologies(jobs, matches)
-    archetypes_data = compute_archetypes_breakdown(jobs)
+    n_with_salary = len(jobs_with_salary)
+    pct_salary = (n_with_salary / n_base) * 100
 
-    transparency_pct = (len(jobs_with_salary) / total_jobs) * 100 if total_jobs else 0
+    # ----------------------------------------------------------------
+    # TECH PATTERNS
+    # ----------------------------------------------------------------
+    tech_patterns = {
+        "SQL":                    r"\bsql\b",
+        "Python":                 r"\bpython\b",
+        "AWS":                    r"\baws\b|\bamazon web services\b|\bathena\b|\bredshift\b|\bglue\b",
+        "Git & CI/CD":            r"\bgit\b|\bgithub\b|\bgitlab\b|\bci/cd\b|\bci\/cd\b",
+        "Azure":                  r"\bazure\b|\bdata factory\b|\bfabric\b|\bsynapse\b",
+        "GCP / BigQuery":         r"\bgcp\b|\bgoogle cloud\b|\bbigquery\b",
+        "Databricks":             r"\bdatabricks\b",
+        "Apache Spark / PySpark": r"\bspark\b|\bpyspark\b",
+        "Power BI / DAX":         r"\bpower\s*bi\b|\bdax\b",
+        "Snowflake":              r"\bsnowflake\b",
+        "dbt":                    r"\bdbt\b|\bdata build tool\b",
+        "Apache Airflow":         r"\bairflow\b",
+        "Apache Kafka":           r"\bkafka\b|\bstreaming\b|\bflink\b",
+        "Tableau":                r"\btableau\b",
+        "GenAI / LLM / RAG":      r"\bgenai\b|\bllm\b|\brag\b|\blangchain\b|\bllamaindex\b",
+        "Terraform / IaC":        r"\bterraform\b|\biac\b",
+        "Docker / Kubernetes":    r"\bdocker\b|\bkubernetes\b|\bk8s\b",
+        "PostgreSQL / MySQL":     r"\bpostgresql\b|\bpostgres\b|\bmysql\b",
+        "Dagster / Prefect":      r"\bdagster\b|\bprefect\b",
+        "DuckDB / Polars":        r"\bduckdb\b|\bpolars\b",
+    }
 
-    # 6. Construcción del Reporte Markdown
-    report_lines = [
-        "# Estudio Histórico de Mercado Laboral: Data & Analytics Chile (Acumulado Vivo)",
+    # ----------------------------------------------------------------
+    # CONSTRUCCIÓN DEL REPORTE
+    # ----------------------------------------------------------------
+    sources = sorted(set(j.source.capitalize() for j in valid_data_jobs))
+    sources_str = ", ".join(sources) if sources else "N/D"
+
+    lines: list[str] = []
+
+    # ── ENCABEZADO ──────────────────────────────────────────────────
+    lines += [
+        "# Estudio Histórico de Mercado Laboral: Data & Analytics Chile",
         "",
-        f"> **Periodo Histórico Acumulado:** Desde `{first_date_str}` hasta `{now_str}`  ",
-        f"> **Total de Ofertas Registradas en BD:** **{total_jobs} vacantes** recopiladas de forma acumulativa y continua.",
-        "",
-        "Este informe se actualiza **automáticamente en cada corrida** y consolida la inteligencia histórica de mercado sin descartar los hallazgos de semanas o meses anteriores.",
+        f"> **Periodo cubierto:** `{first_date}` — `{now_str}`",
+        f"> **Universo de análisis:** {n_data} vacantes del dominio Data & Analytics  ",
+        f"> **Tu fit personal acumulado:** {n_fit} ofertas afines (Tier 1+2) sobre {n_data} del mercado = **{(n_fit/n_base)*100:.1f}%**",
         "",
         "---",
-        "",
-        "## 1. Resumen Ejecutivo y Fuentes de Información",
-        f"- **Total de vacantes recopiladas en la BD:** {total_jobs} ofertas",
-        f"- **Vacantes con Salario Explícito Capturado:** {len(jobs_with_salary)} ofertas ({transparency_pct:.1f}%)",
-        f"- **Vacantes con Salario Confidencial / 'A convenir':** {total_jobs - len(jobs_with_salary)} ofertas ({100 - transparency_pct:.1f}%)",
-        "",
-        "### Afinidad con tu Perfil (Clasificación ATS):",
-        f"- **Match Directo (Tier 1 >= 85%):** {tier1_count} vacantes ({(tier1_count / total_jobs) * 100:.1f}%)",
-        f"- **Match con Adaptación (Tier 2 60-84%):** {tier2_count} vacantes ({(tier2_count / total_jobs) * 100:.1f}%)",
-        f"- **Descarte Algorítmico / Bajo Fit (Tier 3 < 60%):** {tier3_count} vacantes ({(tier3_count / total_jobs) * 100:.1f}%)",
     ]
 
-    if pending_count > 0:
-        report_lines.append(f"- **Pendientes de Evaluación LLM:** {pending_count} vacantes ({(pending_count / total_jobs) * 100:.1f}%)")
-
-    report_lines.extend([
+    # ── SECCIÓN 1: DEMANDA POR ROL ──────────────────────────────────
+    lines += [
         "",
-        "### Aportes por Portal de Empleo:",
-    ])
-
-    for src_name, count in sources_counter.most_common():
-        pct = (count / total_jobs) * 100
-        report_lines.append(f"- **{src_name}:** {count} vacantes ({pct:.1f}%)")
-
-    report_lines.extend([
+        "## 1. Demanda de Mercado por Rol",
         "",
-        "### Demanda Acumulada por Rol Normalizado:",
-    ])
-
+        "Distribución de todas las vacantes de datos capturadas históricamente, ordenadas por volumen de demanda.",
+        "La columna *Fit personal* es referencia tuya exclusivamente y no forma parte del análisis de mercado.",
+        "",
+        "| Rol | N° Vacantes (Mercado) | % del Mercado | Fit Personal (T1+T2) |",
+        "| :--- | ---: | ---: | ---: |",
+    ]
     for role, count in roles_counter.most_common():
-        pct = (count / total_jobs) * 100
-        report_lines.append(f"- **{role}:** {count} vacantes ({pct:.1f}%)")
+        pct = (count / n_base) * 100
+        r_jobs = [j for j in valid_data_jobs if normalize_role(j.title) == role]
+        t12 = sum(1 for j in r_jobs if j.id in tier12_ids)
+        lines.append(f"| **{role}** | {count} | {pct:.1f}% | {t12} |")
+    lines.append(f"| **TOTAL** | **{n_data}** | **100%** | **{n_fit}** |")
 
-    report_lines.extend([
+    # ── SECCIÓN 2: MATRIZ TECNOLÓGICA (herramientas × roles) ────────
+    matrix_roles = [r for r in top_roles if roles_counter[r] >= 2][:5]
+    role_jobs = {r: [j for j in valid_data_jobs if normalize_role(j.title) == r] for r in matrix_roles}
+    role_ns   = {r: len(role_jobs[r]) or 1 for r in matrix_roles}
+
+    col_headers = ["Herramienta / Stack"] + [f"{r} (n={roles_counter[r]})" for r in matrix_roles] + [f"**Global (n={n_data})**"]
+    sep = ["| :--- |"] + [" ---: |"] * (len(matrix_roles) + 1)
+
+    lines += [
         "",
         "---",
         "",
-        "## 2. Matriz de Arquetipos y Matices Técnicos por Cargo",
+        "## 2. Penetración Tecnológica por Rol",
         "",
-        "El mercado no busca un único tipo de perfil técnico; existen variantes claras con combinaciones de herramientas bien diferenciadas:",
+        f"Porcentaje de ofertas de cada perfil que mencionan cada herramienta. "
+        f"Universo: {n_data} vacantes Data & Analytics acumuladas históricamente.",
         "",
-        "| Arquetipo de Cargo | Enfoque Principal en Mercado | Stack Tecnológico Característico | Demanda Observada |",
-        "| :--- | :--- | :--- | :--- |",
-    ])
+        "| " + " | ".join(col_headers) + " |",
+        "".join(sep),
+    ]
 
-    if archetypes_data:
-        for arch in archetypes_data:
-            report_lines.append(
-                f"| **{arch['name']}** | {arch['focus']} | `{arch['stack']}` | **{arch['count']} vacantes** ({arch['pct']:.1f}%) |"
-            )
-    else:
-        report_lines.append("| *Procesando datos de arquetipos...* | | | |")
+    for tech, pat in tech_patterns.items():
+        row = [f"**{tech}**"]
+        for r in matrix_roles:
+            cnt = sum(1 for j in role_jobs[r] if re.search(pat, f"{j.title} {j.description}".lower()))
+            row.append(f"{cnt} ({(cnt/role_ns[r])*100:.0f}%)")
+        glob = sum(1 for j in valid_data_jobs if re.search(pat, f"{j.title} {j.description}".lower()))
+        row.append(f"**{glob} ({(glob/n_base)*100:.1f}%)**")
+        lines.append("| " + " | ".join(row) + " |")
 
-    report_lines.extend([
+    # ── SECCIÓN 3: MATRIZ MODALIDAD × ROL ──────────────────────────
+    lines += [
         "",
         "---",
         "",
-        "## 3. Ranking de Penetración Tecnológica en Ofertas",
+        "## 3. Modalidad de Trabajo por Rol",
         "",
-        f"Frecuencia de mención de herramientas técnicas sobre el universo total analizado (**{total_jobs} ofertas**):",
+        "Distribución de régimen presencial para cada perfil. "
+        "Valores sobre el universo histórico acumulado completo de datos.",
         "",
-        "| Herramienta / Tecnología | Menciones Reales | Penetración en el Mercado |",
-        "| :--- | :--- | :--- |",
-    ])
+        "| Rol | Remoto 100% | Híbrido | Presencial 100% | No especificado | Total | % Remoto |",
+        "| :--- | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
 
-    if tech_rankings:
-        for tech, count, pct in tech_rankings:
-            report_lines.append(f"| **{tech}** | {count} ofertas | **{pct:.1f}%** |")
-    else:
-        report_lines.append("| *Analizando tecnologías en corpus...* | | |")
+    tot_rem = tot_hib = tot_pre = tot_ne = 0
+    for role in top_roles:
+        rjs = [j for j in valid_data_jobs if normalize_role(j.title) == role]
+        rt = len(rjs) or 1
+        c_rem = c_hib = c_pre = c_ne = 0
+        for j in rjs:
+            m = extract_detailed_modality(j.location, j.description, j.job_type)
+            if "Remoto 100%" in m:   c_rem += 1
+            elif "Híbrido" in m:     c_hib += 1
+            elif "Presencial" in m:  c_pre += 1
+            else:                    c_ne  += 1
+        tot_rem += c_rem; tot_hib += c_hib; tot_pre += c_pre; tot_ne += c_ne
+        lines.append(
+            f"| **{role}** | {c_rem} ({c_rem/rt*100:.0f}%) | {c_hib} ({c_hib/rt*100:.0f}%) "
+            f"| {c_pre} ({c_pre/rt*100:.0f}%) | {c_ne} ({c_ne/rt*100:.0f}%) "
+            f"| {rt} | **{c_rem/rt*100:.0f}%** |"
+        )
+    lines.append(
+        f"| **TOTAL MERCADO** | **{tot_rem} ({tot_rem/n_base*100:.0f}%)** "
+        f"| **{tot_hib} ({tot_hib/n_base*100:.0f}%)** "
+        f"| **{tot_pre} ({tot_pre/n_base*100:.0f}%)** "
+        f"| **{tot_ne} ({tot_ne/n_base*100:.0f}%)** "
+        f"| **{n_data}** | **{tot_rem/n_base*100:.0f}%** |"
+    )
 
-    report_lines.extend([
+    # ── SECCIÓN 4: SALARIOS REALES ──────────────────────────────────
+    lines += [
         "",
         "---",
         "",
-        "## 4. Modalidad de Trabajo y Presencialidad en Oficina",
+        "## 4. Bandas Salariales Reales Capturadas",
         "",
-        "> **Nota de Relevancia:** Estos porcentajes se calculan **únicamente sobre vacantes Tier 1 y Tier 2** (aquellas afines a tu perfil), reflejando la realidad de presencialidad de los puestos a los que postulas.",
-        "",
-        "| Modalidad / Régimen Presencial | Vacantes Afines | Porcentaje |",
-        "| :--- | :--- | :--- |",
-    ])
-
-    total_tier12 = len(tier12_jobs)
-    if modalities_counter and total_tier12 > 0:
-        for mod, count in modalities_counter.most_common():
-            pct = (count / total_tier12) * 100
-            report_lines.append(f"| **{mod}** | {count} | **{pct:.1f}%** |")
-    else:
-        report_lines.append("| *Sin vacantes Tier 1/2 con datos de modalidad disponibles aún.* | - | - |")
-
-    report_lines.extend([
-        "",
-        "---",
-        "",
-        "## 5. Registro Histórico de Salarios Reales Publicados",
-        "",
-    ])
+        f"Datos salariales 100% factuales extraídos directamente desde los avisos de empleo. "
+        f"Se unifica a CLP (1 USD = ${USD_TO_CLP:,}). "
+        f"Cobertura: {n_with_salary} ofertas con salario explícito de {n_data} ({pct_salary:.1f}%). "
+        f"El {100-pct_salary:.1f}% restante no publicó banda salarial.",
+    ]
 
     if salaries_by_role:
-        report_lines.extend([
-            "Todos los salarios han sido unificados a **Pesos Chilenos (CLP)** (Tasa ref. 1 USD = $950 CLP).",
+        lines += [
             "",
-            "| Cargo Analizado | Muestras | Mínimo (CLP) | Mediana (CLP) | Máximo (CLP) |",
-            "| :--- | :--- | :--- | :--- | :--- |",
-        ])
-
-        role_stats = []
-        for r, vals in salaries_by_role.items():
-            vals_sorted = sorted(vals)
-            med = vals_sorted[len(vals_sorted) // 2]
-            role_stats.append((r, len(vals), min(vals), med, max(vals)))
-
-        role_stats.sort(key=lambda x: x[3], reverse=True)
-
-        for r, count, min_v, med_v, max_v in role_stats:
-            report_lines.append(
-                f"| **{r}** | {count} | ${min_v:,.0f} | **${med_v:,.0f}** | ${max_v:,.0f} |"
-            )
+            "| Perfil | n | Mínimo CLP | Mediana CLP | Máximo CLP |",
+            "| :--- | ---: | ---: | ---: | ---: |",
+        ]
+        role_sal_stats = []
+        for role, samples in salaries_by_role.items():
+            mins = [s[0] for s in samples]
+            avgs = sorted([s[1] for s in samples])
+            maxs = [s[2] for s in samples]
+            med = avgs[len(avgs) // 2]
+            role_sal_stats.append((role, len(samples), min(mins), med, max(maxs)))
+        role_sal_stats.sort(key=lambda x: x[3], reverse=True)
+        for role, n, mn, med, mx in role_sal_stats:
+            lines.append(f"| **{role}** | {n} | ${mn:,.0f} | **${med:,.0f}** | ${mx:,.0f} |")
     else:
-        report_lines.extend([
-            "*Ninguna de las publicaciones en este lote incluyó banda salarial explícita o detectable en la descripción.*",
-        ])
+        lines.append("\n*Sin datos salariales explícitos capturados en el período analizado.*")
 
-    report_lines.extend([
+    # ── NOTA METODOLÓGICA AL PIE ────────────────────────────────────
+    lines += [
         "",
         "---",
         "",
-        "## 6. Guía Estratégica de Negociación y Bandas Salariales Chile",
+        "## Nota Metodológica",
         "",
-        "Dado que la gran mayoría de ofertas locales en Chile no publica salario, las bandas de mercado comprobadas para postulaciones locales bajo contrato chileno son:",
-        "",
-        "| Perfil / Seniority en Chile | Expectativa Realista a Pedir (Líquido) | Rango de Mercado Real |",
-        "| :--- | :--- | :--- |",
-        "| **Senior Data Engineer** (AWS/GCP/PySpark) | **$3.200.000 a $3.800.000 CLP** | $2.800.000 - $4.000.000 CLP |",
-        "| **Analytics Engineer Senior** (dbt/Snowflake/SQL) | **$2.800.000 a $3.500.000 CLP** | $2.500.000 - $3.600.000 CLP |",
-        "| **Data Analyst Senior / BI Specialist** (Power BI/SQL) | **$2.400.000 a $3.000.000 CLP** | $2.000.000 - $3.000.000 CLP |",
-        "| **Data Scientist Senior** (Python/ML/Stats) | **$3.000.000 a $3.700.000 CLP** | $2.600.000 - $3.900.000 CLP |",
-        "| **AI / LLM Engineer Senior** (GenAI/RAG/APIs) | **$3.500.000 a $4.200.000 CLP** | $3.000.000 - $4.500.000 CLP |",
-        "| **Remoto Internacional B2B / Contractor (USD)** | **$3.800 a $5.200 USD** | $3.000 - $6.500 USD |",
-        "",
-        "> **💡 IMPORTANTE:** En empresas locales chilenas (bancos, retail, consultoras locales), solicitar más de **$3.800.000 - $4.000.000 CLP líquidos** suele requerir roles de arquitectura o liderazgo formal. Para aspirar a **$4.500.000+ CLP equivalentes ($4.500+ USD)**, el camino óptimo es la modalidad **Contractor internacional remoto**.",
-    ])
+        "| Dimensión | Detalle |",
+        "| :--- | :--- |",
+        f"| **Fuentes de datos** | {sources_str} (scraping automatizado de portales de empleo chilenos) |",
+        f"| **Periodo cubierto** | {first_date} al {now_str} |",
+        f"| **Universo total en BD** | {total_jobs_db} registros brutos ({n_data} del dominio Data & Analytics; {n_noise} descartados como ruido no-TI) |",
+        "| **Criterio de inclusión** | Vacantes cuyo título contenga términos de datos/analítica (Data Engineer, Analytics Engineer, BI, etc.) |",
+        "| **Normalización de roles** | Clasificación automática por regex sobre el título de la oferta en 8 categorías estándar |",
+        "| **Modalidad** | Clasificación por detección de patrones de texto en título, descripción y campo de ubicación |",
+        "| **Salarios** | Extraídos de campos estructurados del portal o por regex en la descripción. Anuales convertidos a mensuales. Rango válido: $600.000–$12.000.000 CLP/mes |",
+        f"| **Tipo de cambio** | 1 USD = ${USD_TO_CLP:,} CLP (referencia fija de configuración) |",
+        "| **Fit personal (Tier 1+2)** | Evaluación LLM del perfil de Rigoberto Barra contra cada oferta. Es un dato personal, no de mercado. |",
+        "| **Limitaciones** | Muestra acotada a portales configurados. Salarios explícitos en minoría (~25%). Modalidad puede no estar especificada en aviso. |",
+    ]
 
-    report_text = "\n".join(report_lines)
+    report_text = "\n".join(lines)
 
-    # Guardar reporte canónico (archivo vivo siempre actualizado)
-    out_dir = os.path.join(settings.project_root, "data", "market_study")
-    os.makedirs(out_dir, exist_ok=True)
-    canonical_file_path = os.path.join(out_dir, "market_study.md")
+    if output_path:
+        canonical_file_path = output_path
+    else:
+        out_dir = os.path.join(settings.project_root, "data", "market_study")
+        os.makedirs(out_dir, exist_ok=True)
+        canonical_file_path = os.path.join(out_dir, "market_study.md")
 
+    os.makedirs(os.path.dirname(os.path.abspath(canonical_file_path)), exist_ok=True)
     with open(canonical_file_path, "w", encoding="utf-8") as f:
         f.write(report_text)
 
-    logger.info(f"Estudio de mercado actualizado en: {canonical_file_path}")
+    logger.info(f"Estudio de Mercado Histórico actualizado en: {canonical_file_path}")
     return canonical_file_path, report_text
+
 

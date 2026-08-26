@@ -268,8 +268,55 @@ def main():
                     except Exception as ee:
                         logger.error(f"Error evaluando vacante {job.id} ({job.title}): {ee}")
 
-                    if quota_exhausted:
-                        break
+    # 5. Pasada final para vacantes pendientes rezagadas (manuales o por fallas temporales de red previas)
+    catchall_pending = get_pending_jobs()
+    if catchall_pending and not quota_exhausted and api_key_configured:
+        logger.info(f"=== PASADA FINAL: EVALUANDO {len(catchall_pending)} VACANTES PENDIENTES REZAGADAS/MANUALES ===")
+        for job in catchall_pending:
+            try:
+                passed, reason = should_evaluate_job(job)
+                if not passed:
+                    auto_discard = MatchResult(
+                        job_id=job.id, score=10.0, tier=3, rationale=reason, missing_keywords="[]"
+                    )
+                    save_match_result(auto_discard)
+                    logger.info(f"Vacante '{job.title}' @ '{job.company}': DESCARTADA localmente (Algoritmo).")
+                else:
+                    match_result = evaluate_job(job)
+                    save_match_result(match_result)
+                    evaluated_count += 1
+                    logger.info(
+                        f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM (pasada final). Score: {match_result.score:.1f}% -> Tier {match_result.tier}"
+                    )
+
+                    is_job_local = is_local_location(job.location)
+                    group_key = "national" if is_job_local else "international"
+                    tier_key = f"allow_tier_{match_result.tier}"
+                    group_rules = notification_rules.get(group_key, {})
+                    should_notify = bool(group_rules.get(tier_key, False))
+
+                    if should_notify:
+                        snapshot = None
+                        try:
+                            snapshot = generate_cv_for_job(job, match_result)
+                            logger.info(f"CV PDF generado exitosamente: {snapshot.pdf_path}")
+                        except Exception as ce:
+                            logger.error(f"Error generando CV en PDF para vacante {job.id}: {ce}")
+
+                        try:
+                            send_job_notification(job, match_result, snapshot)
+                        except Exception as de:
+                            logger.error(f"Error despachando notificación de Discord para vacante {job.id}: {de}")
+            except DailyQuotaExhaustedError as dqe:
+                logger.warning(f"Evaluación LLM pausada: {dqe}.")
+                quota_exhausted = True
+                break
+            except RateLimitError as rle:
+                logger.warning(f"OpenRouter: Saturado temporalmente (429). {rle}")
+                quota_exhausted = True
+                break
+            except Exception as ee:
+                logger.error(f"Error evaluando vacante {job.id} ({job.title}): {ee}")
 
     # 6. Imprimir métricas finales de ejecución
     remaining_pending = get_pending_jobs()

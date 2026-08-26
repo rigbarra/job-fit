@@ -5,7 +5,7 @@ from src.market_engine.analytics import generate_market_study_report
 from sqlmodel import Session
 
 
-def test_generate_market_study_report():
+def test_generate_market_study_report(tmp_path):
     """Valida la generación del estudio de mercado a partir de las ofertas en BD."""
     init_db()
     # 1. Insertar vacantes de prueba
@@ -55,9 +55,10 @@ def test_generate_market_study_report():
         session.add(mr1)
         session.commit()
 
-    file_path, text = generate_market_study_report()
+    test_out = str(tmp_path / "test_market_study.md")
+    file_path, text = generate_market_study_report(output_path=test_out)
 
-    assert file_path != ""
+    assert file_path == test_out
     assert "Estudio Histórico de Mercado Laboral" in text
     assert "Data Engineer" in text
     assert "Analytics Engineer" in text
