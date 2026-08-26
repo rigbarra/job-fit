@@ -13,13 +13,43 @@ from datetime import datetime
 from sqlmodel import Session, select
 
 import src.database.repository as repo
-from config.settings import settings
+from config.settings import load_config, settings
 from src.database.models import Job, MatchResult
 from src.agent.filter import parse_salary_details
 
 logger = logging.getLogger(__name__)
 
 USD_TO_CLP = 950  # Tasa de cambio de referencia para unificar salarios a moneda nacional
+
+
+def get_tech_patterns() -> dict[str, str]:
+    """Obtiene los patrones de tecnología configurados en config.yaml (o valores por defecto)."""
+    config = load_config()
+    tracked = config.get("tracked_technologies")
+    if tracked and isinstance(tracked, dict):
+        return tracked
+    return {
+        "SQL": r"\bsql\b",
+        "Python": r"\bpython\b",
+        "AWS": r"\baws\b|\bamazon web services\b|\bathena\b|\bredshift\b|\bglue\b",
+        "Git & CI/CD": r"\bgit\b|\bgithub\b|\bgitlab\b|\bci/cd\b|\bci\/cd\b",
+        "Azure": r"\bazure\b|\bdata factory\b|\bfabric\b|\bsynapse\b",
+        "GCP / BigQuery": r"\bgcp\b|\bgoogle cloud\b|\bbigquery\b",
+        "Databricks": r"\bdatabricks\b",
+        "Apache Spark / PySpark": r"\bspark\b|\bpyspark\b",
+        "Power BI / DAX": r"\bpower\s*bi\b|\bdax\b",
+        "Snowflake": r"\bsnowflake\b",
+        "dbt": r"\bdbt\b|\bdata build tool\b",
+        "Apache Airflow": r"\bairflow\b",
+        "Apache Kafka": r"\bkafka\b|\bstreaming\b|\bflink\b",
+        "Tableau": r"\btableau\b",
+        "GenAI / LLM / RAG": r"\bgenai\b|\bllm\b|\brag\b|\blangchain\b|\bllamaindex\b",
+        "Terraform / IaC": r"\bterraform\b|\biac\b",
+        "Docker / Kubernetes": r"\bdocker\b|\bkubernetes\b|\bk8s\b",
+        "PostgreSQL / MySQL": r"\bpostgresql\b|\bpostgres\b|\bmysql\b",
+        "Dagster / Prefect": r"\bdagster\b|\bprefect\b",
+        "DuckDB / Polars": r"\bduckdb\b|\bpolars\b",
+    }
 
 
 def extract_detailed_modality(location: str, description: str, job_type: str | None = None) -> str:
@@ -95,9 +125,8 @@ def extract_detailed_modality(location: str, description: str, job_type: str | N
 
 def normalize_role(title: str) -> str:
     """
-    Normaliza el título de la vacante en categorías estándar del mercado de datos.
-    Filtra ruido de búsqueda (puestos no relacionados a Datos/TI) y reconoce
-    variaciones en español e inglés (ej. /a, /o, arquitectura, ingeniería, etc.).
+    Normaliza el título de la vacante en categorías estándar del mercado.
+    Filtra ruido de búsqueda y reconoce variaciones configuradas dinámicamente en config.yaml.
     """
     if not title:
         return "Excluded Non-Data Role"
@@ -106,101 +135,22 @@ def normalize_role(title: str) -> str:
     t_clean = re.sub(r"/(a|o)\b", "", t)
     t_clean = re.sub(r"\((a|o)\)", "", t_clean)
 
-    # Exclusiones explícitas de ruido devuelto por scrapers generales
-    non_data_keywords = [
-        "restaurante", "prevención de riesgos", "prevencion de riesgos", "forestal",
-        "emisión", "emision", "seguridad vial", "propuestas de valor", "perforación",
-        "perforacion", "sap basis", "technical sales", "mineral processing", "desarrollo organizacional",
-        "topógrafo", "topografo", "ito ", "ito-", "obra civil", "medio ambiente", "ehs",
-        "automotriz", "asesor comercial", "geoconsultoría", "geoconsultoria", "riesgo de inversiones",
-        "riesgo financiero", "gestión y control de documentos", "diseñador", "designer", "ui/ux",
-        "carl's jr", "prevensón"
-    ]
+    config = load_config()
+    role_cfg = config.get("role_normalization", {})
+    non_data_keywords = role_cfg.get("non_data_keywords", [])
+    categories = role_cfg.get("categories", [])
+
+    # Exclusiones explícitas de ruido
     for nd in non_data_keywords:
         if nd in t_clean:
             return "Excluded Non-Data Role"
 
-    # 1. AI & LLM Engineer
-    if any(
-        k in t_clean
-        for k in [
-            "ai engineer", "ia engineer", "llm", "genai", "prompt engineer",
-            "inteligencia artificial", "artificial intelligence", "generative ai",
-            "ai &", "& ai", "ai senior"
-        ]
-    ):
-        return "AI & LLM Engineer"
-
-    # 2. Machine Learning & MLOps
-    if any(
-        k in t_clean
-        for k in [
-            "machine learning", "ml engineer", "mlops", "deep learning",
-            "aprendizaje automático", "aprendizaje automatico", "soluciones de aprendizaje"
-        ]
-    ):
-        return "Machine Learning / MLOps Engineer"
-
-    # 3. Analytics Engineer
-    if any(
-        k in t_clean
-        for k in [
-            "analytics engineer", "analytics engineering",
-            "ingeniero de analitica", "ingeniero de analítica", "ingeniera de analítica"
-        ]
-    ):
-        return "Analytics Engineer"
-
-    # 4. Data Architect & Technical Leadership
-    if any(
-        k in t_clean
-        for k in [
-            "data architect", "arquitecto de datos", "arquitecta de datos",
-            "arquitectura de datos", "head of data", "director of data",
-            "data lead", "analytics lead", "data manager", "data governance lead",
-            "plataforma de datos", "data analytics manager"
-        ]
-    ):
-        return "Data Architect & Tech Lead"
-
-    # 5. Data Engineer
-    if any(
-        k in t_clean
-        for k in [
-            "data engineer", "ingeniero de datos", "ingeniera de datos",
-            "ingeniería de datos", "big data", "etl engineer", "data platform",
-            "pipeline engineer", "data layer developer", "data operations engineer",
-            "ingeniero sql", "streaming/flink", "flink"
-        ]
-    ):
-        return "Data Engineer"
-
-    # 6. Data Scientist
-    if any(
-        k in t_clean
-        for k in [
-            "data scientist", "cientifico de datos", "científico de datos",
-            "cientista de datos", "data science"
-        ]
-    ):
-        return "Data Scientist"
-
-    # 7. Data Analyst & Business Intelligence
-    if any(
-        k in t_clean
-        for k in [
-            "data analyst", "analista de datos", "analista datos", "bi analyst",
-            "analista bi", "business intelligence", "power bi", "tableau", "looker",
-            "analytics specialist", "analista analitica", "analista analítica",
-            "data quality", "data steward", "adobe analytics", "business analyst",
-            "data enablement", "operations insights"
-        ]
-    ):
-        return "Data Analyst & BI Specialist"
-
-    # 8. Genérico de Datos & Analytics
-    if any(k in t_clean for k in ["data", "datos", "analytics", "analítica", "analitica"]):
-        return "Other Data & Analytics"
+    # Coincidencia dinámica por categoría
+    for cat in categories:
+        cat_name = cat.get("name")
+        keywords = cat.get("keywords", [])
+        if any(k in t_clean for k in keywords):
+            return cat_name
 
     return "Excluded Non-Data Role"
 
@@ -428,28 +378,7 @@ def generate_market_study_report(output_path: str | None = None) -> tuple[str, s
     # ----------------------------------------------------------------
     # TECH PATTERNS
     # ----------------------------------------------------------------
-    tech_patterns = {
-        "SQL":                    r"\bsql\b",
-        "Python":                 r"\bpython\b",
-        "AWS":                    r"\baws\b|\bamazon web services\b|\bathena\b|\bredshift\b|\bglue\b",
-        "Git & CI/CD":            r"\bgit\b|\bgithub\b|\bgitlab\b|\bci/cd\b|\bci\/cd\b",
-        "Azure":                  r"\bazure\b|\bdata factory\b|\bfabric\b|\bsynapse\b",
-        "GCP / BigQuery":         r"\bgcp\b|\bgoogle cloud\b|\bbigquery\b",
-        "Databricks":             r"\bdatabricks\b",
-        "Apache Spark / PySpark": r"\bspark\b|\bpyspark\b",
-        "Power BI / DAX":         r"\bpower\s*bi\b|\bdax\b",
-        "Snowflake":              r"\bsnowflake\b",
-        "dbt":                    r"\bdbt\b|\bdata build tool\b",
-        "Apache Airflow":         r"\bairflow\b",
-        "Apache Kafka":           r"\bkafka\b|\bstreaming\b|\bflink\b",
-        "Tableau":                r"\btableau\b",
-        "GenAI / LLM / RAG":      r"\bgenai\b|\bllm\b|\brag\b|\blangchain\b|\bllamaindex\b",
-        "Terraform / IaC":        r"\bterraform\b|\biac\b",
-        "Docker / Kubernetes":    r"\bdocker\b|\bkubernetes\b|\bk8s\b",
-        "PostgreSQL / MySQL":     r"\bpostgresql\b|\bpostgres\b|\bmysql\b",
-        "Dagster / Prefect":      r"\bdagster\b|\bprefect\b",
-        "DuckDB / Polars":        r"\bduckdb\b|\bpolars\b",
-    }
+    tech_patterns = get_tech_patterns()
 
     # ----------------------------------------------------------------
     # CONSTRUCCIÓN DEL REPORTE

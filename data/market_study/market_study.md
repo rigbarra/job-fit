@@ -1,6 +1,6 @@
 # Estudio Histórico de Mercado Laboral: Data & Analytics Chile
 
-> **Periodo cubierto:** `25/08/2026` — `26/08/2026 09:42`
+> **Periodo cubierto:** `25/08/2026` — `26/08/2026 10:18`
 > **Universo de análisis:** 111 vacantes del dominio Data & Analytics  
 > **Tu fit personal acumulado:** 26 ofertas afines (Tier 1+2) sobre 111 del mercado = **23.4%**
 
@@ -91,7 +91,7 @@ Datos salariales 100% factuales extraídos directamente desde los avisos de empl
 | Dimensión | Detalle |
 | :--- | :--- |
 | **Fuentes de datos** | Getonboard, Indeed, Linkedin, Manual (scraping automatizado de portales de empleo chilenos) |
-| **Periodo cubierto** | 25/08/2026 al 26/08/2026 09:42 |
+| **Periodo cubierto** | 25/08/2026 al 26/08/2026 10:18 |
 | **Universo total en BD** | 235 registros brutos (111 del dominio Data & Analytics; 124 descartados como ruido no-TI) |
 | **Criterio de inclusión** | Vacantes cuyo título contenga términos de datos/analítica (Data Engineer, Analytics Engineer, BI, etc.) |
 | **Normalización de roles** | Clasificación automática por regex sobre el título de la oferta en 8 categorías estándar |

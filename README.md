@@ -61,10 +61,10 @@ flowchart TD
 * **LinkedIn Guest API:** Ingesta desde los endpoints públicos no oficiales de LinkedIn (`jobs-guest/jobs/api/seeMoreJobPostings/search`), filtrando por nivel de experiencia Mid-Senior (`f_E=4`).
 * **TLS Impersonation:** Utiliza `curl_cffi` para emular la huella TLS de Chrome 120, evitando detección de bots.
 
-### 2. Pre-Filtrado Algorítmico Local (Ahorro del 80% en Tokens)
-Antes de llamar al LLM, el sistema descarta localmente vacantes irrelevantes:
-* **Filtro por Título:** Exige palabras clave de datos (`data`, `analytics`, `bi`, `dbt`, `etl`, `pipeline`, `datos`, `analista`, `ingeniero`).
-* **Filtro por Descripción:** Exige presencia obligatoria de la habilidad clave `sql`.
+### 2. Pre-Filtrado Algorítmico y Configuración Dinámica (0 Tokens)
+* **Single Source of Truth (`config/config.yaml`):** Todas las reglas de búsqueda, categorías de roles (`role_normalization`), patrones de tecnologías (`tracked_technologies`) y filtros algorítmicos se leen dinámicamente desde el YAML sin hardcodear expresiones regulares en Python.
+* **Filtro por Título:** Exige palabras clave del rol objetivo (`title_keywords_any`).
+* **Filtro por Descripción:** Exige presencia de habilidades requeridas (`description_keywords_any`).
 * **Filtro Estricto de Modalidad:** Descarta vacantes 100% presenciales o con 3+ días en oficina en Chile.
 
 ### 3. Fábrica Universal y Agnóstica de LLM (`src/agent/providers.py`)
@@ -72,16 +72,15 @@ Antes de llamar al LLM, el sistema descarta localmente vacantes irrelevantes:
 * **OpenRouter:** Soporte para modelos libres o pagados (`google/gemma-3-27b-it:free`, `anthropic/claude-3.5-sonnet`, `deepseek/deepseek-r1`).
 * **OpenAI / DeepSeek / Groq / Ollama Local:** Soporte para endpoints compatibles (`LLM_BASE_URL`).
 
-### 4. Evaluación Multidimensional (5 Dimensiones)
+### 4. Evaluación Multidimensional y Pasada Final (Catch-All)
 * **Compuertas de Elegibilidad e Idioma (Hard Gates):** Mismatches de residencia o idioma asignan descarte directo (< 60%).
-* **Technical Skills Match (30%):** Coincidencia en stack principal (SQL, Python, PySpark, dbt, Cloud AWS/GCP/Azure, Airflow, Kimball Data Modeling).
-* **Experience Match (25%), Behavioral Fit (15%), Career Alignment (30%).**
+* **Technical Skills Match (30%):** Coincidencia en stack principal definido dinámicamente.
+* **Catch-All Pass en Pipeline:** Garantiza que cualquier vacante rezagada por micro-interrupción de red o postulación manual se evalúe inmediatamente en la misma corrida sin esperar al próximo cron.
 
 ### 5. Motores de Documentos y Estudio de Mercado
 * **CV Engine (`src/cv_engine/`):** Genera código `.tex` bilingüe Jinja2 y compila con `pdflatex` sin depender de binarios externos raros.
-* **Cover Letter Engine (`src/cover_engine/`):** Genera cartas de presentación profesionales de 1 página compiladas en PDF.
 * **Interview Prep Engine (`src/interview_engine/`):** Genera guías Markdown completas con 10-12 preguntas técnicas con código y 4 escenarios STAR.
-* **Continuous Market Study (`src/market_engine/`):** Genera y actualiza automáticamente el informe vivo consolidado en `data/market_study/market_study.md`.
+* **Continuous Market Study (`src/market_engine/`):** Genera y actualiza automáticamente el informe vivo consolidado en `data/market_study/market_study.md` usando las categorías de `config.yaml`.
 
 ---
 
@@ -91,7 +90,7 @@ Antes de llamar al LLM, el sistema descarta localmente vacantes irrelevantes:
 job-fit/
 ├── AGENTS.md            # Guía de habilidades para Antigravity CLI
 ├── config/              # Configuración general y del perfil
-│   ├── config.yaml      # Filtros de búsqueda, fuentes, search_scope, y notification_rules
+│   ├── config.yaml      # Búsquedas, role_normalization, tracked_technologies, search_scope y notification_rules
 │   ├── loader.py        # Cargador de YAML con caché en memoria
 │   ├── profile.yaml     # Perfil del candidato (skills, experiencia, antecedentes)
 │   └── settings.py      # Variables de entorno gestionadas por Pydantic Settings
@@ -99,14 +98,14 @@ job-fit/
 ├── src/                 # Código fuente principal
 │   ├── agent/           # Evaluador LLM agnóstico, pre-filtro algorítmico, proveedores y cuotas
 │   ├── cli.py           # Entrypoint CLI interactivo (apply, interview, cover-letter, scrape, market-study)
-│   ├── cover_engine/    # Generador y compilador de Cartas de Presentación LaTeX
+│   ├── cover_engine/    # Generador y compilador de Cartas de Presentación LaTeX (desactivable)
 │   ├── cv_engine/       # Builder de plantillas LaTeX y compilador pdflatex
 │   ├── database/        # Modelos ORM (SQLModel) y repositorio SQLite
 │   ├── interview_engine/# Generador de Guías de Entrevista Técnica en Markdown
 │   ├── market_engine/   # Analizador continuo de mercado laboral y salarios reales
 │   ├── notifier/        # Despachador de Webhooks a Discord (Multipart PDF upload)
 │   ├── scraper/         # Scrapers (Get on Board API, LinkedIn, Indeed vía JobSpy, Remotive)
-│   └── main.py          # Orquestador del pipeline end-to-end
+│   └── main.py          # Orquestador del pipeline end-to-end (con Pasada Final Catch-All)
 ├── templates/           # Plantillas LaTeX (.tex) para CV y Cover Letters
 └── tests/               # Suite de 39 pruebas unitarias completas (pytest)
 ```

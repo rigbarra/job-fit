@@ -13,8 +13,8 @@ Todos los comandos se ejecutan desde la raíz del proyecto con el entorno virtua
 source .venv/bin/activate
 ```
 
-### A. Postulación Completa (CV Adaptado + Carta de Presentación + Score ATS)
-Evalúa la vacante, genera el CV adaptado en PDF y la Carta de Presentación. Puedes pasar el **ID de la base de datos** o la **URL directa**:
+### A. Postulación Completa (CV Adaptado + Score ATS)
+Evalúa la vacante y genera el CV adaptado en PDF. Puedes pasar el **ID de la base de datos** o la **URL directa**:
 ```bash
 # Por ID de base de datos
 PYTHONPATH=. .venv/bin/python -m src.cli apply 39
@@ -22,7 +22,7 @@ PYTHONPATH=. .venv/bin/python -m src.cli apply 39
 # Por URL de Get on Board, LinkedIn o Indeed
 PYTHONPATH=. .venv/bin/python -m src.cli apply "https://www.getonbrd.com/jobs/data-engineer-..."
 ```
-* **PDFs generados en:** `data/generated_cvs/`
+* **PDF generado en:** `data/generated_cvs/`
 
 ---
 

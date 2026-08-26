@@ -59,6 +59,7 @@ Cuando el sistema se ejecuta (a las 9:00 AM vía `crontab` o mediante `PYTHONPAT
 
 * **`settings.py`:** Utiliza `pydantic-settings` para cargar variables de entorno desde `.env` (`OPENROUTER_API_KEY`, `DISCORD_WEBHOOK_URL`, `DATABASE_URL`).
 * **`loader.py`:** Implementa `load_config()` que lee `config/config.yaml` y cachea el diccionario en memoria en la variable global `_cached_config` para evitar accesos I/O repetidos a disco.
+* **`config.yaml`:** **Single Source of Truth** de configuración operativa del sistema: incluye palabras clave de búsqueda, fuentes activas, reglas de notificación, `algorithmic_filter`, así como las categorías de normalización de roles (`role_normalization`) y los patrones de tecnologías (`tracked_technologies`) para el estudio de mercado.
 * **`profile.yaml`:** Almacena la hoja de vida estructurada del candidato (experiencia, tecnologías, educación y proyectos) tanto en español como en inglés.
 
 ### 3.2 Módulo de Base de Datos (`src/database/`)

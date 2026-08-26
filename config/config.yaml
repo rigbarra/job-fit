@@ -92,3 +92,81 @@ algorithmic_filter:
     - "power bi"
     - "tableau"
     - "looker"
+
+# Categorías de Roles para Normalización en Estudio de Mercado
+role_normalization:
+  non_data_keywords:
+    - "restaurante"
+    - "prevención de riesgos"
+    - "prevencion de riesgos"
+    - "forestal"
+    - "emisión"
+    - "emision"
+    - "seguridad vial"
+    - "propuestas de valor"
+    - "perforación"
+    - "perforacion"
+    - "sap basis"
+    - "technical sales"
+    - "mineral processing"
+    - "desarrollo organizacional"
+    - "topógrafo"
+    - "topografo"
+    - "ito "
+    - "ito-"
+    - "obra civil"
+    - "medio ambiente"
+    - "ehs"
+    - "automotriz"
+    - "asesor comercial"
+    - "geoconsultoría"
+    - "geoconsultoria"
+    - "riesgo de inversiones"
+    - "riesgo financiero"
+    - "gestión y control de documentos"
+    - "diseñador"
+    - "designer"
+    - "ui/ux"
+    - "carl's jr"
+    - "prevensón"
+  categories:
+    - name: "AI & LLM Engineer"
+      keywords: ["ai engineer", "ia engineer", "llm", "genai", "prompt engineer", "inteligencia artificial", "artificial intelligence", "generative ai", "ai &", "& ai", "ai senior"]
+    - name: "Machine Learning / MLOps Engineer"
+      keywords: ["machine learning", "ml engineer", "mlops", "deep learning", "aprendizaje automático", "aprendizaje automatico", "soluciones de aprendizaje"]
+    - name: "Analytics Engineer"
+      keywords: ["analytics engineer", "analytics engineering", "ingeniero de analitica", "ingeniero de analítica", "ingeniera de analítica"]
+    - name: "Data Architect & Tech Lead"
+      keywords: ["data architect", "arquitecto de datos", "arquitecta de datos", "arquitectura de datos", "head of data", "director of data", "data lead", "analytics lead", "data manager", "data governance lead", "plataforma de datos", "data analytics manager"]
+    - name: "Data Engineer"
+      keywords: ["data engineer", "ingeniero de datos", "ingeniera de datos", "ingeniería de datos", "big data", "etl engineer", "data platform", "pipeline engineer", "data layer developer", "data operations engineer", "ingeniero sql", "streaming/flink", "flink"]
+    - name: "Data Scientist"
+      keywords: ["data scientist", "cientifico de datos", "científico de datos", "cientista de datos", "data science"]
+    - name: "Data Analyst & BI Specialist"
+      keywords: ["data analyst", "analista de datos", "analista datos", "bi analyst", "analista bi", "business intelligence", "power bi", "tableau", "looker", "analytics specialist", "analista analitica", "analista analítica", "data quality", "data steward", "adobe analytics", "business analyst", "data enablement", "operations insights"]
+    - name: "Other Data & Analytics"
+      keywords: ["data", "datos", "analytics", "analítica", "analitica"]
+
+# Tecnologías para Matriz de Penetración en Estudio de Mercado
+tracked_technologies:
+  "SQL": "\\bsql\\b"
+  "Python": "\\bpython\\b"
+  "AWS": "\\baws\\b|\\bamazon web services\\b|\\bathena\\b|\\bredshift\\b|\\bglue\\b"
+  "Git & CI/CD": "\\bgit\\b|\\bgithub\\b|\\bgitlab\\b|\\bci/cd\\b|\\bci\\/cd\\b"
+  "Azure": "\\bazure\\b|\\bdata factory\\b|\\bfabric\\b|\\bsynapse\\b"
+  "GCP / BigQuery": "\\bgcp\\b|\\bgoogle cloud\\b|\\bbigquery\\b"
+  "Databricks": "\\bdatabricks\\b"
+  "Apache Spark / PySpark": "\\bspark\\b|\\bpyspark\\b"
+  "Power BI / DAX": "\\bpower\\s*bi\\b|\\bdax\\b"
+  "Snowflake": "\\bsnowflake\\b"
+  "dbt": "\\bdbt\\b|\\bdata build tool\\b"
+  "Apache Airflow": "\\bairflow\\b"
+  "Apache Kafka": "\\bkafka\\b|\\bstreaming\\b|\\bflink\\b"
+  "Tableau": "\\btableau\\b"
+  "GenAI / LLM / RAG": "\\bgenai\\b|\\bllm\\b|\\brag\\b|\\blangchain\\b|\\bllamaindex\\b"
+  "Terraform / IaC": "\\bterraform\\b|\\biac\\b"
+  "Docker / Kubernetes": "\\bdocker\\b|\\bkubernetes\\b|\\bk8s\\b"
+  "PostgreSQL / MySQL": "\\bpostgresql\\b|\\bpostgres\\b|\\bmysql\\b"
+  "Dagster / Prefect": "\\bdagster\\b|\\bprefect\\b"
+  "DuckDB / Polars": "\\bduckdb\\b|\\bpolars\\b"
+
