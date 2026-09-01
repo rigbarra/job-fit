@@ -421,12 +421,15 @@ def main():
             mins = [s[0] for s in samples]
             avgs = sorted([s[1] for s in samples])
             maxs = [s[2] for s in samples]
-            med = avgs[len(avgs) // 2]
+            n_samples = len(samples)
+            med = avgs[n_samples // 2]
+            p75 = avgs[int(n_samples * 0.75)] if n_samples >= 2 else med
             sal_rows.append({
                 "Perfil / Cargo": role,
-                "Muestras (n)": len(samples),
+                "Muestras (n)": n_samples,
                 f"Mínimo {curr_label}": f"${min(mins):,.0f}",
-                f"Mediana Real {curr_label}": f"${med:,.0f}",
+                f"Mediana (P50) {curr_label}": f"${med:,.0f}",
+                f"Target Senior (P75) {curr_label}": f"${p75:,.0f}",
                 f"Máximo {curr_label}": f"${max(maxs):,.0f}",
                 "_med_val": med
             })
@@ -440,7 +443,7 @@ def main():
                 f"""
                 <div style="background-color: #181825; border-left: 4px solid #89dceb; border-radius: 8px; padding: 14px 18px; margin: 15px 0 20px 0;">
                     <span style="font-size: 1.05rem;">🤖 <strong style="color: #89dceb;">Destacado Perfiles de IA:</strong></span>
-                    <span style="color: #cdd6f4;"> El cargo <strong style="color: #cba6f7;">{top_ai['Perfil / Cargo']}</strong> registra una Mediana Real de <strong style="color: #f9e2af;">{top_ai[f'Mediana Real {curr_label}']}</strong> (con topes de hasta <strong style="color: #a6e3a1;">{top_ai[f'Máximo {curr_label}']}</strong>).</span>
+                    <span style="color: #cdd6f4;"> El cargo <strong style="color: #cba6f7;">{top_ai['Perfil / Cargo']}</strong> registra una Mediana (P50) de <strong style="color: #f9e2af;">{top_ai[f'Mediana (P50) {curr_label}']}</strong> y un Target Senior (P75) de <strong style="color: #a6e3a1;">{top_ai[f'Target Senior (P75) {curr_label}']}</strong>.</span>
                 </div>
                 """,
                 unsafe_allow_html=True,

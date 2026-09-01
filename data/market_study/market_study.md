@@ -1,6 +1,6 @@
 # Estudio Histórico de Mercado Laboral: Data & Analytics Chile
 
-> **Periodo cubierto:** `25/08/2026` — `01/09/2026 12:38`
+> **Periodo cubierto:** `25/08/2026` — `01/09/2026 12:43`
 > **Universo de análisis:** 184 vacantes del dominio Data & Analytics  
 > **Tu fit personal acumulado:** 88 ofertas afines (Tier 1+2) sobre 184 del mercado = **47.8%**
 
@@ -74,15 +74,15 @@ Distribución de régimen presencial para cada perfil. Valores sobre el universo
 
 Datos salariales 100% factuales extraídos directamente desde los avisos de empleo. Se unifica a CLP (1 USD = $950). Cobertura: 34 ofertas con salario explícito de 184 (18.5%). El 81.5% restante no publicó banda salarial.
 
-| Perfil | n | Mínimo CLP | Mediana CLP | Máximo CLP |
-| :--- | ---: | ---: | ---: | ---: |
-| **AI & LLM Engineer** | 1 | $4,500,000 | **$4,500,000** | $4,500,000 |
-| **Data Engineer** | 13 | $1,710,000 | **$4,417,500** | $8,550,000 |
-| **Machine Learning / MLOps Engineer** | 1 | $2,500,000 | **$2,875,000** | $3,250,000 |
-| **Data Scientist** | 4 | $760,000 | **$2,850,000** | $7,125,000 |
-| **Other Data & Analytics** | 6 | $479,638 | **$2,650,000** | $3,300,000 |
-| **Data Architect** | 2 | $1,425,000 | **$2,565,000** | $2,755,000 |
-| **Data Analyst & BI Specialist** | 7 | $1,140,000 | **$2,280,000** | $4,750,000 |
+| Perfil | n | Mínimo CLP | Mediana (P50) CLP | Target Senior (P75) CLP | Máximo CLP |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| **AI & LLM Engineer** | 1 | $4,500,000 | **$4,500,000** | **$4,500,000** | $4,500,000 |
+| **Data Engineer** | 13 | $1,710,000 | **$4,417,500** | **$4,845,000** | $8,550,000 |
+| **Machine Learning / MLOps Engineer** | 1 | $2,500,000 | **$2,875,000** | **$2,875,000** | $3,250,000 |
+| **Data Scientist** | 4 | $760,000 | **$2,850,000** | **$6,412,500** | $7,125,000 |
+| **Other Data & Analytics** | 6 | $479,638 | **$2,650,000** | **$3,250,000** | $3,300,000 |
+| **Data Architect** | 2 | $1,425,000 | **$2,565,000** | **$2,565,000** | $2,755,000 |
+| **Data Analyst & BI Specialist** | 7 | $1,140,000 | **$2,280,000** | **$4,275,000** | $4,750,000 |
 
 ---
 
@@ -91,7 +91,7 @@ Datos salariales 100% factuales extraídos directamente desde los avisos de empl
 | Dimensión | Detalle |
 | :--- | :--- |
 | **Fuentes de datos** | Getonboard, Indeed, Linkedin, Manual (scraping automatizado de portales de empleo chilenos) |
-| **Periodo cubierto** | 25/08/2026 al 01/09/2026 12:38 |
+| **Periodo cubierto** | 25/08/2026 al 01/09/2026 12:43 |
 | **Universo total en BD** | 908 registros brutos (184 del dominio Data & Analytics; 724 descartados como ruido no-TI) |
 | **Criterio de inclusión** | Vacantes cuyo título contenga términos de datos/analítica (Data Engineer, Analytics Engineer, BI, etc.) |
 | **Normalización de roles** | Clasificación automática por regex sobre el título de la oferta en 8 categorías estándar |

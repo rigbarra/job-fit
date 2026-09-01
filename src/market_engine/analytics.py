@@ -531,19 +531,21 @@ def generate_market_study_report(output_path: str | None = None, scope: str | No
     if salaries_by_role:
         lines += [
             "",
-            "| Perfil | n | Mínimo CLP | Mediana CLP | Máximo CLP |",
-            "| :--- | ---: | ---: | ---: | ---: |",
+            "| Perfil | n | Mínimo CLP | Mediana (P50) CLP | Target Senior (P75) CLP | Máximo CLP |",
+            "| :--- | ---: | ---: | ---: | ---: | ---: |",
         ]
         role_sal_stats = []
         for role, samples in salaries_by_role.items():
             mins = [s[0] for s in samples]
             avgs = sorted([s[1] for s in samples])
             maxs = [s[2] for s in samples]
-            med = avgs[len(avgs) // 2]
-            role_sal_stats.append((role, len(samples), min(mins), med, max(maxs)))
+            n_samples = len(samples)
+            med = avgs[n_samples // 2]
+            p75 = avgs[int(n_samples * 0.75)] if n_samples >= 2 else med
+            role_sal_stats.append((role, n_samples, min(mins), med, p75, max(maxs)))
         role_sal_stats.sort(key=lambda x: x[3], reverse=True)
-        for role, n, mn, med, mx in role_sal_stats:
-            lines.append(f"| **{role}** | {n} | ${mn:,.0f} | **${med:,.0f}** | ${mx:,.0f} |")
+        for role, n, mn, med, p75_val, mx in role_sal_stats:
+            lines.append(f"| **{role}** | {n} | ${mn:,.0f} | **${med:,.0f}** | **${p75_val:,.0f}** | ${mx:,.0f} |")
     else:
         lines.append("\n*Sin datos salariales explícitos capturados en el período analizado.*")
 
