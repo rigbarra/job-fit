@@ -80,10 +80,18 @@ def handle_market_study(args):
     logger.info("--- Generando Estudio de Mercado y Análisis Salarial ---")
     file_path, report_text = generate_market_study_report()
     if file_path:
-        print(f"\nReporte de Mercado generado exitosamente en:\n{file_path}\n")
+        print(f"\nReporte de Mercado Markdown generado en:\n{file_path}\n")
         print(report_text)
-    else:
-        print(f"\n{report_text}")
+        print("\n" + "=" * 60)
+        print("💡 Dashboard Interactivo Streamlit (Catppuccin Dark):")
+        print("   Para abrir el informe visual en tu navegador, ejecuta:")
+        print("   .venv/bin/streamlit run src/market_engine/app.py")
+        print("=" * 60 + "\n")
+
+    if getattr(args, "web", False):
+        import subprocess
+        logger.info("Lanzando Dashboard de Streamlit...")
+        subprocess.run([sys.executable, "-m", "streamlit", "run", "src/market_engine/app.py"])
 
 
 def _get_or_create_job(target: str) -> Job | None:
@@ -135,6 +143,7 @@ def main():
 
     # Comando: market-study
     p_market = subparsers.add_parser("market-study", help="Genera reporte analítico de sueldos y tendencias de mercado")
+    p_market.add_argument("--web", action="store_true", help="Lanza el dashboard visual interactivo en Streamlit")
     p_market.set_defaults(func=handle_market_study)
 
     args = parser.parse_args()

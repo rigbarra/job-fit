@@ -338,7 +338,7 @@ def generate_market_study_report(output_path: str | None = None) -> tuple[str, s
 
         if not min_v and not max_v and job.description:
             sal_match = re.search(
-                r"(?:sueldo|salario|remuneraci[oó]n|renta|salary|compensaci[oó]n)\s*(?:ofrecido|estimado|bruto|liquido|líquido)?\s*[:=]\s*([^\n\r\.\;]+)",
+                r"(?:sueldo|salario|remuneraci[oó]n|renta|salary|compensaci[oó]n)[^\$\n\r0-9]{0,40}(\$?\s*[0-9][0-9\.\,]+(?:\s*(?:-|a|to)\s*\$?\s*[0-9][0-9\.\,]+)?)",
                 job.description,
                 re.IGNORECASE,
             )
@@ -362,7 +362,7 @@ def generate_market_study_report(output_path: str | None = None) -> tuple[str, s
                     clp_max = max_raw * USD_TO_CLP
                 else:
                     clp_avg = avg_v; clp_min = min_raw; clp_max = max_raw
-                if 600000 <= clp_avg <= 12000000:
+                if 600000 <= clp_avg <= 20000000:
                     jobs_with_salary.append({
                         "role": normalize_role(job.title),
                         "min_clp": clp_min, "avg_clp": clp_avg, "max_clp": clp_max,
