@@ -40,10 +40,9 @@
 % --- TECHNICAL SKILLS ---
 \section*{Technical Skills}
 \begin{itemize}
-    \item \textbf{Data Engineering \& Modeling:} SQL (Complex Joins, CTEs, Window Functions), Python (Pandas, Polars), DuckDB, dbt, Dagster, Docker.
-    \item \textbf{Cloud \& Big Data Stack:} AWS (Lambda, Step Functions, Glue, Athena, S3, Redshift, IAM), GCP (BigQuery).
-    \item \textbf{BI, Analytics \& Visualization:} Power BI (DAX), Apache Superset, Quarto, Figma (UX Layouts).
-    \item \textbf{Data Quality \& Governance:} Git (GitHub), Testing (Pytest), CI/CD Pipelines (GitHub Actions).
+\BLOCK{ for skill in skills_list }
+    \item \textbf{\VAR{skill.name}:} \VAR{skill.details}
+\BLOCK{ endfor }
 \end{itemize}
 
 % --- PROFESSIONAL EXPERIENCE ---

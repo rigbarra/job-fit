@@ -4,34 +4,26 @@ email: "rigbarra@outlook.com"
 linkedin: "linkedin.com/in/rigbarra"
 
 skills:
-  languages:
-    - "Python (Pandas, Polars, PySpark)"
-    - "SQL (Complex Joins, CTEs, Window Functions)"
-    - "R"
-  databases_cloud:
-    - "AWS (Lambda, Step Functions, Glue, Athena, S3, Redshift, IAM)"
-    - "GCP (BigQuery)"
-    - "Azure SQL Database"
-    - "PostgreSQL"
-    - "DuckDB"
   data_engineering:
-    - "dbt (data build tool)"
-    - "Dagster"
-    - "Docker"
+    category_es: "Data Engineering & Modeling"
+    category_en: "Data Engineering & Modeling"
+    items: "SQL (Joins complejos, CTEs, Window Functions), Python (Pandas, Polars, PySpark), DuckDB, dbt, Dagster, Docker"
+  cloud_bigdata:
+    category_es: "Cloud & Big Data Stack"
+    category_en: "Cloud & Big Data Stack"
+    items: "AWS (Lambda, Step Functions, Glue, Athena, S3, Redshift, EMR, CloudWatch, IAM), GCP (BigQuery), Azure"
+  ai_engineering:
+    category_es: "Generative AI & Agentic Systems"
+    category_en: "Generative AI & Agentic Systems"
+    items: "LLMs, RAG (Retrieval-Augmented Generation), MCP (Model Context Protocol), Function Calling / AI Skills, Vector Search, OpenAI API, LangChain / LlamaIndex"
   bi_analytics:
-    - "Power BI (DAX)"
-    - "Apache Superset"
-    - "Quarto (HTML)"
-    - "Figma (UX Layouts)"
-    - "Looker"
-    - "Tableau"
+    category_es: "BI, Analytics & Visualization"
+    category_en: "BI, Analytics & Visualization"
+    items: "Power BI (DAX), Tableau, Looker, Apache Superset, Quarto, Figma (UX Layouts)"
   quality_governance:
-    - "Git (GitHub)"
-    - "Testing (Pytest)"
-    - "CI/CD Pipelines (GitHub Actions)"
-  agile_project_management:
-    - "Jira (Agile / Scrum / Kanban)"
-    - "Confluence"
+    category_es: "Data Quality & Governance"
+    category_en: "Data Quality & Governance"
+    items: "Git (GitHub), Testing (Pytest), CI/CD Pipelines (GitHub Actions)"
 
 work_preferences:
   modality: "International: 100% Remote / Contractor B2B ONLY. Local Chile: 100% Remote or Hybrid (max 2 days on-site per week)"

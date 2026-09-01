@@ -102,10 +102,66 @@ def load_profile(language: str = "es", profile_path: str | None = None) -> dict[
     return raw_data
 
 
+def prepare_skills_list(
+    profile: dict[str, Any],
+    language: str = "es",
+    job: Any | None = None,
+    match_result: MatchResult | None = None,
+) -> list[dict[str, str]]:
+    """
+    Parsea las habilidades desde profile.yaml y las reordena/adapta dinámicamente
+    según las tecnologías y requisitos clave de la vacante.
+    """
+    raw_skills = profile.get("skills", {})
+    lang_key = "en" if language.lower() in ("en", "english", "ingles") else "es"
+    is_es = lang_key == "es"
+
+    formatted_skills = []
+    if isinstance(raw_skills, dict):
+        for cat_id, cat_data in raw_skills.items():
+            if isinstance(cat_data, dict):
+                name = cat_data.get("category_es" if is_es else "category_en", cat_id)
+                details = cat_data.get("items", "")
+            else:
+                name = str(cat_id).replace("_", " ").title()
+                details = ", ".join(cat_data) if isinstance(cat_data, list) else str(cat_data)
+
+            formatted_skills.append({
+                "id": str(cat_id),
+                "name": escape_latex(name),
+                "details": escape_latex(details),
+                "priority": 10,
+            })
+
+    # Si hay información de la vacante o de la evaluación, adaptar el orden de prioridad
+    if job or match_result:
+        job_text = ""
+        if job and getattr(job, "title", None) and getattr(job, "description", None):
+            job_text += f"{job.title} {job.description}".lower()
+        if match_result and getattr(match_result, "rationale", None):
+            job_text += f" {match_result.rationale}".lower()
+
+        for item in formatted_skills:
+            cid = item["id"]
+            if cid == "ai_engineering" and any(k in job_text for k in ["ai", "llm", "rag", "genai", "gpt", "inteligencia artificial", "agente"]):
+                item["priority"] = 1
+            elif cid == "bi_analytics" and any(k in job_text for k in ["bi", "power bi", "tableau", "looker", "visualization", "dashboard", "report"]):
+                item["priority"] = 2
+            elif cid == "data_engineering" and any(k in job_text for k in ["data engineer", "pipeline", "etl", "dbt", "sql", "pyspark"]):
+                item["priority"] = 3
+            elif cid == "cloud_bigdata" and any(k in job_text for k in ["aws", "gcp", "azure", "cloud", "emr", "bigquery", "redshift"]):
+                item["priority"] = 4
+
+        formatted_skills.sort(key=lambda x: x["priority"])
+
+    return formatted_skills
+
+
 def build_cv_tex(
     match_result: MatchResult | None = None,
     language: str = "es",
     profile_override: dict[str, Any] | None = None,
+    job: Any | None = None,
 ) -> str:
     """
     Genera el código fuente LaTeX (.tex) completo inyectando los datos del perfil
@@ -115,6 +171,7 @@ def build_cv_tex(
         match_result: Resultado de la evaluación LLM con textos adaptados (opcional).
         language: Idioma del CV a compilar ("es" o "en").
         profile_override: Datos de perfil para pruebas o personalizaciones específicas.
+        job: Vacante objetivo para adaptar el orden de las habilidades técnicas (opcional).
 
     Returns:
         str: Contenido del archivo LaTeX listo para compilar.
@@ -159,7 +216,10 @@ def build_cv_tex(
         edu["period"] = escape_latex(edu.get("period", ""))
         edu["location"] = escape_latex(edu.get("location", ""))
 
-    # 3. Renderizar con Jinja2
+    # 4. Preparar lista dinámica de habilidades técnicas ordenadas por relevancia
+    skills_list = prepare_skills_list(profile, language=lang_key, job=job, match_result=match_result)
+
+    # 5. Renderizar con Jinja2
     env = get_jinja_env()
     template_name = "cv_base_en.tex" if lang_key == "en" else "cv_base_es.tex"
 
@@ -181,7 +241,7 @@ def build_cv_tex(
         "summary": summary,
         "experiences": experiences,
         "education": education,
-        "skills": profile.get("skills", {}),
+        "skills_list": skills_list,
     }
 
     rendered_tex = template.render(**context)

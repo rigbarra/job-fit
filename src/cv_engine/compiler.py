@@ -141,7 +141,7 @@ def generate_cv_for_job(
     )
 
     # 1. Renderizar código fuente LaTeX
-    tex_content = build_cv_tex(match_result=match_result, language=language)
+    tex_content = build_cv_tex(match_result=match_result, language=language, job=job)
 
     # 2. Construir nombre del archivo: {yymmdd}_CV_RBarra_{cargo}_{empresa}.pdf
     date_str = datetime.now().strftime("%y%m%d")
