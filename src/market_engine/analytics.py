@@ -283,15 +283,25 @@ def compute_archetypes_breakdown(jobs: list[Job]) -> list[dict]:
     return results
 
 
-def generate_market_study_report(output_path: str | None = None) -> tuple[str, str]:
+def is_job_chile(job: Job) -> bool:
+    """Verifica si una vacante pertenece geográficamente al mercado chileno."""
+    from src.agent.filter import CHILE_TERMS
+    text = f"{job.location or ''} {job.description or ''}".lower()
+    return any(term in text for term in CHILE_TERMS)
+
+
+def generate_market_study_report(output_path: str | None = None, scope: str | None = None) -> tuple[str, str]:
     """
     Genera el Estudio de Mercado Histórico Acumulativo en vivo.
-    Procesa todas las vacantes acumuladas en la base de datos histórica,
+    Procesa las vacantes acumuladas en la base de datos histórica segun el ámbito ('chile' o 'international'),
     calculando matrices cruzadas por rol, penetración tecnológica, modalidad y salarios reales.
 
     Returns:
         tuple[str, str]: (ruta del archivo markdown generado, texto del reporte)
     """
+    config = load_config()
+    active_scope = scope or config.get("search_scope", "chile")
+
     with Session(repo.engine) as session:
         jobs = session.exec(select(Job)).all()
         matches = session.exec(select(MatchResult)).all()
@@ -302,8 +312,15 @@ def generate_market_study_report(output_path: str | None = None) -> tuple[str, s
 
     total_jobs_db = len(jobs)
 
-    # Universo de análisis: todas las vacantes del dominio Data & Analytics (sin filtro de tier)
-    valid_data_jobs = [j for j in jobs if normalize_role(j.title) != "Excluded Non-Data Role"]
+    # Universo de análisis: vacantes del dominio Data & Analytics filtradas por ámbito ('chile' o 'international')
+    raw_data_jobs = [j for j in jobs if normalize_role(j.title) != "Excluded Non-Data Role"]
+    if active_scope == "chile":
+        valid_data_jobs = [j for j in raw_data_jobs if is_job_chile(j)]
+    elif active_scope == "international":
+        valid_data_jobs = [j for j in raw_data_jobs if not is_job_chile(j)]
+    else:
+        valid_data_jobs = raw_data_jobs
+
     n_data = len(valid_data_jobs)
     n_noise = total_jobs_db - n_data
     n_base = n_data if n_data else 1  # denominador seguro
