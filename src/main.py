@@ -237,6 +237,9 @@ def main():
                         group_rules = notification_rules.get(group_key, {})
                         should_notify = bool(group_rules.get(tier_key, False))
 
+                        if match_result.score < 80.0:
+                            should_notify = False
+
                         company_lower = (job.company or "").lower()
                         excluded_comps = search_filters.get("excluded_companies", [])
                         if any(ex.lower() in company_lower for ex in excluded_comps):
@@ -299,6 +302,9 @@ def main():
                     tier_key = f"allow_tier_{match_result.tier}"
                     group_rules = notification_rules.get(group_key, {})
                     should_notify = bool(group_rules.get(tier_key, False))
+
+                    if match_result.score < 80.0:
+                        should_notify = False
 
                     company_lower = (job.company or "").lower()
                     excluded_comps = search_filters.get("excluded_companies", [])

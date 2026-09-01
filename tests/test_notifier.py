@@ -60,6 +60,32 @@ def test_send_job_notification_tier_3_silenced(monkeypatch, mocker):
     mock_urlopen.assert_not_called()
 
 
+def test_send_job_notification_under_80_pts_silenced(monkeypatch, mocker):
+    """Valida que vacantes con ATS score menor a 80.0 pts (ej. 72.0 pts) sean silenciadas."""
+    monkeypatch.setattr(
+        "config.settings.settings.discord_webhook_url",
+        "https://discord.com/api/webhooks/123456/abcdef",
+    )
+    mock_urlopen = mocker.patch("urllib.request.urlopen")
+
+    job = Job(
+        id=20,
+        title="Data Engineer",
+        company="TechCorp",
+        location="Remote",
+        description="Python & SQL.",
+        url="https://example.com/job/20",
+        source="test",
+    )
+    match_result = MatchResult(
+        id=20, job_id=20, score=72.0, tier=2, rationale="Fit marginal.", missing_keywords="[]"
+    )
+
+    sent = send_job_notification(job, match_result)
+    assert not sent
+    mock_urlopen.assert_not_called()
+
+
 def test_send_job_notification_excluded_company_silenced(monkeypatch, mocker):
     """Valida que empresas en la blacklist (ej. BairesDev) se silencien de Discord."""
     monkeypatch.setattr(
@@ -155,7 +181,7 @@ def test_send_job_notification_tier_2_with_pdf(tmp_path, monkeypatch, mocker):
     match_result = MatchResult(
         id=2,
         job_id=20,
-        score=72.0,
+        score=81.0,
         tier=2,
         rationale="Buen encaje con retoque.",
         missing_keywords='["Airflow"]',

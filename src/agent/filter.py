@@ -169,6 +169,27 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
         if term in title:
             return False, f"Descarte algorítmico: El título contiene término excluido '{term}'."
 
+    # 1.5. Exclusión de Cargos de Liderazgo / Gerencia (salvo en áreas de BI)
+    is_bi_role = any(b in title for b in ["bi", "business intelligence", "power bi", "tableau", "looker"])
+    if not is_bi_role:
+        leadership_terms = [
+            "manager",
+            "lead",
+            "lider",
+            "líder",
+            "jefe",
+            "jefa",
+            "director",
+            "directora",
+            "head of",
+        ]
+        for term in leadership_terms:
+            if re.search(r"\b" + re.escape(term) + r"\b", title) or term in title:
+                return (
+                    False,
+                    f"Descarte algorítmico: Título contiene rol de liderazgo excluido '{term}' fuera del área de BI.",
+                )
+
     # 2. Validar palabras clave en el título (cualquiera de la lista permitida)
     title_keywords = filter_config.get("title_keywords_any", [])
     if title_keywords:

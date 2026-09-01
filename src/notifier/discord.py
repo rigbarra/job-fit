@@ -45,10 +45,10 @@ def send_job_notification(
         )
         return False
 
-    # Solo notificar Tier 1 (Match Alto) y Tier 2 (Match con Retoque)
-    if match_result.tier not in (1, 2):
+    # Solo notificar vacantes con ATS Score >= 80.0 pts (Tier 1 o Tier 2 de alto impacto)
+    if match_result.score < 80.0:
         logger.debug(
-            f"Discord Notifier: Omitiendo notificación para vacante {job.id} clasificada como Tier {match_result.tier}."
+            f"Discord Notifier: Omitiendo notificación para vacante {job.id} con ATS score {match_result.score:.1f} pts (< 80.0 pts)."
         )
         return False
 
