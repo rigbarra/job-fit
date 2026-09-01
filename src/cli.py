@@ -29,7 +29,7 @@ def handle_apply(args):
 
     logger.info(f"--- 1. Evaluando Fit para '{job.title}' @ '{job.company}' ---")
     match_result = evaluate_job(job)
-    logger.info(f"Score: {match_result.score}% | Tier: {match_result.tier}")
+    logger.info(f"Score: {match_result.score:.1f} / 100 pts | Tier: {match_result.tier}")
 
     logger.info("--- 2. Generando CV Adaptado (PDF) ---")
     cv_snapshot = generate_cv_for_job(job, match_result)

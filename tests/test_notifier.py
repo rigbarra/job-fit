@@ -125,7 +125,7 @@ def test_send_job_notification_tier_1_success(monkeypatch, mocker):
 
     assert "SnowTech" in payload["embeds"][0]["title"]
     assert payload["embeds"][0]["color"] == 0x2ECC71  # Verde
-    assert any("92.0%" in f["value"] for f in payload["embeds"][0]["fields"])
+    assert any("92.0 / 100 pts" in f["value"] for f in payload["embeds"][0]["fields"])
 
 
 def test_send_job_notification_tier_2_with_pdf(tmp_path, monkeypatch, mocker):

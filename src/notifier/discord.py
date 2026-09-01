@@ -91,8 +91,8 @@ def send_job_notification(
     # 4. Construir campos del Embed
     fields = [
         {
-            "name": "Match Score",
-            "value": f"**{match_result.score:.1f}%** ({tier_icon} {tier_title})",
+            "name": "ATS Score",
+            "value": f"**{match_result.score:.1f} / 100 pts** ({tier_icon} {tier_title})",
             "inline": True,
         },
         {

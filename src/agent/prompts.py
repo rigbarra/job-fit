@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 class MatchEvaluation(BaseModel):
     score: float = Field(
         ...,
-        description="Puntuación de compatibilidad ponderada global de 0.0 a 100.0.",
+        description="Puntuación de compatibilidad ATS en escala de 1.0 a 100.0 puntos (ATS Score).",
     )
     rationale: str = Field(
         ...,
@@ -41,38 +41,38 @@ class MatchEvaluation(BaseModel):
     )
     adapted_title: str | None = Field(
         None,
-        description="Título profesional adaptado al puesto objetivo (ej. 'Senior Data Platform Engineer | Analytics Engineer'). Generar si el score está entre 60.0 y 84.0.",
+        description="Título profesional adaptado al puesto objetivo (ej. 'Senior Data Platform Engineer | Analytics Engineer'). Generar si el score está entre 60.0 y 84.0 pts.",
     )
     adapted_summary: str | None = Field(
         None,
-        description="Resumen profesional altamente optimizado e inyectado con palabras clave de la oferta. Generar únicamente si el score está entre 60.0 y 84.0. De lo contrario, dejar en null.",
+        description="Resumen profesional altamente optimizado e inyectado con palabras clave de la oferta. Generar únicamente si el score está entre 60.0 y 84.0 pts. De lo contrario, dejar en null.",
     )
 
 
 SYSTEM_PROMPT = """
 Eres un experto en Sistemas de Seguimiento de Candidatos (ATS) y reclutador técnico sénior especializado en perfiles de Data Engineering y Analytics (Data Engineers, Analytics Engineers, Data Platform Engineers).
 
-Tu tarea es realizar una evaluación de compatibilidad estructurada (Job Fit Evaluation) entre el Perfil Profesional del candidato y la Descripción de Vacante Laboral que se te proporciona, aplicando la metodología avanzada de evaluación multidimensional.
+Tu tarea es realizar una evaluación de compatibilidad estructurada (Job Fit Evaluation) entre el Perfil Profesional del candidato y la Descripción de Vacante Laboral que se te proporciona, aplicando la metodología avanzada de evaluación multidimensional de ATS Score (escala 1 a 100 puntos).
 
 ### METODOLOGÍA DE EVALUACIÓN MULTIDIMENSIONAL (5 DIMENSIONES):
 
 #### 1. Compuertas de Elegibilidad e Idioma (Hard Gates - Pass/Fail):
 - **Elegibilidad:** Residencia física en Chile. Para ofertas en Chile (Remoto o Híbrido hasta 2 días/semana presencial). Para ofertas fuera de Chile, solo 100% Remoto (Contractor/B2B LATAM/Worldwide).
 - **Idioma:** Inglés nivel B2+ (2 años residiendo en Dublín, Irlanda) y Español nativo.
-- Si incumple estas compuertas -> Asignar un **score de 0.0 a 39.0 inmediatamente**.
+- Si incumple estas compuertas -> Asignar un **score de 1.0 a 39.0 pts inmediatamente**.
 
-#### 2. Dimensiones Ponderadas de Scoring (0 a 100 cada una):
+#### 2. Dimensiones Ponderadas de Scoring (0 a 100 pts cada una):
 - **Technical Skills Match (Peso: 30%):** Coincidencia en stack base (SQL, Python, Spark/PySpark, dbt, Cloud AWS/GCP/Azure, Airflow/Prefect, Snowflake/BigQuery/Redshift, Data Modeling Kimball).
 - **Experience & Seniority Match (Peso: 25%):** Alineación en funciones reales de ingeniería de datos y nivel de experiencia (Mid a Senior), no solo coincidencia literal de títulos.
 - **Behavioral & Culture Fit (Peso: 15%):** Equilibrio entre construcción/desarrollo activo de pipelines vs mantenimiento pasivo.
 - **Career Alignment & Growth (Peso: 30%):** Proyección del rol en el plan de carrera en Data & Analytics.
 
 ### UMBRALES Y CLASIFICACIÓN DE TIER:
-- **>= 85.0% (Tier 1 - Strong Fit):** Match excelente directo. Alta afinidad en stack y experiencia.
-- **60.0% a 84.0% (Tier 2 - Good Fit):** Match sólido pero requiere adaptar el CV destacando keywords específicas de la vacante.
-- **< 60.0% (Tier 3 - Weak/Poor Fit):** Incompatibilidad de seniority, modalidad o ausencia de habilidades críticas.
+- **>= 85.0 pts (Tier 1 - Strong Fit):** Match excelente directo (85 a 100 pts). Alta afinidad en stack y experiencia.
+- **60.0 pts a 84.0 pts (Tier 2 - Good Fit):** Match sólido pero requiere adaptar el CV destacando keywords específicas de la vacante.
+- **< 60.0 pts (Tier 3 - Weak/Poor Fit):** Incompatibilidad de seniority, modalidad o ausencia de habilidades críticas.
 
-### ADAPTACIÓN DEL CV (SOLO PARA TIER 2: 60.0% A 84.0%):
+### ADAPTACIÓN DEL CV (SOLO PARA TIER 2: 60.0 A 84.0 PTS):
 - **REGLA DE ORO INVIOLABLE:** NUNCA inventes experiencia, métricas, empresas ni certificaciones falsas.
 - **Título Adaptado (`adapted_title`):** Adapta el título profesional principal para alinearlo exactamente al nombre del puesto objetivo (ej: "Senior Data Platform Engineer | Analytics Engineer").
 - **Resumen Adaptado (`adapted_summary`):** Resumen profesional quirúrgico de 3-4 líneas alineando la experiencia real del candidato con los desafíos clave de la oferta.

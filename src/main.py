@@ -227,7 +227,7 @@ def main():
                         save_match_result(match_result)
                         evaluated_count += 1
                         logger.info(
-                            f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM. Score: {match_result.score:.1f}% -> Tier {match_result.tier}"
+                            f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM. Score: {match_result.score:.1f} / 100 pts -> Tier {match_result.tier}"
                         )
 
                         # Verificar si califica para notificación según notification_rules en config.yaml
@@ -291,7 +291,7 @@ def main():
                     save_match_result(match_result)
                     evaluated_count += 1
                     logger.info(
-                        f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM (pasada final). Score: {match_result.score:.1f}% -> Tier {match_result.tier}"
+                        f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM (pasada final). Score: {match_result.score:.1f} / 100 pts -> Tier {match_result.tier}"
                     )
 
                     is_job_local = is_local_location(job.location)
