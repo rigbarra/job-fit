@@ -283,10 +283,22 @@ def compute_archetypes_breakdown(jobs: list[Job]) -> list[dict]:
     return results
 
 
+INTL_LOCATION_TERMS = [
+    "chicago", "illinois", "united states", "usa", "u.s.", "us remote",
+    "remote - us", "us-based", "remoto - estados unidos", "spain", "madrid",
+    "barcelona", "uk", "london", "canada", "toronto", "germany", "berlin",
+]
+
+
 def is_job_chile(job: Job) -> bool:
     """Verifica si una vacante pertenece geográficamente al mercado chileno."""
     from src.agent.filter import CHILE_TERMS
-    text = f"{job.location or ''} {job.description or ''}".lower()
+
+    loc = (job.location or "").lower()
+    if any(term in loc for term in INTL_LOCATION_TERMS):
+        return False
+
+    text = f"{loc} {job.description or ''}".lower()
     return any(term in text for term in CHILE_TERMS)
 
 

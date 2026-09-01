@@ -1,8 +1,8 @@
 # Estudio Histórico de Mercado Laboral: Data & Analytics Chile
 
-> **Periodo cubierto:** `25/08/2026` — `01/09/2026 12:33`
-> **Universo de análisis:** 291 vacantes del dominio Data & Analytics  
-> **Tu fit personal acumulado:** 88 ofertas afines (Tier 1+2) sobre 291 del mercado = **30.2%**
+> **Periodo cubierto:** `25/08/2026` — `01/09/2026 12:38`
+> **Universo de análisis:** 184 vacantes del dominio Data & Analytics  
+> **Tu fit personal acumulado:** 88 ofertas afines (Tier 1+2) sobre 184 del mercado = **47.8%**
 
 ---
 
@@ -13,44 +13,43 @@ La columna *Fit personal* es referencia tuya exclusivamente y no forma parte del
 
 | Rol | N° Vacantes (Mercado) | % del Mercado | Fit Personal (T1+T2) |
 | :--- | ---: | ---: | ---: |
-| **Data Engineer** | 120 | 41.2% | 55 |
-| **AI & LLM Engineer** | 47 | 16.2% | 3 |
-| **Data Analyst & BI Specialist** | 44 | 15.1% | 14 |
-| **Other Data & Analytics** | 38 | 13.1% | 7 |
-| **Machine Learning / MLOps Engineer** | 20 | 6.9% | 1 |
-| **Data Scientist** | 13 | 4.5% | 0 |
-| **Analytics Engineer** | 5 | 1.7% | 0 |
-| **Data Architect** | 4 | 1.4% | 0 |
-| **TOTAL** | **291** | **100%** | **88** |
+| **Data Engineer** | 85 | 46.2% | 55 |
+| **Data Analyst & BI Specialist** | 31 | 16.8% | 14 |
+| **Other Data & Analytics** | 22 | 12.0% | 7 |
+| **AI & LLM Engineer** | 19 | 10.3% | 3 |
+| **Data Scientist** | 12 | 6.5% | 0 |
+| **Machine Learning / MLOps Engineer** | 11 | 6.0% | 1 |
+| **Data Architect** | 4 | 2.2% | 0 |
+| **TOTAL** | **184** | **100%** | **88** |
 
 ---
 
 ## 2. Penetración Tecnológica por Rol
 
-Porcentaje de ofertas de cada perfil que mencionan cada herramienta. Universo: 291 vacantes Data & Analytics acumuladas históricamente.
+Porcentaje de ofertas de cada perfil que mencionan cada herramienta. Universo: 184 vacantes Data & Analytics acumuladas históricamente.
 
-| Herramienta / Stack | Data Engineer (n=120) | AI & LLM Engineer (n=47) | Data Analyst & BI Specialist (n=44) | Other Data & Analytics (n=38) | Machine Learning / MLOps Engineer (n=20) | **Global (n=291)** |
+| Herramienta / Stack | Data Engineer (n=85) | Data Analyst & BI Specialist (n=31) | Other Data & Analytics (n=22) | AI & LLM Engineer (n=19) | Data Scientist (n=12) | **Global (n=184)** |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
-| **SQL** | 94 (78%) | 19 (40%) | 40 (91%) | 25 (66%) | 7 (35%) | **204 (70.1%)** |
-| **Python** | 91 (76%) | 41 (87%) | 22 (50%) | 16 (42%) | 18 (90%) | **203 (69.8%)** |
-| **AWS** | 61 (51%) | 17 (36%) | 8 (18%) | 10 (26%) | 10 (50%) | **114 (39.2%)** |
-| **Git & CI/CD** | 58 (48%) | 24 (51%) | 1 (2%) | 9 (24%) | 7 (35%) | **103 (35.4%)** |
-| **Azure** | 36 (30%) | 22 (47%) | 5 (11%) | 5 (13%) | 2 (10%) | **79 (27.1%)** |
-| **GCP / BigQuery** | 43 (36%) | 16 (34%) | 10 (23%) | 9 (24%) | 6 (30%) | **91 (31.3%)** |
-| **Databricks** | 37 (31%) | 7 (15%) | 3 (7%) | 12 (32%) | 7 (35%) | **70 (24.1%)** |
-| **Apache Spark / PySpark** | 45 (38%) | 6 (13%) | 0 (0%) | 4 (11%) | 4 (20%) | **63 (21.6%)** |
-| **Power BI / DAX** | 19 (16%) | 3 (6%) | 33 (75%) | 13 (34%) | 1 (5%) | **76 (26.1%)** |
-| **Snowflake** | 21 (18%) | 7 (15%) | 4 (9%) | 5 (13%) | 0 (0%) | **39 (13.4%)** |
-| **dbt** | 27 (22%) | 2 (4%) | 1 (2%) | 5 (13%) | 0 (0%) | **37 (12.7%)** |
-| **Apache Airflow** | 36 (30%) | 0 (0%) | 0 (0%) | 2 (5%) | 3 (15%) | **42 (14.4%)** |
-| **Apache Kafka** | 32 (27%) | 5 (11%) | 0 (0%) | 4 (11%) | 0 (0%) | **41 (14.1%)** |
-| **Tableau** | 10 (8%) | 2 (4%) | 13 (30%) | 7 (18%) | 1 (5%) | **36 (12.4%)** |
-| **GenAI / LLM / RAG** | 15 (12%) | 30 (64%) | 0 (0%) | 4 (11%) | 7 (35%) | **58 (19.9%)** |
-| **Terraform / IaC** | 30 (25%) | 4 (9%) | 0 (0%) | 1 (3%) | 0 (0%) | **36 (12.4%)** |
-| **Docker / Kubernetes** | 13 (11%) | 12 (26%) | 1 (2%) | 2 (5%) | 6 (30%) | **36 (12.4%)** |
-| **PostgreSQL / MySQL** | 16 (13%) | 4 (9%) | 0 (0%) | 3 (8%) | 1 (5%) | **24 (8.2%)** |
-| **Dagster / Prefect** | 10 (8%) | 0 (0%) | 1 (2%) | 0 (0%) | 0 (0%) | **12 (4.1%)** |
-| **DuckDB / Polars** | 2 (2%) | 0 (0%) | 1 (2%) | 0 (0%) | 0 (0%) | **3 (1.0%)** |
+| **SQL** | 66 (78%) | 27 (87%) | 12 (55%) | 6 (32%) | 11 (92%) | **129 (70.1%)** |
+| **Python** | 64 (75%) | 15 (48%) | 6 (27%) | 17 (89%) | 12 (100%) | **125 (67.9%)** |
+| **AWS** | 43 (51%) | 5 (16%) | 4 (18%) | 7 (37%) | 4 (33%) | **72 (39.1%)** |
+| **Git & CI/CD** | 44 (52%) | 1 (3%) | 3 (14%) | 7 (37%) | 1 (8%) | **60 (32.6%)** |
+| **Azure** | 17 (20%) | 0 (0%) | 2 (9%) | 8 (42%) | 3 (25%) | **35 (19.0%)** |
+| **GCP / BigQuery** | 32 (38%) | 7 (23%) | 2 (9%) | 5 (26%) | 5 (42%) | **56 (30.4%)** |
+| **Databricks** | 19 (22%) | 1 (3%) | 3 (14%) | 1 (5%) | 1 (8%) | **30 (16.3%)** |
+| **Apache Spark / PySpark** | 24 (28%) | 0 (0%) | 2 (9%) | 1 (5%) | 1 (8%) | **31 (16.8%)** |
+| **Power BI / DAX** | 13 (15%) | 23 (74%) | 7 (32%) | 1 (5%) | 2 (17%) | **49 (26.6%)** |
+| **Snowflake** | 11 (13%) | 1 (3%) | 0 (0%) | 2 (11%) | 1 (8%) | **15 (8.2%)** |
+| **dbt** | 22 (26%) | 0 (0%) | 1 (5%) | 0 (0%) | 0 (0%) | **23 (12.5%)** |
+| **Apache Airflow** | 26 (31%) | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) | **27 (14.7%)** |
+| **Apache Kafka** | 15 (18%) | 0 (0%) | 1 (5%) | 1 (5%) | 0 (0%) | **17 (9.2%)** |
+| **Tableau** | 8 (9%) | 9 (29%) | 3 (14%) | 0 (0%) | 0 (0%) | **22 (12.0%)** |
+| **GenAI / LLM / RAG** | 10 (12%) | 0 (0%) | 0 (0%) | 10 (53%) | 1 (8%) | **23 (12.5%)** |
+| **Terraform / IaC** | 27 (32%) | 0 (0%) | 1 (5%) | 0 (0%) | 0 (0%) | **29 (15.8%)** |
+| **Docker / Kubernetes** | 9 (11%) | 1 (3%) | 2 (9%) | 3 (16%) | 1 (8%) | **19 (10.3%)** |
+| **PostgreSQL / MySQL** | 10 (12%) | 0 (0%) | 3 (14%) | 1 (5%) | 0 (0%) | **15 (8.2%)** |
+| **Dagster / Prefect** | 5 (6%) | 1 (3%) | 0 (0%) | 0 (0%) | 0 (0%) | **6 (3.3%)** |
+| **DuckDB / Polars** | 1 (1%) | 1 (3%) | 0 (0%) | 0 (0%) | 0 (0%) | **2 (1.1%)** |
 
 ---
 
@@ -60,32 +59,30 @@ Distribución de régimen presencial para cada perfil. Valores sobre el universo
 
 | Rol | Remoto 100% | Híbrido | Presencial 100% | No especificado | Total | % Remoto |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
-| **Data Engineer** | 38 (32%) | 33 (28%) | 6 (5%) | 43 (36%) | 120 | **32%** |
-| **AI & LLM Engineer** | 12 (26%) | 10 (21%) | 5 (11%) | 20 (43%) | 47 | **26%** |
-| **Data Analyst & BI Specialist** | 7 (16%) | 16 (36%) | 5 (11%) | 16 (36%) | 44 | **16%** |
-| **Other Data & Analytics** | 2 (5%) | 6 (16%) | 9 (24%) | 21 (55%) | 38 | **5%** |
-| **Machine Learning / MLOps Engineer** | 10 (50%) | 3 (15%) | 1 (5%) | 6 (30%) | 20 | **50%** |
-| **Data Scientist** | 3 (23%) | 6 (46%) | 0 (0%) | 4 (31%) | 13 | **23%** |
-| **Analytics Engineer** | 2 (40%) | 1 (20%) | 1 (20%) | 1 (20%) | 5 | **40%** |
+| **Data Engineer** | 33 (39%) | 17 (20%) | 5 (6%) | 30 (35%) | 85 | **39%** |
+| **Data Analyst & BI Specialist** | 5 (16%) | 10 (32%) | 5 (16%) | 11 (35%) | 31 | **16%** |
+| **Other Data & Analytics** | 1 (5%) | 2 (9%) | 8 (36%) | 11 (50%) | 22 | **5%** |
+| **AI & LLM Engineer** | 8 (42%) | 0 (0%) | 2 (11%) | 9 (47%) | 19 | **42%** |
+| **Data Scientist** | 3 (25%) | 5 (42%) | 0 (0%) | 4 (33%) | 12 | **25%** |
+| **Machine Learning / MLOps Engineer** | 7 (64%) | 0 (0%) | 1 (9%) | 3 (27%) | 11 | **64%** |
 | **Data Architect** | 1 (25%) | 3 (75%) | 0 (0%) | 0 (0%) | 4 | **25%** |
-| **TOTAL MERCADO** | **75 (26%)** | **78 (27%)** | **27 (9%)** | **111 (38%)** | **291** | **26%** |
+| **TOTAL MERCADO** | **58 (32%)** | **37 (20%)** | **21 (11%)** | **68 (37%)** | **184** | **32%** |
 
 ---
 
 ## 4. Bandas Salariales Reales Capturadas
 
-Datos salariales 100% factuales extraídos directamente desde los avisos de empleo. Se unifica a CLP (1 USD = $950). Cobertura: 43 ofertas con salario explícito de 291 (14.8%). El 85.2% restante no publicó banda salarial.
+Datos salariales 100% factuales extraídos directamente desde los avisos de empleo. Se unifica a CLP (1 USD = $950). Cobertura: 34 ofertas con salario explícito de 184 (18.5%). El 81.5% restante no publicó banda salarial.
 
 | Perfil | n | Mínimo CLP | Mediana CLP | Máximo CLP |
 | :--- | ---: | ---: | ---: | ---: |
-| **Machine Learning / MLOps Engineer** | 2 | $2,500,000 | **$11,702,500** | $13,855,000 |
-| **AI & LLM Engineer** | 3 | $4,500,000 | **$8,650,000** | $17,900,000 |
-| **Data Engineer** | 15 | $1,710,000 | **$4,512,500** | $13,400,000 |
-| **Analytics Engineer** | 1 | $791,667 | **$3,958,333** | $7,125,000 |
-| **Data Analyst & BI Specialist** | 8 | $150,000 | **$3,250,000** | $9,000,000 |
-| **Other Data & Analytics** | 8 | $479,638 | **$3,250,000** | $8,708,333 |
+| **AI & LLM Engineer** | 1 | $4,500,000 | **$4,500,000** | $4,500,000 |
+| **Data Engineer** | 13 | $1,710,000 | **$4,417,500** | $8,550,000 |
+| **Machine Learning / MLOps Engineer** | 1 | $2,500,000 | **$2,875,000** | $3,250,000 |
 | **Data Scientist** | 4 | $760,000 | **$2,850,000** | $7,125,000 |
+| **Other Data & Analytics** | 6 | $479,638 | **$2,650,000** | $3,300,000 |
 | **Data Architect** | 2 | $1,425,000 | **$2,565,000** | $2,755,000 |
+| **Data Analyst & BI Specialist** | 7 | $1,140,000 | **$2,280,000** | $4,750,000 |
 
 ---
 
@@ -94,8 +91,8 @@ Datos salariales 100% factuales extraídos directamente desde los avisos de empl
 | Dimensión | Detalle |
 | :--- | :--- |
 | **Fuentes de datos** | Getonboard, Indeed, Linkedin, Manual (scraping automatizado de portales de empleo chilenos) |
-| **Periodo cubierto** | 25/08/2026 al 01/09/2026 12:33 |
-| **Universo total en BD** | 908 registros brutos (291 del dominio Data & Analytics; 617 descartados como ruido no-TI) |
+| **Periodo cubierto** | 25/08/2026 al 01/09/2026 12:38 |
+| **Universo total en BD** | 908 registros brutos (184 del dominio Data & Analytics; 724 descartados como ruido no-TI) |
 | **Criterio de inclusión** | Vacantes cuyo título contenga términos de datos/analítica (Data Engineer, Analytics Engineer, BI, etc.) |
 | **Normalización de roles** | Clasificación automática por regex sobre el título de la oferta en 8 categorías estándar |
 | **Modalidad** | Clasificación por detección de patrones de texto en título, descripción y campo de ubicación |

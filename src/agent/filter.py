@@ -42,12 +42,16 @@ CHILE_TERMS = [
 ]
 
 
-def parse_salary_details(salary_str: str | None) -> tuple[float | None, float | None, str | None]:
-    """Extrae valores numéricos min_salary, max_salary y moneda de una cadena de texto."""
+def parse_salary_details(salary_str: str) -> tuple[float | None, float | None, str | None]:
+    """Extrae min, max y moneda (CLP o USD) desde un string de salario."""
     if not salary_str:
         return None, None, None
 
-    clean_str = salary_str.replace(".", "").replace(",", "")
+    # Normalizar centavos estadounidenses (.00 o ,00)
+    s = re.sub(r"\.00\b", "", salary_str)
+    s = re.sub(r",00\b", "", s)
+
+    clean_str = s.replace(".", "").replace(",", "")
     nums = [float(n) for n in re.findall(r"\d+", clean_str)]
     if not nums:
         return None, None, None
