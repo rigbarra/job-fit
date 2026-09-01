@@ -132,6 +132,15 @@ role_normalization:
     - "ui/ux"
     - "carl's jr"
     - "prevensón"
+    - "manager"
+    - "lead"
+    - "lider"
+    - "líder"
+    - "jefe"
+    - "jefa"
+    - "director"
+    - "directora"
+    - "head of"
   categories:
     - name: "AI & LLM Engineer"
       keywords: ["ai engineer", "ia engineer", "llm", "genai", "prompt engineer", "inteligencia artificial", "artificial intelligence", "generative ai", "ai &", "& ai", "ai senior"]

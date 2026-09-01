@@ -74,8 +74,8 @@ def test_should_evaluate_job_passes_bairesdev_for_market_study():
     assert reason == ""
 
 
-def test_should_evaluate_job_leadership_exclusion_and_bi_exception():
-    """Valida que roles Lead/Manager de datos se descarten, salvo si pertenecen al área de BI."""
+def test_should_evaluate_job_leadership_exclusion():
+    """Valida que todos los roles Lead/Manager/Jefe/Director se descarten estrictamente."""
     job_lead_de = Job(
         title="Lead Data Engineer",
         company="TechCorp",
@@ -96,8 +96,9 @@ def test_should_evaluate_job_leadership_exclusion_and_bi_exception():
         url="https://example.com/lead-bi",
         source="test",
     )
-    passed_bi, _ = should_evaluate_job(job_bi_lead)
-    assert passed_bi
+    passed_bi, reason_bi = should_evaluate_job(job_bi_lead)
+    assert not passed_bi
+    assert "liderazgo" in reason_bi.lower()
 
 
 def test_should_evaluate_job_fails_title_not_data():
