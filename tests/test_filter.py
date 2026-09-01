@@ -34,6 +34,22 @@ def test_should_evaluate_job_passes_ai_engineer():
     assert reason == ""
 
 
+def test_should_evaluate_job_fails_company_blacklist():
+    """Valida el descarte algorítmico de empresas en blacklist (ej. BairesDev)."""
+    job = Job(
+        title="Senior Data Engineer",
+        company="BairesDev",
+        location="Remote",
+        description="Data Engineer role requiring SQL, Python, and AWS.",
+        url="https://example.com/job/bairesdev",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "blacklist" in reason.lower()
+    assert "BairesDev" in reason
+
+
 def test_should_evaluate_job_fails_title_not_data():
     """Valida el descarte si el título no coincide con el rubro de datos."""
     job = Job(

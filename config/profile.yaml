@@ -11,7 +11,7 @@ skills:
   cloud_bigdata:
     category_es: "Cloud & Big Data Stack"
     category_en: "Cloud & Big Data Stack"
-    items: "AWS (Lambda, Step Functions, Glue, Athena, S3, Redshift, EMR, CloudWatch, IAM), GCP (BigQuery), Azure"
+    items: "AWS (Lambda, Step Functions, Glue, Athena, S3, Redshift, CloudWatch, IAM), GCP (BigQuery), Azure"
   ai_engineering:
     category_es: "Generative AI & Agentic Systems"
     category_en: "Generative AI & Agentic Systems"

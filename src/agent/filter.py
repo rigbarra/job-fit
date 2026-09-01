@@ -151,6 +151,13 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
     location_lower = (job.location or "").lower()
     text_combined = f"{title} {location_lower} {description}".lower()
 
+    # 0. Lista Negra de Empresas (Blacklist)
+    company_lower = (job.company or "").lower()
+    excluded_companies = config.get("search_filters", {}).get("excluded_companies", [])
+    for ex_comp in excluded_companies:
+        if ex_comp.lower() in company_lower:
+            return False, f"Descarte algorítmico: Empresa en blacklist '{job.company}'."
+
     # 1. Lista Negra de Títulos (Roles excluidos y cargos de gerencia/liderazgo de equipos)
     title_blacklist = [
         "cientifico de datos",
