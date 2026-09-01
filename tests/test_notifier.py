@@ -60,6 +60,32 @@ def test_send_job_notification_tier_3_silenced(monkeypatch, mocker):
     mock_urlopen.assert_not_called()
 
 
+def test_send_job_notification_excluded_company_silenced(monkeypatch, mocker):
+    """Valida que empresas en la blacklist (ej. BairesDev) se silencien de Discord."""
+    monkeypatch.setattr(
+        "config.settings.settings.discord_webhook_url",
+        "https://discord.com/api/webhooks/123456/abcdef",
+    )
+    mock_urlopen = mocker.patch("urllib.request.urlopen")
+
+    job = Job(
+        id=9,
+        title="Senior Data Engineer",
+        company="BairesDev",
+        location="Remote",
+        description="Airflow y Python.",
+        url="https://example.com/job/9",
+        source="indeed",
+    )
+    match_result = MatchResult(
+        id=9, job_id=9, score=90.0, tier=1, rationale="Strong fit.", missing_keywords="[]"
+    )
+
+    sent = send_job_notification(job, match_result)
+    assert not sent
+    mock_urlopen.assert_not_called()
+
+
 def test_send_job_notification_tier_1_success(monkeypatch, mocker):
     """Valida el envío de una alerta Tier 1 (Verde) con Embed estructurado."""
     monkeypatch.setattr(

@@ -34,8 +34,8 @@ def test_should_evaluate_job_passes_ai_engineer():
     assert reason == ""
 
 
-def test_should_evaluate_job_fails_company_blacklist():
-    """Valida el descarte algorítmico de empresas en blacklist (ej. BairesDev)."""
+def test_should_evaluate_job_passes_bairesdev_for_market_study():
+    """Valida que BairesDev pasa el filtro algorítmico local para evaluarse en el estudio de mercado."""
     job = Job(
         title="Senior Data Engineer",
         company="BairesDev",
@@ -45,9 +45,8 @@ def test_should_evaluate_job_fails_company_blacklist():
         source="test",
     )
     passed, reason = should_evaluate_job(job)
-    assert not passed
-    assert "blacklist" in reason.lower()
-    assert "BairesDev" in reason
+    assert passed
+    assert reason == ""
 
 
 def test_should_evaluate_job_fails_title_not_data():

@@ -6,7 +6,7 @@ import urllib.request
 import uuid
 from datetime import UTC, datetime
 
-from config.settings import settings
+from config.settings import load_config, settings
 from src.agent.filter import CHILE_TERMS
 from src.database.models import CVSnapshot, Job, MatchResult
 
@@ -51,6 +51,17 @@ def send_job_notification(
             f"Discord Notifier: Omitiendo notificación para vacante {job.id} clasificada como Tier {match_result.tier}."
         )
         return False
+
+    # Omitir empresas excluidas exclusivamente de notificaciones de Discord (ej: BairesDev)
+    config = load_config()
+    excluded_companies = config.get("search_filters", {}).get("excluded_companies", [])
+    company_lower = (job.company or "").lower()
+    for ex_comp in excluded_companies:
+        if ex_comp.lower() in company_lower:
+            logger.info(
+                f"Discord Notifier: Omitiendo notificación a Discord para vacante {job.id} de empresa excluida '{job.company}'."
+            )
+            return False
 
     # 1. Definir color e icono según el Tier
     if match_result.tier == 1:
