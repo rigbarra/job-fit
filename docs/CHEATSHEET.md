@@ -59,15 +59,27 @@ Ejecuta el ciclo end-to-end (Scraping -> Filtro -> IA -> Discord -> Market Study
 PYTHONPATH=. .venv/bin/python -m src.cli scrape
 ```
 
-### Actualizar el Estudio de Mercado en Vivo
+### Actualizar el Estudio de Mercado en Vivo (Markdown o Web Streamlit)
 Regenera el archivo `data/market_study/market_study.md` procesando todas las vacantes de la base de datos:
 ```bash
 PYTHONPATH=. .venv/bin/python -m src.cli market-study
+# O lanza directamente la interfaz web interactiva en Streamlit (Catppuccin Dark):
+PYTHONPATH=. .venv/bin/python -m src.cli market-study --web
+# o directamente:
+.venv/bin/streamlit run src/market_engine/app.py
 ```
 
 ---
 
 ## 3. Prender, Apagar y Configurar Parámetros
+
+### Blacklist de Empresas para Notificaciones de Discord (`config/config.yaml`)
+Permite ingestar y analizar vacantes de ciertas empresas en el Estudio de Mercado, pero silenciando sus alertas en Discord y omitiendo compilaciones de CV:
+```yaml
+search_filters:
+  excluded_companies:
+    - "BairesDev"
+```
 
 ### Prender o Apagar Portales de Empleo (`config/config.yaml`)
 Para activar o desactivar portales según necesidad, edita la sección `sources`:

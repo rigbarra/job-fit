@@ -23,8 +23,10 @@ PYTHONPATH=. .venv/bin/python -m src.cli interview 39
 # 4. Generar únicamente la Carta de Presentación (.pdf)
 PYTHONPATH=. .venv/bin/python -m src.cli cover-letter 39
 
-# 5. Generar/Actualizar informe analítico de mercado y estudio salarial (.md)
+# 5. Generar/Actualizar informe analítico de mercado y estudio salarial (.md y Streamlit Web)
 PYTHONPATH=. .venv/bin/python -m src.cli market-study
+# O abrir directamente el Dashboard Interactivo Streamlit (Catppuccin Dark):
+.venv/bin/streamlit run src/market_engine/app.py
 
 # 6. Recompilar manualmente un CV (.tex modificado a .pdf en 1 segundo)
 pdflatex -output-directory=data/generated_cvs data/generated_cvs/NOMBRE_DEL_ARCHIVO.tex
@@ -45,7 +47,7 @@ flowchart TD
         E1 --> F1["Evaluador Multidimensional LLM"]
     end
 
-    F1 -->|Match Tier 1 o 2| G1["CV Engine: Compilación LaTeX pdflatex"]
+    F1 -->|Match Tier 1 o 2 (Excluyendo empresas en blacklist)| G1["CV Engine: Compilación LaTeX pdflatex"]
     F1 -->|Con opción apply| G2["Cover Engine: Carta de Presentación pdflatex"]
     F1 -->|Con opción interview| G3["Interview Engine: Guía Técnica Markdown"]
 
@@ -62,9 +64,8 @@ flowchart TD
 * **TLS Impersonation:** Utiliza `curl_cffi` para emular la huella TLS de Chrome 120, evitando detección de bots.
 
 ### 2. Pre-Filtrado Algorítmico y Configuración Dinámica (0 Tokens)
-* **Single Source of Truth (`config/config.yaml`):** Todas las reglas de búsqueda, categorías de roles (`role_normalization`), patrones de tecnologías (`tracked_technologies`) y filtros algorítmicos se leen dinámicamente desde el YAML sin hardcodear expresiones regulares en Python.
-* **Filtro por Título:** Exige palabras clave del rol objetivo (`title_keywords_any`).
-* **Filtro por Descripción:** Exige presencia de habilidades requeridas (`description_keywords_any`).
+* **Single Source of Truth (`config/config.yaml`):** Todas las reglas de búsqueda, categorías de roles (`role_normalization`), patrones de tecnologías (`tracked_technologies`), empresas en blacklist (`excluded_companies`) y filtros algorítmicos se leen dinámicamente desde el YAML.
+* **Blacklist Selectiva por Empresa (`excluded_companies`):** Permite procesar ofertas de empresas con procesos lentos (ej: BairesDev) para alimentarlas al Estudio de Mercado, pero silenciando alertas en Discord y omitiendo compilaciones de CV.
 * **Filtro Estricto de Modalidad:** Descarta vacantes 100% presenciales o con 3+ días en oficina en Chile.
 
 ### 3. Fábrica Universal y Agnóstica de LLM (`src/agent/providers.py`)
@@ -74,13 +75,13 @@ flowchart TD
 
 ### 4. Evaluación Multidimensional y Pasada Final (Catch-All)
 * **Compuertas de Elegibilidad e Idioma (Hard Gates):** Mismatches de residencia o idioma asignan descarte directo (< 60%).
-* **Technical Skills Match (30%):** Coincidencia en stack principal definido dinámicamente.
+* **Technical Skills Match (30%):** Coincidencia en stack principal definido dinámicamente y priorización inteligente de categorías de habilidades según la vacante (IA, BI, Data Engineering, Cloud).
 * **Catch-All Pass en Pipeline:** Garantiza que cualquier vacante rezagada por micro-interrupción de red o postulación manual se evalúe inmediatamente en la misma corrida sin esperar al próximo cron.
 
-### 5. Motores de Documentos y Estudio de Mercado
-* **CV Engine (`src/cv_engine/`):** Genera código `.tex` bilingüe Jinja2 y compila con `pdflatex` sin depender de binarios externos raros.
+### 5. Motores de Documentos, Nombres Cronológicos y Dashboard Streamlit
+* **CV Engine (`src/cv_engine/`):** Genera archivos con nombre estandarizado y ordenable alfabéticamente (`{yymmdd}_CV_RBarra_{cargo}_{empresa}.pdf`) y compila Jinja2 + `pdflatex` con re-ordenamiento inteligente de habilidades técnicas según la oferta.
 * **Interview Prep Engine (`src/interview_engine/`):** Genera guías Markdown completas con 10-12 preguntas técnicas con código y 4 escenarios STAR.
-* **Continuous Market Study (`src/market_engine/`):** Genera y actualiza automáticamente el informe vivo consolidado en `data/market_study/market_study.md` usando las categorías de `config.yaml`.
+* **Continuous Market Study (`src/market_engine/`):** Genera y actualiza automáticamente el informe vivo en `data/market_study/market_study.md` y ofrece el Dashboard Interactivo Web en Streamlit (`app.py`) con tema Catppuccin Dark y monitoreo de sueldos en IA.
 
 ---
 
@@ -90,24 +91,24 @@ flowchart TD
 job-fit/
 ├── AGENTS.md            # Guía de habilidades para Antigravity CLI
 ├── config/              # Configuración general y del perfil
-│   ├── config.yaml      # Búsquedas, role_normalization, tracked_technologies, search_scope y notification_rules
+│   ├── config.yaml      # Búsquedas, role_normalization, tracked_technologies, excluded_companies, search_scope y notification_rules
 │   ├── loader.py        # Cargador de YAML con caché en memoria
-│   ├── profile.yaml     # Perfil del candidato (skills, experiencia, antecedentes)
+│   ├── profile.yaml     # Perfil del candidato (Single Source of Truth para habilidades, experiencia, antecedentes)
 │   └── settings.py      # Variables de entorno gestionadas por Pydantic Settings
 ├── data/                # Almacenamiento local (SQLite BD, PDFs, Estudio de mercado vivo)
 ├── src/                 # Código fuente principal
 │   ├── agent/           # Evaluador LLM agnóstico, pre-filtro algorítmico, proveedores y cuotas
-│   ├── cli.py           # Entrypoint CLI interactivo (apply, interview, cover-letter, scrape, market-study)
+│   ├── cli.py           # Entrypoint CLI interactivo (apply, interview, cover-letter, scrape, market-study --web)
 │   ├── cover_engine/    # Generador y compilador de Cartas de Presentación LaTeX (desactivable)
-│   ├── cv_engine/       # Builder de plantillas LaTeX y compilador pdflatex
+│   ├── cv_engine/       # Builder de plantillas LaTeX dinámicas y compilador pdflatex
 │   ├── database/        # Modelos ORM (SQLModel) y repositorio SQLite
 │   ├── interview_engine/# Generador de Guías de Entrevista Técnica en Markdown
-│   ├── market_engine/   # Analizador continuo de mercado laboral y salarios reales
-│   ├── notifier/        # Despachador de Webhooks a Discord (Multipart PDF upload)
+│   ├── market_engine/   # Analizador de mercado (analytics.py) y Dashboard Streamlit Catppuccin Dark (app.py)
+│   ├── notifier/        # Despachador de Webhooks a Discord (Multipart PDF upload + filtrado por blacklist)
 │   ├── scraper/         # Scrapers (Get on Board API, LinkedIn, Indeed vía JobSpy, Remotive)
 │   └── main.py          # Orquestador del pipeline end-to-end (con Pasada Final Catch-All)
-├── templates/           # Plantillas LaTeX (.tex) para CV y Cover Letters
-└── tests/               # Suite de 39 pruebas unitarias completas (pytest)
+├── templates/           # Plantillas LaTeX (.tex) dinámicas para CV y Cover Letters
+└── tests/               # Suite de 41 pruebas unitarias completas (pytest)
 ```
 
 ---

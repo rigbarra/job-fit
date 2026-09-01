@@ -98,23 +98,31 @@ El modelo utiliza **SQLModel** (híbrido entre SQLAlchemy 2.0 y Pydantic):
 
 * **`builder.py`:**
   * `escape_latex(text)`: Escapa caracteres tipográficos conflictivos en TeX (`%`, `&`, `$`, `#`, `_`, `{`, `}`, `^`, `~`, `"`).
-  * `build_cv_tex()`: Renderiza las plantillas Jinja2 (`templates/cv/cv_base_es.tex` o `cv_base_en.tex`) inyectando las viñetas y el resumen adaptados si la vacante es Tier 2.
+  * `prepare_skills_list()`: Re-ordena y prioriza dinámicamente las categorías de habilidades técnicas del candidato (`profile.yaml`) según el tipo de vacante (IA, BI, Data Engineering, Cloud) y las renderiza en Jinja2.
+  * `build_cv_tex()`: Renderiza las plantillas Jinja2 (`templates/cv/cv_base_es.tex` o `cv_base_en.tex`) inyectando las viñetas, el resumen adaptado y la lista dinámica de habilidades.
 * **`compiler.py`:**
   * `detect_job_language(job)`: Analiza la descripción del empleo mediante conteo de palabras clave para determinar si la vacante está en español o inglés.
+  * Genera archivos con nombre estandarizado y ordenable cronológicamente: `{yymmdd}_CV_RBarra_{role_slug}_{company_slug}.pdf` (y `.tex`).
   * `compile_tex_to_pdf(tex_content, output_pdf_path)`: Escribe el archivo `.tex` en un directorio temporal (`tempfile`) y ejecuta `pdflatex` mediante `subprocess.run()`.
 
 ### 3.6 Módulo de Notificaciones Discord (`src/notifier/`)
 
 * **`discord.py` (`send_job_notification`):**
   * Asigna prefijo visual `[CHILE]` o `[INTL]`.
+  * Verifica si la empresa está en `excluded_companies` (`config.yaml`); de ser así, silencia la alerta sin enviar la notificación a Discord.
   * Asigna color al Embed: 🟩 Verde (`0x2ECC71`) para Tier 1 o 🟨 Dorado (`0xF1C40F`) para Tier 2.
   * Construye una petición HTTP `POST` multipart (`multipart/form-data`) usando `urllib.request` nativo de Python con boundary `uuid.uuid4().hex` para adjuntar el PDF compilado directamente a la notificación de Discord.
 
-### 3.7 Orquestador Principal (`src/main.py`)
+### 3.7 Módulo de Estudio de Mercado (`src/market_engine/`)
+
+* **`analytics.py`:** Procesa la base de datos para extraer estadísticas salariales (CLP/USD), distribución de roles y penetración tecnológica usando regex multilingüe para sueldos.
+* **`app.py`:** Dashboard web interactivo construido en Streamlit con tema Catppuccin Mocha Dark, visualizaciones nativas con tarjetas HTML/CSS y destaque de perfiles de IA.
+
+### 3.8 Orquestador Principal (`src/main.py`)
 
 Une todos los componentes en un flujo secuencial robusto:
 1. `init_db()`
-2. Lectura de `config.yaml` y reglas `notification_rules`.
+2. Lectura de `config.yaml` y reglas `notification_rules` + `excluded_companies`.
 3. Iteración sobre `execution_groups`.
 4. Extracción $\rightarrow$ Deduplicación $\rightarrow$ Filtrado $\rightarrow$ Evaluación LLM $\rightarrow$ Generación PDF $\rightarrow$ Notificación Discord.
 5. Captura de excepciones `DailyQuotaExhaustedError` y `RateLimitError` para pausar la corrida sin perder datos.
