@@ -143,11 +143,11 @@ def generate_cv_for_job(
     # 1. Renderizar código fuente LaTeX
     tex_content = build_cv_tex(match_result=match_result, language=language)
 
-    # 2. Construir nombre del archivo: CV_Rigoberto_Barra_{cargo}_{empresa}_{yymmdd}.pdf
+    # 2. Construir nombre del archivo: {yymmdd}_CV_RBarra_{cargo}_{empresa}.pdf
+    date_str = datetime.now().strftime("%y%m%d")
     role_slug = sanitize_filename(job.title, max_words=4, max_len=30)
     company_slug = sanitize_filename(job.company, max_words=3, max_len=20)
-    date_str = datetime.now().strftime("%y%m%d")
-    filename = f"CV_Rigoberto_Barra_{role_slug}_{company_slug}_{date_str}.pdf"
+    filename = f"{date_str}_CV_RBarra_{role_slug}_{company_slug}.pdf"
 
     output_dir = os.path.join(settings.project_root, settings.output_pdf_dir.lstrip("./"))
     output_pdf_path = os.path.join(output_dir, filename)

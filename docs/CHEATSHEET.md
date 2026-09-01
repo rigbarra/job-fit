@@ -47,7 +47,7 @@ Si abriste un archivo `.tex` en VSCode dentro de `data/generated_cvs/` y le hici
 ```bash
 pdflatex -output-directory=data/generated_cvs data/generated_cvs/NOMBRE_DEL_ARCHIVO.tex
 ```
-*(Ejemplo: `pdflatex -output-directory=data/generated_cvs data/generated_cvs/CV_Rigoberto_Barra_Drimo_39_T1_es_20260825.tex`)*
+*(Ejemplo: `pdflatex -output-directory=data/generated_cvs data/generated_cvs/260901_CV_RBarra_Data_Engineer_Drimo.tex`)*
 
 ---
 
