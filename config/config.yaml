@@ -56,6 +56,7 @@ rate_limiting:
 # Filtro Algorítmico Local (Ahorro de Tokens del LLM)
 algorithmic_filter:
   enabled: true
+  min_semantic_score: 55.0  # Umbral de similitud semántica vectorial local (0 a 100 pts). < 55 = descarte local (0 tokens LLM).
   # El título DEBE contener al menos una de estas palabras.
   # IMPORTANTE: Ser específico aquí evita capturar basura de Indeed (técnicos, electricistas, RRHH).
   # 'ingeniero' fue eliminado intencionalmente — es demasiado amplio y captura roles no relacionados.

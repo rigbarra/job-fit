@@ -1,5 +1,30 @@
+from src.agent.embedding import compute_semantic_similarity
 from src.agent.filter import should_evaluate_job
 from src.database.models import Job
+
+
+def test_compute_semantic_similarity():
+    """Valida el cálculo de similitud semántica local con FastEmbed."""
+    job_text = "Senior Data Engineer requiring Python, SQL, dbt and AWS."
+    sim = compute_semantic_similarity(job_text)
+    assert sim is not None
+    assert sim > 60.0
+
+
+def test_should_evaluate_job_fails_low_semantic_similarity(mocker):
+    """Valida el descarte de vacantes con baja similitud semántica vectorial."""
+    mocker.patch("src.agent.filter.compute_semantic_similarity", return_value=40.0)
+    job = Job(
+        title="Senior Data Engineer",
+        company="TechCorp",
+        location="Remote",
+        description="Looking for a Data Engineer with SQL and Python.",
+        url="https://example.com/job/low-sim",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "Vector Semántico Local" in reason
 
 
 def test_should_evaluate_job_passes():

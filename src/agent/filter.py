@@ -3,6 +3,7 @@ import re
 from datetime import UTC, datetime
 
 from config.settings import load_config
+from src.agent.embedding import compute_semantic_similarity
 from src.database.models import Job
 
 logger = logging.getLogger(__name__)
@@ -302,6 +303,17 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
             return (
                 False,
                 "Descarte algorítmico: Vacante en Chile exige 3 o más días presenciales por semana.",
+            )
+
+    # 8. Validar Similitud Semántica Vectorial Local (0 Tokens LLM)
+    min_semantic_score = filter_config.get("min_semantic_score", 55.0)
+    if min_semantic_score and min_semantic_score > 0:
+        job_full_text = f"{job.title}. {job.description}"
+        sim_pts = compute_semantic_similarity(job_full_text)
+        if sim_pts is not None and sim_pts < min_semantic_score:
+            return (
+                False,
+                f"Descarte algorítmico (Vector Semántico Local): Similitud semántica de {sim_pts:.1f} pts es menor al umbral de {min_semantic_score:.1f} pts.",
             )
 
     return True, ""
