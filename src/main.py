@@ -1,13 +1,12 @@
 import logging
 import sys
 
-from config.settings import load_config
-from config.settings import settings
+from config.settings import load_config, settings
 from src.agent.evaluator import evaluate_job
-from src.agent.filter import CHILE_TERMS, should_evaluate_job
+from src.agent.filter import CHILE_TERMS, normalize_text, should_evaluate_job
 from src.agent.quota import DailyQuotaExhaustedError, RateLimitError
 from src.cv_engine.compiler import generate_cv_for_job
-from src.database.models import MatchResult
+from src.database.models import Job, MatchResult
 from src.database.repository import get_pending_jobs, init_db, save_job, save_match_result
 from src.notifier.discord import send_job_notification
 
@@ -21,9 +20,49 @@ logger = logging.getLogger("job-fit")
 
 
 def is_local_location(location: str) -> bool:
-    """Retorna True si la ubicación corresponde a Chile local."""
-    loc_lower = (location or "").lower()
-    return any(term in loc_lower for term in CHILE_TERMS)
+    """Retorna True si la ubicación corresponde a Chile local o vacantes Remotas accesibles desde Chile/LATAM."""
+    # F-5: reutiliza normalize_text + CHILE_TERMS de filter.py (single source of truth)
+    loc = normalize_text(location)
+    if any(term in loc for term in CHILE_TERMS):
+        return True
+    return any(r in loc for r in ["remote", "remoto", "teletrabajo", "wfh", "worldwide", "global", "latin america", "latam"])
+
+
+def _maybe_notify(
+    job: Job,
+    match_result: MatchResult,
+    notification_rules: dict,
+    search_filters: dict,
+    min_score: float,
+) -> None:
+    """F-2: Lógica de notificación extraída para eliminar duplicación en main(). Genera CV y despacha Discord si aplica."""
+    is_job_local = is_local_location(job.location)
+    group_key = "national" if is_job_local else "international"
+    tier_key = f"allow_tier_{match_result.tier}"
+    should_notify = bool(notification_rules.get(group_key, {}).get(tier_key, False))
+
+    if match_result.score < min_score:
+        should_notify = False
+
+    excluded_comps = search_filters.get("excluded_companies", [])
+    if any(ex.lower() in (job.company or "").lower() for ex in excluded_comps):
+        should_notify = False
+
+    if not should_notify:
+        return
+
+    snapshot = None
+    try:
+        snapshot = generate_cv_for_job(job, match_result)
+        logger.info(f"CV PDF generado exitosamente: {snapshot.pdf_path}")
+    except Exception as ce:
+        logger.error(f"Error generando CV en PDF para vacante {job.id}: {ce}")
+
+    try:
+        send_job_notification(job, match_result, snapshot)
+    except Exception as de:
+        logger.error(f"Error despachando notificación de Discord para vacante {job.id}: {de}")
+
 
 
 def main():
@@ -33,6 +72,13 @@ def main():
     logger.info("Inicializando base de datos local...")
     init_db()
 
+    # Purga automática de datos temporales (> 30 días)
+    try:
+        from src.cleaner import clean_all_temporary_data
+        clean_all_temporary_data(days=30)
+    except Exception as cle:
+        logger.warning(f"No se pudo completar la limpieza automática: {cle}")
+
     # 2. Cargar configuración y filtros (cacheado en memoria)
     config = load_config()
     search_filters = config.get("search_filters", {})
@@ -41,6 +87,8 @@ def main():
     limit = search_filters.get("limit_per_source", 20)
     max_job_age_days = search_filters.get("max_job_age_days", 1)
     experience_level = search_filters.get("experience_level", "4")
+    # A-4: umbral de notificación desde config.yaml (único lugar para cambiarlo)
+    min_notify_score = float(config.get("notification_rules", {}).get("min_score_to_notify", 80.0))
 
     active_sources = config.get("sources", {})
     rate_limiting = config.get("rate_limiting", {})
@@ -229,38 +277,7 @@ def main():
                         logger.info(
                             f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM. Score: {match_result.score:.1f} / 100 pts -> Tier {match_result.tier}"
                         )
-
-                        # Verificar si califica para notificación según notification_rules en config.yaml
-                        is_job_local = is_local_location(job.location)
-                        group_key = "national" if is_job_local else "international"
-                        tier_key = f"allow_tier_{match_result.tier}"
-                        group_rules = notification_rules.get(group_key, {})
-                        should_notify = bool(group_rules.get(tier_key, False))
-
-                        if match_result.score < 80.0:
-                            should_notify = False
-
-                        company_lower = (job.company or "").lower()
-                        excluded_comps = search_filters.get("excluded_companies", [])
-                        if any(ex.lower() in company_lower for ex in excluded_comps):
-                            should_notify = False
-
-                        if should_notify:
-                            snapshot = None
-                            try:
-                                snapshot = generate_cv_for_job(job, match_result)
-                                logger.info(f"CV PDF generado exitosamente: {snapshot.pdf_path}")
-                            except Exception as ce:
-                                logger.error(
-                                    f"Error generando CV en PDF para vacante {job.id}: {ce}"
-                                )
-
-                            try:
-                                send_job_notification(job, match_result, snapshot)
-                            except Exception as de:
-                                logger.error(
-                                    f"Error despachando notificación de Discord para vacante {job.id}: {de}"
-                                )
+                        _maybe_notify(job, match_result, notification_rules, search_filters, min_notify_score)
                     except DailyQuotaExhaustedError as dqe:
                         logger.warning(
                             f"Evaluación LLM pausada: {dqe}. Las vacantes pendientes se conservan para la próxima corrida."
@@ -275,6 +292,7 @@ def main():
                         break
                     except Exception as ee:
                         logger.error(f"Error evaluando vacante {job.id} ({job.title}): {ee}")
+
 
     # 5. Pasada final para vacantes pendientes rezagadas (manuales o por fallas temporales de red previas)
     catchall_pending = get_pending_jobs()
@@ -296,33 +314,7 @@ def main():
                     logger.info(
                         f"Vacante '{job.title}' @ '{job.company}': Evaluada con éxito vía LLM (pasada final). Score: {match_result.score:.1f} / 100 pts -> Tier {match_result.tier}"
                     )
-
-                    is_job_local = is_local_location(job.location)
-                    group_key = "national" if is_job_local else "international"
-                    tier_key = f"allow_tier_{match_result.tier}"
-                    group_rules = notification_rules.get(group_key, {})
-                    should_notify = bool(group_rules.get(tier_key, False))
-
-                    if match_result.score < 80.0:
-                        should_notify = False
-
-                    company_lower = (job.company or "").lower()
-                    excluded_comps = search_filters.get("excluded_companies", [])
-                    if any(ex.lower() in company_lower for ex in excluded_comps):
-                        should_notify = False
-
-                    if should_notify:
-                        snapshot = None
-                        try:
-                            snapshot = generate_cv_for_job(job, match_result)
-                            logger.info(f"CV PDF generado exitosamente: {snapshot.pdf_path}")
-                        except Exception as ce:
-                            logger.error(f"Error generando CV en PDF para vacante {job.id}: {ce}")
-
-                        try:
-                            send_job_notification(job, match_result, snapshot)
-                        except Exception as de:
-                            logger.error(f"Error despachando notificación de Discord para vacante {job.id}: {de}")
+                    _maybe_notify(job, match_result, notification_rules, search_filters, min_notify_score)
             except DailyQuotaExhaustedError as dqe:
                 logger.warning(f"Evaluación LLM pausada: {dqe}.")
                 quota_exhausted = True
@@ -333,6 +325,7 @@ def main():
                 break
             except Exception as ee:
                 logger.error(f"Error evaluando vacante {job.id} ({job.title}): {ee}")
+
 
     # 6. Imprimir métricas finales de ejecución
     remaining_pending = get_pending_jobs()

@@ -209,18 +209,18 @@ def load_data(scope_filter: str = "chile"):
 
 
 def main():
-    # Sidebar: Selector de Ámbito de Mercado (Por defecto: Chile Mercado Nacional)
+    # Sidebar: Selector de Ámbito de Mercado
     st.sidebar.title("⚙️ Filtros de Mercado")
     selected_scope_label = st.sidebar.radio(
-        "🌐 Ámbito Geográfico:",
-        ["Chile (Mercado Nacional)", "Internacional (Contractor USD)", "Global (Todos)"],
+        "🌐 Ámbito de Publicación:",
+        ["Chile (Empresas Locales)", "Internacional / LATAM (Remoto)", "Todos (Vista Consolidada)"],
         index=0,
     )
 
     scope_map = {
-        "Chile (Mercado Nacional)": "chile",
-        "Internacional (Contractor USD)": "international",
-        "Global (Todos)": "all",
+        "Chile (Empresas Locales)": "chile",
+        "Internacional / LATAM (Remoto)": "international",
+        "Todos (Vista Consolidada)": "all",
     }
     active_scope = scope_map[selected_scope_label]
 

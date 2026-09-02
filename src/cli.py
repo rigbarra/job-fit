@@ -94,6 +94,21 @@ def handle_market_study(args):
         subprocess.run([sys.executable, "-m", "streamlit", "run", "src/market_engine/app.py"])
 
 
+def handle_clean(args):
+    """Ejecuta la purga de archivos y datos temporales con antigüedad mayor a N días."""
+    init_db()
+    days = getattr(args, "days", 30)
+    logger.info(f"--- Ejecutando Purga y Limpieza de Datos Temporales (> {days} días) ---")
+    from src.cleaner import clean_all_temporary_data
+    summary = clean_all_temporary_data(days=days)
+    print("\n¡Limpieza completada!")
+    print(f"  • CVs/TeX eliminados en disco: {summary['cv_files_removed']}")
+    print(f"  • Guías de entrevista eliminadas: {summary['interview_files_removed']}")
+    print(f"  • Archivos temporales en tmp: {summary['tmp_files_removed']}")
+    print(f"  • Snapshots de CV eliminados en BD: {summary['db_cv_snapshots_removed']}")
+    print(f"  • Vacantes descartadas antiguas eliminadas en BD: {summary['db_tier3_jobs_removed']}\n")
+
+
 def _get_or_create_job(target: str) -> Job | None:
     if target.isdigit():
         return get_job_by_id(int(target))
@@ -146,9 +161,15 @@ def main():
     p_market.add_argument("--web", action="store_true", help="Lanza el dashboard visual interactivo en Streamlit")
     p_market.set_defaults(func=handle_market_study)
 
+    # Comando: clean
+    p_clean = subparsers.add_parser("clean", help="Limpia archivos y registros temporales antiguos (> 30 días)")
+    p_clean.add_argument("--days", type=int, default=30, help="Días de antigüedad máxima para mantener data temporal (default: 30)")
+    p_clean.set_defaults(func=handle_clean)
+
     args = parser.parse_args()
     args.func(args)
 
 
 if __name__ == "__main__":
     main()
+

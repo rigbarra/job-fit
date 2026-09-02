@@ -1,7 +1,9 @@
 import hashlib
 import os
-from datetime import UTC
+from datetime import UTC, datetime, time
+from urllib.parse import urlparse, urlunparse
 
+from sqlalchemy import func, text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from config.settings import settings
@@ -12,7 +14,7 @@ engine = create_engine(settings.database_url, echo=False)
 
 
 def init_db():
-    """Crea las tablas de la base de datos si no existen."""
+    """Crea las tablas de la base de datos si no existen y aplica migraciones ligeras."""
     # Extraer la ruta de la base de datos de la URL de conexión
     db_path = settings.database_url.replace("sqlite:///", "")
 
@@ -26,19 +28,37 @@ def init_db():
 
     SQLModel.metadata.create_all(engine)
 
+    # Migración liviana y modo WAL para concurrencia SQLite (CLI + Streamlit)
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("PRAGMA journal_mode=WAL;"))
+            conn.execute(text("ALTER TABLE job ADD COLUMN origin_type VARCHAR;"))
+            conn.commit()
+        except Exception:
+            pass
+
+
+def clean_url(url: str) -> str:
+    """Elimina parámetros de rastreo (tracking, utm, ref) de las URLs antes de deduplicar."""
+    if not url:
+        return ""
+    try:
+        parsed = urlparse(url.strip())
+        cleaned = urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+        return cleaned.rstrip("/")
+    except Exception:
+        return url.strip().rstrip("/")
+
 
 def get_hash(value: str) -> str:
-    """Genera un hash SHA-256 único para una URL o valor de texto."""
-    return hashlib.sha256(value.strip().encode("utf-8")).hexdigest()
+    """Genera un hash SHA-256 único para una URL limpia o valor de texto."""
+    return hashlib.sha256(clean_url(value).encode("utf-8")).hexdigest()
 
 
 def is_duplicate(url: str) -> bool:
     """Verifica si la URL de la vacante ya existe en la base de datos."""
-    hash_url = get_hash(url)
     with Session(engine) as session:
-        statement = select(Job).where(Job.hash_url == hash_url)
-        results = session.exec(statement)
-        return results.first() is not None
+        return session.exec(select(Job).where(Job.hash_url == get_hash(url))).first() is not None
 
 
 def save_job(job: Job) -> tuple[Job, bool]:
@@ -52,13 +72,16 @@ def save_job(job: Job) -> tuple[Job, bool]:
 
     job.hash_url = get_hash(job.url)
 
-    # Enriquecer modalidad y país si no están definidos
-    if not job.modality or not job.country:
-        modality, country = extract_modality_and_country(job.location, job.description)
-        if not job.modality:
-            job.modality = modality
-        if not job.country:
-            job.country = country
+    # F-3: Sanitizar company "nan" (artefacto de pandas/JobSpy cuando el campo está vacío)
+    if not job.company or str(job.company).strip().lower() in ("nan", "none", ""):
+        job.company = "Empresa Confidencial"
+
+    # Enriquecer modalidad, país y origin_type si no están definidos
+    if not job.modality or not job.country or not job.origin_type:
+        modality, country, origin_type = extract_modality_and_country(job.location, job.description, job.source)
+        job.modality = job.modality or modality
+        job.country = job.country or country
+        job.origin_type = job.origin_type or origin_type
 
     # Enriquecer salarios numéricos normalizados si no están definidos
     if job.min_salary is None and job.salary:
@@ -69,8 +92,7 @@ def save_job(job: Job) -> tuple[Job, bool]:
 
     with Session(engine) as session:
         # Verificar duplicados por URL
-        statement = select(Job).where(Job.hash_url == job.hash_url)
-        existing = session.exec(statement).first()
+        existing = session.exec(select(Job).where(Job.hash_url == job.hash_url)).first()
         if existing:
             return existing, False
 
@@ -95,8 +117,19 @@ def get_pending_jobs() -> list[Job]:
 
 
 def save_match_result(result: MatchResult) -> MatchResult:
-    """Guarda el resultado del análisis del LLM para una vacante."""
+    """
+    Guarda (o actualiza) el resultado del análisis del LLM para una vacante.
+    F-1 fix: upsert — si ya existe un MatchResult para este job_id, actualiza en vez de duplicar.
+    """
     with Session(engine) as session:
+        existing = session.exec(select(MatchResult).where(MatchResult.job_id == result.job_id)).first()
+        if existing:
+            for field in ("score", "tier", "rationale", "missing_keywords", "recommended_salary_ask",
+                          "key_technologies", "seniority_level", "adapted_title", "adapted_summary", "adapted_bullets"):
+                setattr(existing, field, getattr(result, field))
+            session.commit()
+            session.refresh(existing)
+            return existing
         session.add(result)
         session.commit()
         session.refresh(result)
@@ -117,10 +150,6 @@ def get_match_results_count_today() -> int:
     Obtiene el número de evaluaciones reales realizadas por el LLM el día de hoy,
     excluyendo los descartes automáticos del filtro algorítmico local (que no gastan cuota de API).
     """
-    from datetime import datetime, time
-
-    from sqlalchemy import func
-
     # Inicio del día de hoy en UTC con tzinfo
     today_start = datetime.combine(datetime.now(tz=UTC).date(), time.min, tzinfo=UTC)
 

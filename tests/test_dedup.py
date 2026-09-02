@@ -89,3 +89,45 @@ def test_get_pending_jobs():
     pending_after = get_pending_jobs()
     assert len(pending_after) == 1
     assert pending_after[0].id == saved_job2.id
+
+
+def test_save_match_result_upsert():
+    """F-1: Valida que save_match_result hace upsert (no duplica) si ya existe un resultado para el job."""
+    job = Job(
+        title="Data Engineer Upsert Test",
+        company="UpsertCo",
+        location="Remote",
+        description="Python, SQL, dbt.",
+        url="https://upsertco.com/jobs/upsert-1",
+        source="test",
+    )
+    saved_job, _ = save_job(job)
+
+    r1 = MatchResult(job_id=saved_job.id, score=70.0, tier=2, rationale="Primera evaluación.", missing_keywords="[]")
+    save_match_result(r1)
+
+    r2 = MatchResult(job_id=saved_job.id, score=88.0, tier=1, rationale="Re-evaluación mejorada.", missing_keywords="[]")
+    save_match_result(r2)
+
+    # Solo debe existir 1 MatchResult para este job
+    from sqlmodel import Session, select
+    from src.database.repository import engine
+    with Session(engine) as s:
+        results = list(s.exec(select(MatchResult).where(MatchResult.job_id == saved_job.id)).all())
+    assert len(results) == 1, f"Esperaba 1 MatchResult, encontré {len(results)}"
+    assert results[0].score == 88.0
+    assert results[0].tier == 1
+
+
+def test_save_job_sanitizes_nan_company():
+    """F-3: Valida que company='nan' (artefacto de pandas/JobSpy) se convierte a 'Empresa Confidencial'."""
+    job = Job(
+        title="BI Analyst",
+        company="nan",  # Artefacto de pandas
+        location="Santiago",
+        description="Power BI, SQL.",
+        url="https://example.com/jobs/nan-company-test",
+        source="indeed",
+    )
+    saved_job, _ = save_job(job)
+    assert saved_job.company == "Empresa Confidencial"

@@ -67,6 +67,11 @@ Tu tarea es realizar una evaluación de compatibilidad estructurada (Job Fit Eva
 - **Behavioral & Culture Fit (Peso: 15%):** Equilibrio entre construcción/desarrollo activo de pipelines vs mantenimiento pasivo.
 - **Career Alignment & Growth (Peso: 30%):** Proyección del rol en el plan de carrera en Data & Analytics.
 
+### REGLAS PARA EVALUAR PALABRAS CLAVE FALTANTES (`missing_keywords`):
+- **REGLA DE VERIFICACIÓN CRÍTICA:** Antes de declarar una herramienta o tecnología en `missing_keywords`, debes verificar minuciosamente la sección `skills` y toda la sección `experience` del perfil YAML del candidato.
+- Si la herramienta aparece explícitamente en la sección `skills` (por ejemplo: Looker, Tableau, Power BI, SQL, Python, dbt, Dagster, AWS, GCP, Azure, etc.) o en la experiencia laboral, **NUNCA la incluyas en `missing_keywords`**.
+- Solo incluye en `missing_keywords` aquellas herramientas requeridas por la oferta que estén **completamente ausentes** en todo el perfil del candidato.
+
 ### UMBRALES Y CLASIFICACIÓN DE TIER:
 - **>= 85.0 pts (Tier 1 - Strong Fit):** Match excelente directo (85 a 100 pts). Alta afinidad en stack y experiencia.
 - **60.0 pts a 84.0 pts (Tier 2 - Good Fit):** Match sólido pero requiere adaptar el CV destacando keywords específicas de la vacante.

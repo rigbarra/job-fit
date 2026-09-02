@@ -1,5 +1,6 @@
 import logging
 import re
+import unicodedata
 from datetime import UTC, datetime
 
 from config.settings import load_config
@@ -8,18 +9,23 @@ from src.database.models import Job
 
 logger = logging.getLogger(__name__)
 
+
+def normalize_text(text: str) -> str:
+    """Convierte texto a minúsculas y elimina tildes/diacríticos (estándar único de limpieza)."""
+    if not text:
+        return ""
+    nfkd = unicodedata.normalize("NFKD", text.lower())
+    return "".join(c for c in nfkd if not unicodedata.combining(c))
+
+
 CHILE_TERMS = [
     "chile",
     "santiago",
     "vina",
-    "viña",
     "valparaiso",
-    "valparaíso",
     "concepcion",
-    "concepción",
     "las condes",
     "providencia",
-    "ñuñoa",
     "nunoa",
     "recoleta",
     "quilicura",
@@ -43,8 +49,29 @@ CHILE_TERMS = [
 
 
 def parse_salary_details(salary_str: str) -> tuple[float | None, float | None, str | None]:
-    """Extrae min, max y moneda (CLP o USD) desde un string de salario."""
+    """Extrae min, max y moneda (CLP o USD) desde un string de salario con validación estricta de contexto monetario."""
     if not salary_str:
+        return None, None, None
+
+    s_lower = salary_str.lower()
+
+    # Rechazar explícitamente si el número corresponde a métricas operacionales (clientes, usuarios, etc.)
+    non_monetary_metrics = [
+        "cliente",
+        "usuario",
+        "transacci",
+        "registro",
+        "solicitud",
+        "llamada",
+        "habitante",
+        "consulta",
+        "hora",
+        "dia",
+        "semana",
+        "visita",
+        "descarga",
+    ]
+    if any(m in s_lower for m in non_monetary_metrics):
         return None, None, None
 
     # Normalizar centavos estadounidenses (.00 o ,00)
@@ -56,7 +83,7 @@ def parse_salary_details(salary_str: str) -> tuple[float | None, float | None, s
     if not nums:
         return None, None, None
 
-    is_usd = "usd" in salary_str.lower() or max(nums) < 100000
+    is_usd = "usd" in s_lower or max(nums) < 100000
     currency = "USD" if is_usd else "CLP"
 
     if len(nums) >= 2:
@@ -65,20 +92,29 @@ def parse_salary_details(salary_str: str) -> tuple[float | None, float | None, s
         return nums[0], nums[0], currency
 
 
-def extract_modality_and_country(location: str, description: str) -> tuple[str, str]:
-    """Extrae la modalidad (Remoto 100%, Híbrido 2x3, Presencial, etc.) y país normalizado."""
-    text = f"{location} {description}".lower()
+def extract_modality_and_country(location: str, description: str, source: str = "") -> tuple[str, str, str]:
+    """Extrae la modalidad (Remoto 100%, Híbrido 2x3, Presencial, etc.), país normalizado y tipo de origen."""
+    loc_lower = normalize_text(location)
+    text = normalize_text(f"{location} {description}")
 
-    # País
-    country = "Chile" if any(term in text for term in CHILE_TERMS) else "Internacional / Remote"
+    # País y Origen
+    is_chile_loc = any(term in loc_lower for term in CHILE_TERMS) or "remote_local" in loc_lower
+    is_foreign_remote = any(r in loc_lower for r in ["remote_global", "remote - latin america", "latin america", "worldwide", "global"]) or source.lower() == "remotive"
+
+    if is_chile_loc or (source.lower() == "getonboard" and not is_foreign_remote):
+        country = "Chile"
+        origin_type = "Chile (Empresa Local)"
+    else:
+        country = "Chile" if is_chile_loc else "Internacional / Remote"
+        origin_type = "Internacional / LATAM (Remoto)"
 
     # Modalidad
     if any(k in text for k in ["100% remoto", "remote", "remoto", "teletrabajo", "work from home", "wfh"]):
-        if any(h in text for h in ["híbrido", "hibrido", "hybrid"]):
+        if any(h in text for h in ["hibrido", "hybrid"]):
             modality = "Híbrido"
         else:
             modality = "Remoto 100%"
-    elif any(k in text for k in ["híbrido", "hibrido", "hybrid"]):
+    elif any(k in text for k in ["hibrido", "hybrid"]):
         modality = "Híbrido"
         m = re.search(r"\b([1-4])\s*(x|por)\s*([1-4])\b", text)
         if m:
@@ -86,9 +122,9 @@ def extract_modality_and_country(location: str, description: str) -> tuple[str, 
     elif any(k in text for k in ["presencial", "on-site", "onsite", "en oficina"]):
         modality = "Presencial"
     else:
-        modality = "Híbrido / Remoto"
+        modality = "Híbrido / Remoto" if is_chile_loc else "Presencial / Local"
 
-    return modality, country
+    return modality, country, origin_type
 
 
 def is_salary_too_low(salary_str: str) -> tuple[bool, str]:
@@ -151,12 +187,15 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
     if not filter_config.get("enabled", True):
         return True, ""
 
-    title = job.title.lower()
-    description = job.description.lower()
-    location_lower = (job.location or "").lower()
-    text_combined = f"{title} {location_lower} {description}".lower()
+    title = normalize_text(job.title)
+    description = normalize_text(job.description)
+    location_lower = normalize_text(job.location)
+    text_combined = f"{title} {location_lower} {description}"
 
-    # 1. Lista Negra de Títulos (Roles excluidos y cargos de gerencia/liderazgo de equipos)
+    # 1. Lista Negra de Títulos y Áreas Excluidas (Control de Gestión, Ciencia de Datos pura, etc.)
+    if "control de gestion" in text_combined:
+        return False, "Descarte algorítmico: Oferta pertenece al área excluida por el candidato ('Control de Gestión')."
+
     title_blacklist = [
         "cientifico de datos",
         "cientista de datos",
@@ -165,7 +204,6 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
         "machine learning",
         "ml engineer",
         "arquitecto datos",
-        "control de gestion",
         "junior",
         "jr",
     ]
@@ -186,7 +224,7 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
         "head of",
     ]
     for term in leadership_terms:
-        if re.search(r"\b" + re.escape(term) + r"\b", title) or term in title:
+        if term in title:
             return (
                 False,
                 f"Descarte algorítmico: Título contiene rol de liderazgo excluido '{term}'.",
@@ -303,6 +341,18 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
             return (
                 False,
                 f"Descarte algorítmico: Oferta en '{job.location}' exige residencia local obligatoria.",
+            )
+
+        loc_title = f"{job.location} {job.title}".lower()
+        explicit_remote = any(
+            r in loc_title for r in ["remote", "remoto", "teletrabajo", "wfh", "worldwide", "latin america", "latam", "anywhere"]
+        ) or any(
+            phrase in description for phrase in ["100% remote", "100% remoto", "fully remote", "work from anywhere", "remote position", "remoto de cualquier lugar"]
+        )
+        if not explicit_remote:
+            return (
+                False,
+                f"Descarte algorítmico: Oferta internacional en '{job.location}' es presencial/local en el extranjero (no especifica trabajo remoto).",
             )
 
     # B) Oferta Local (Chile)

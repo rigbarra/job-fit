@@ -250,3 +250,33 @@ def test_should_evaluate_job_passes_chile_hybrid_general():
     passed, reason = should_evaluate_job(job)
     assert passed
     assert reason == ""
+
+
+def test_should_evaluate_job_fails_control_de_gestion_in_description():
+    """Valida el descarte de vacantes que mencionan 'Control de Gestión' en la descripción."""
+    job = Job(
+        title="Analista de Datos Senior",
+        company="Empresa Test",
+        location="Santiago, Chile",
+        description="El candidato reportará al área de Control de Gestión construyendo tableros en SQL y Python.",
+        url="https://example.com/job/cdg-test",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "Control de Gestión" in reason
+
+
+def test_should_evaluate_job_fails_foreign_city_without_remote():
+    """Valida el descarte de vacantes en ciudades extranjeras (ej. Chicago) que no especifican trabajo remoto."""
+    job = Job(
+        title="Applied AI Engineer I – Supply Chain",
+        company="Motorola Solutions",
+        location="Chicago, Illinois, Estados Unidos",
+        description="At Motorola Solutions we build technologies to help protect people. Requires SQL and Python.",
+        url="https://example.com/job/motorola-chicago",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "no especifica trabajo remoto" in reason

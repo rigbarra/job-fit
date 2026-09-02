@@ -21,6 +21,7 @@ class Job(SQLModel, table=True):
     job_type: str | None = None
     modality: str | None = None  # Remoto 100%, Híbrido (1x4, 2x3, etc.), Presencial
     country: str | None = None
+    origin_type: str | None = None  # "Chile (Empresa Local)" vs "Internacional / LATAM (Remoto)"
 
     # Contactos y notas
     recruiter_contact: str | None = None

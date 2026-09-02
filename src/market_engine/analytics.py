@@ -291,15 +291,21 @@ INTL_LOCATION_TERMS = [
 
 
 def is_job_chile(job: Job) -> bool:
-    """Verifica si una vacante pertenece geográficamente al mercado chileno."""
+    """Verifica si una vacante pertenece a una Empresa Local en Chile (publicada localmente)."""
+    if getattr(job, "origin_type", None) == "Chile (Empresa Local)":
+        return True
+    if getattr(job, "origin_type", None) == "Internacional / LATAM (Remoto)":
+        return False
+
     from src.agent.filter import CHILE_TERMS
 
     loc = (job.location or "").lower()
     if any(term in loc for term in INTL_LOCATION_TERMS):
         return False
+    if any(r in loc for r in ["remote_local", "remote_global", "fully_remote", "worldwide", "latin america"]):
+        return False
 
-    text = f"{loc} {job.description or ''}".lower()
-    return any(term in text for term in CHILE_TERMS)
+    return any(term in loc for term in CHILE_TERMS)
 
 
 def generate_market_study_report(output_path: str | None = None, scope: str | None = None) -> tuple[str, str]:

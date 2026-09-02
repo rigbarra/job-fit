@@ -22,3 +22,4 @@ Puedes invocar las siguientes habilidades directamente usando Antigravity CLI:
 - **`/apply <job_id_or_url>`**: Genera la evaluación detallada de fit, el CV adaptado en LaTeX (.pdf) y la Carta de Presentación (.pdf).
 - **`/interview <job_id_or_url>`**: Genera la Guía Completa de Entrevista Técnica y Conductual (.md) específica para el puesto.
 - **`/market-study`**: Genera el estudio analítico de mercado con estadísticas salariales, herramientas más cotizadas y recomendaciones de negociación.
+- **`/clean`**: Purga de forma segura los archivos temporales (PDFs, TeX, guías .md, tmp) y registros en base de datos con más de 30 días de antigüedad.
