@@ -219,7 +219,7 @@ def test_should_evaluate_job_fails_international_domestic_restriction():
     )
     passed, reason = should_evaluate_job(job)
     assert not passed
-    assert "residencia local obligatoria" in reason
+    assert "residencia/permiso de trabajo local" in reason
 
 
 def test_should_evaluate_job_fails_chile_3plus_days_onsite():
@@ -267,16 +267,32 @@ def test_should_evaluate_job_fails_control_de_gestion_in_description():
     assert "Control de Gestión" in reason
 
 
-def test_should_evaluate_job_fails_foreign_city_without_remote():
-    """Valida el descarte de vacantes en ciudades extranjeras (ej. Chicago) que no especifican trabajo remoto."""
+def test_should_evaluate_job_fails_foreign_city_without_b2b_or_latam():
+    """Valida el descarte de vacantes en ciudades extranjeras (ej. Chicago) que no especifican B2B/Contractor o LATAM."""
     job = Job(
-        title="Applied AI Engineer I – Supply Chain",
-        company="Motorola Solutions",
-        location="Chicago, Illinois, Estados Unidos",
-        description="At Motorola Solutions we build technologies to help protect people. Requires SQL and Python.",
-        url="https://example.com/job/motorola-chicago",
+        title="Analytics Engineer, Finance & Modeling",
+        company="Cozi",
+        location="Chicago y alrededores",
+        description="At In Tandem we build tech. Supportive environment, work from anywhere. Requires SQL, Python.",
+        url="https://example.com/job/cozi-chicago",
         source="test",
     )
     passed, reason = should_evaluate_job(job)
     assert not passed
-    assert "no especifica trabajo remoto" in reason
+    assert "B2B/Contractor" in reason
+
+
+def test_should_evaluate_job_passes_foreign_city_with_contractor_b2b():
+    """Valida que una vacante internacional con ubicación extranjera pasa si especifica Contractor B2B / LATAM."""
+    job = Job(
+        title="Senior Analytics Engineer",
+        company="US Scaleup",
+        location="San Francisco, CA",
+        description="Hiring globally! Independent Contractor B2B role via Deel. Required: SQL, Python, dbt, AWS.",
+        url="https://example.com/job/sf-b2b",
+        source="test",
+        salary="USD $5000 - $7000 / mes",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert passed
+    assert reason == ""

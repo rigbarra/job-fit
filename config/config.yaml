@@ -20,6 +20,9 @@ search_filters:
     - "Valparaiso"
     - "Viña del Mar"
     - "Vina del Mar"
+  international_locations:
+    - "Latin America"
+    - "Worldwide"
   max_job_age_days: 1    # Ventana de 24 horas para corridas recurrentes (3 veces al día)
   experience_level: "4"  # Nivel de experiencia LinkedIn (f_E=4: Mid-Senior Level)
   limit_per_source: 35

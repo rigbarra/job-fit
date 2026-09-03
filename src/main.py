@@ -97,9 +97,9 @@ def main():
     intl_rules = notification_rules.get("international", {})
     intl_enabled = intl_rules.get("allow_tier_1", True) or intl_rules.get("allow_tier_2", True)
 
-    # Separar ubicaciones en locales (Chile) e internacionales
+    # Separar ubicaciones en locales (Chile) e internacionales (LATAM / Worldwide)
     local_locs = [loc for loc in locations if is_local_location(loc)]
-    intl_locs = [loc for loc in locations if loc not in local_locs]
+    intl_locs = search_filters.get("international_locations", ["Latin America", "Worldwide"])
 
     api_key_configured = bool(
         (settings.llm_api_key and settings.llm_api_key != "tu_api_key_aqui")

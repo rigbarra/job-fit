@@ -53,3 +53,6 @@ logs/
 
 # Agent Internals
 .agent/
+
+# Career and study plan
+plan_capacitacion/

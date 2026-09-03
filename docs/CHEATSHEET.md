@@ -88,7 +88,7 @@ sources:
   getonboard: true       # API REST Get on Board Chile (muy estable)
   linkedin: true         # Endpoints públicos guest de LinkedIn
   indeed: true           # Indeed (vía JobSpy)
-  remotive: false        # Remotive internacional (activar para B2B / USD)
+  remotive: true         # Remotive internacional (B2B / Contractor USD)
 ```
 
 ### Cambiar la Ventana de Días de Búsqueda (`config/config.yaml`)
@@ -160,7 +160,7 @@ sudo service cron start
 
 ## 6. Verificación de Salud del Proyecto
 
-Ejecutar la suite completa de 39 pruebas unitarias automatizadas:
+Ejecutar la suite completa de 53 pruebas unitarias automatizadas:
 ```bash
 .venv/bin/pytest -v
 ```

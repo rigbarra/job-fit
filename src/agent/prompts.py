@@ -57,9 +57,13 @@ Tu tarea es realizar una evaluación de compatibilidad estructurada (Job Fit Eva
 ### METODOLOGÍA DE EVALUACIÓN MULTIDIMENSIONAL (5 DIMENSIONES):
 
 #### 1. Compuertas de Elegibilidad e Idioma (Hard Gates - Pass/Fail):
-- **Elegibilidad:** Residencia física en Chile. Para ofertas en Chile (Remoto o Híbrido hasta 2 días/semana presencial). Para ofertas fuera de Chile, solo 100% Remoto (Contractor/B2B LATAM/Worldwide).
+- **Elegibilidad Territorial y Contractual:** 
+  - El candidato reside físicamente en Chile (Viña del Mar).
+  - Para ofertas en Chile: Acepta 100% Remoto o Híbrido hasta 2 días/semana presencial.
+  - Para ofertas del extranjero (EE.UU., Europa, LATAM): El candidato NO posee visa ni permiso de trabajo extranjero (W-2 / nómina local extranjera). Por lo tanto, SOLO es elegible si la vacante permite contratación 100% Remota bajo modalidad Contractor / B2B / 1099 / Global Remote abierta a residentes en Chile / LATAM / Worldwide.
+  - Si una vacante internacional es un empleo directo local (W-2, nómina local extranjera, o restringido a residentes de EE.UU./Europa/España/UK) -> FALLA las compuertas de elegibilidad -> Asignar un score de 1.0 a 39.0 pts inmediatamente.
 - **Idioma:** Inglés nivel B2+ (2 años residiendo en Dublín, Irlanda) y Español nativo.
-- Si incumple estas compuertas -> Asignar un **score de 1.0 a 39.0 pts inmediatamente**.
+- Si incumple estas compuertas -> Asignar un score de 1.0 a 39.0 pts inmediatamente.
 
 #### 2. Dimensiones Ponderadas de Scoring (0 a 100 pts cada una):
 - **Technical Skills Match (Peso: 30%):** Coincidencia en stack base (SQL, Python, Spark/PySpark, dbt, Cloud AWS/GCP/Azure, Airflow/Prefect, Snowflake/BigQuery/Redshift, Data Modeling Kimball).

@@ -326,33 +326,80 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
             "must reside in the united states",
             "us only",
             "u.s. only",
+            "us based",
+            "u.s. based",
+            "must be located in the us",
+            "must be based in the us",
+            "must be based in the u.s.",
+            "us remote",
+            "u.s. remote",
+            "remote in the us",
+            "remote (us)",
+            "remote us",
+            "remote - us",
+            "remote - usa",
+            "w2 only",
+            "w-2 only",
+            "no c2c",
+            "no corp-to-corp",
+            "no 1099",
+            "no contractors",
             "must be a us citizen",
             "must be a u.s. citizen",
-            "green card holder",
+            "green card",
             "no visa sponsorship",
             "without visa sponsorship",
             "not eligible for visa sponsorship",
-            "authorized to work in the us without",
-            "authorized to work in the u.s. without",
-            "authorized to work in the uk without",
+            "authorized to work in the us",
+            "authorized to work in the u.s.",
+            "authorized to work in the uk",
             "security clearance",
+            "reside in spain",
+            "reside en espana",
+            "permiso de trabajo",
+            "eu only",
+            "emea only",
         ]
         if any(term in text_combined for term in domestic_restriction_terms):
             return (
                 False,
-                f"Descarte algorítmico: Oferta en '{job.location}' exige residencia local obligatoria.",
+                f"Descarte algorítmico: Oferta en '{job.location}' exige residencia/permiso de trabajo local en el extranjero.",
             )
 
-        loc_title = f"{job.location} {job.title}".lower()
-        explicit_remote = any(
-            r in loc_title for r in ["remote", "remoto", "teletrabajo", "wfh", "worldwide", "latin america", "latam", "anywhere"]
-        ) or any(
-            phrase in description for phrase in ["100% remote", "100% remoto", "fully remote", "work from anywhere", "remote position", "remoto de cualquier lugar"]
+        loc_lower_clean = normalize_text(job.location)
+        
+        # 1. ¿Es una vacante con ubicación puramente remota global o LATAM?
+        generic_remote_loc = loc_lower_clean in ["remote", "remoto", "100% remote", "100% remoto", "worldwide", "global", "latin america", "latam", "anywhere"]
+        open_geo_in_loc = any(r in loc_lower_clean for r in ["worldwide", "latin america", "latam", "global", "anywhere", "chile"])
+        open_geo_in_desc = any(r in text_combined for r in ["remote - latam", "remote - latin america", "remote - worldwide", "remote - global", "remote (latam)", "remote (worldwide)", "remote (global)", "hiring in latam", "candidates in latam", "residentes en latam", "latin america remote"])
+
+        open_geo_match = generic_remote_loc or open_geo_in_loc or open_geo_in_desc
+
+        # 2. ¿Especifica modalidad Contractor / B2B explícitamente?
+        contractor_match = any(
+            c in text_combined for c in [
+                "contractor",
+                "independent contractor",
+                "b2b",
+                "1099",
+                "c2c",
+                "corp-to-corp",
+                "corp to corp",
+                "deel",
+                "ontop",
+                "remote.com",
+                "rippling",
+                "contract position",
+                "contract role",
+                "prestacion de servicios",
+                "honorarios",
+            ]
         )
-        if not explicit_remote:
+
+        if not (open_geo_match or contractor_match):
             return (
                 False,
-                f"Descarte algorítmico: Oferta internacional en '{job.location}' es presencial/local en el extranjero (no especifica trabajo remoto).",
+                f"Descarte algorítmico: Oferta internacional en '{job.location}' no especifica contratación B2B/Contractor ni apertura explícita para LATAM/Chile/Worldwide.",
             )
 
     # B) Oferta Local (Chile)
