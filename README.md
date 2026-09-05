@@ -91,31 +91,36 @@ flowchart TD
 job-fit/
 ├── AGENTS.md            # Guía de habilidades para Antigravity CLI
 ├── config/              # Configuración general y del perfil
-│   ├── config.yaml      # Búsquedas, role_normalization, tracked_technologies, excluded_companies, search_scope y notification_rules
-│   ├── loader.py        # Cargador de YAML con caché en memoria
-│   ├── profile.yaml     # Perfil del candidato (Single Source of Truth para habilidades, experiencia, antecedentes)
+│   ├── config.yaml      # Búsquedas, role_normalization, tracked_technologies, excluded_companies, search_scope
+│   ├── profile.example.yaml # Plantilla de perfil sanitizada y lista para personalizar
+│   ├── profile.yaml     # Perfil del candidato (ignorado en git para privacidad)
 │   └── settings.py      # Variables de entorno gestionadas por Pydantic Settings
-├── data/                # Almacenamiento local (SQLite BD, PDFs, Estudio de mercado vivo)
+├── docker/              # Dockerfile de producción con Python 3.13 + TeX Live
+├── docker-compose.yml   # Orquestación de contenedores
+├── data/                # Almacenamiento local (SQLite BD, PDFs, Estudio de mercado)
+├── output/              # Salidas agnósticas (Obsidian vault, descargas)
 ├── src/                 # Código fuente principal
 │   ├── agent/           # Evaluador LLM agnóstico, pre-filtro algorítmico, proveedores y cuotas
-│   ├── cli.py           # Entrypoint CLI interactivo (apply, interview, cover-letter, scrape, market-study --web)
-│   ├── cover_engine/    # Generador y compilador de Cartas de Presentación LaTeX (desactivable)
+│   ├── cli.py           # Entrypoint CLI interactivo (apply, interview, cover-letter, scrape, market-study)
+│   ├── cover_engine/    # Generador y compilador de Cartas de Presentación LaTeX
 │   ├── cv_engine/       # Builder de plantillas LaTeX dinámicas y compilador pdflatex
 │   ├── database/        # Modelos ORM (SQLModel) y repositorio SQLite
 │   ├── interview_engine/# Generador de Guías de Entrevista Técnica en Markdown
-│   ├── market_engine/   # Analizador de mercado (analytics.py) y Dashboard Streamlit Catppuccin Dark (app.py)
-│   ├── notifier/        # Despachador de Webhooks a Discord (Multipart PDF upload + filtrado por blacklist)
-│   ├── scraper/         # Scrapers (Get on Board API, LinkedIn, Indeed vía JobSpy, Remotive)
+│   ├── market_engine/   # Analizador de mercado (analytics.py) y Dashboard Streamlit (app.py)
+│   ├── notifier/        # Despachador de Webhooks a Discord (Multipart PDF upload)
+│   ├── obsidian_exporter.py # Exportador agnóstico de fichas Kanban para Obsidian
+│   ├── scraper/         # Scrapers (Get on Board API, LinkedIn, Indeed, Remotive)
 │   └── main.py          # Orquestador del pipeline end-to-end (con Pasada Final Catch-All)
 ├── templates/           # Plantillas LaTeX (.tex) dinámicas para CV y Cover Letters
-└── tests/               # Suite de 41 pruebas unitarias completas (pytest)
+└── tests/               # Suite de 56 pruebas unitarias completas (pytest)
 ```
 
 ---
 
 ## Requisitos e Instalación
 
-### Pasos de Instalación
+### Opción A: Instalación Local (Linux / WSL2 / macOS)
+
 1. Clonar el repositorio:
    ```bash
    git clone https://github.com/rigbarra/job-fit.git
@@ -129,19 +134,39 @@ job-fit/
    pip install -r requirements.txt
    ```
 
-3. Instalar TeX Live en Linux / WSL2:
+3. Instalar TeX Live (para compilar CVs a PDF):
    ```bash
+   # En Debian / Ubuntu / WSL2:
    sudo apt-get update
    sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended texlive-lang-spanish
    ```
 
-4. Configurar variables de entorno (`.env`):
+4. Configurar tu perfil y variables de entorno:
    ```bash
    cp .env.example .env
+   cp config/profile.example.yaml config/profile.yaml
    ```
-   Edita `.env` agregando tu `LLM_API_KEY` (Gemini, OpenRouter, DeepSeek) y `DISCORD_WEBHOOK_URL`.
+   Edita `.env` con tus API keys y `config/profile.yaml` con tu experiencia real.
 
 5. Ejecutar la suite de pruebas unitarias:
    ```bash
    pytest
    ```
+
+### Opción B: Ejecución Rápida con Docker (Cero dependencias del sistema)
+
+Si no deseas instalar TeX Live ni configurar Python localmente:
+
+```bash
+# 1. Copiar configuración
+cp .env.example .env
+cp config/profile.example.yaml config/profile.yaml
+
+# 2. Construir la imagen
+docker compose build
+
+# 3. Ejecutar comandos CLI
+docker compose run --rm job-fit scrape
+docker compose run --rm job-fit apply 39
+docker compose run --rm job-fit --help
+```

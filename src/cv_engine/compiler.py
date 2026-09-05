@@ -7,7 +7,7 @@ import tempfile
 from datetime import datetime
 
 from config.settings import settings
-from src.cv_engine.builder import build_cv_tex
+from src.cv_engine.builder import build_cv_tex, load_profile
 from src.database.models import CVSnapshot, Job, MatchResult
 from src.database.repository import save_cv_snapshot
 
@@ -143,11 +143,14 @@ def generate_cv_for_job(
     # 1. Renderizar código fuente LaTeX
     tex_content = build_cv_tex(match_result=match_result, language=language, job=job)
 
-    # 2. Construir nombre del archivo: {yymmdd}_CV_RBarra_{cargo}_{empresa}.pdf
+    # 2. Construir nombre del archivo: {yymmdd}_CV_{cand_slug}_{cargo}_{empresa}.pdf
     date_str = datetime.now().strftime("%y%m%d")
     role_slug = sanitize_filename(job.title, max_words=4, max_len=30)
     company_slug = sanitize_filename(job.company, max_words=3, max_len=20)
-    filename = f"{date_str}_CV_RBarra_{role_slug}_{company_slug}.pdf"
+    profile = load_profile(language=language)
+    cand_parts = profile.get("name", "Candidate").strip().split()
+    cand_slug = f"{cand_parts[0][0]}{cand_parts[-1]}" if len(cand_parts) > 1 else (cand_parts[0] if cand_parts else "Candidate")
+    filename = f"{date_str}_CV_{cand_slug}_{role_slug}_{company_slug}.pdf"
 
     output_dir = os.path.join(settings.project_root, settings.output_pdf_dir.lstrip("./"))
     output_pdf_path = os.path.join(output_dir, filename)

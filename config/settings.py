@@ -66,3 +66,14 @@ def load_config(force_reload: bool = False) -> dict:
             "sources": {"remotive": True, "indeed": False},
         }
     return _cached_config
+
+
+def get_profile_path() -> Path:
+    """Devuelve la ruta al perfil del candidato (profile.yaml o profile.example.yaml como fallback)."""
+    p = Path(settings.project_root) / "config" / "profile.yaml"
+    if p.exists():
+        return p
+    example_p = Path(settings.project_root) / "config" / "profile.example.yaml"
+    if example_p.exists():
+        return example_p
+    return p

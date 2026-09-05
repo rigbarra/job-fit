@@ -6,7 +6,7 @@ from typing import Any
 
 import yaml
 
-from config.settings import settings
+from config.settings import settings, get_profile_path
 from src.agent.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, MatchEvaluation
 from src.agent.providers import get_llm_provider
 from src.agent.quota import RateLimitError, call_with_retry
@@ -146,7 +146,7 @@ def evaluate_job(
     except Exception as e:
         logger.error(f"No se pudo cargar el perfil del candidato ({job_lang}): {e}")
         if not profile_path:
-            profile_path = os.path.join(settings.project_root, "config", "profile.yaml")
+            profile_path = str(get_profile_path())
         with open(profile_path, encoding="utf-8") as f:
             profile_text = f.read()
 

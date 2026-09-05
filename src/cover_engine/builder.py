@@ -57,11 +57,11 @@ def build_cover_letter_tex(
     Genera el código LaTeX compilable (.tex) para la carta de presentación adaptada a la vacante.
     """
     profile = load_profile(language=language, profile_path=profile_path)
-    cand_name = profile.get("name", "Rigoberto Barra")
+    cand_name = profile.get("name", "Candidato")
     cand_loc = profile.get("location", "Chile")
-    cand_email = profile.get("email", "rigbarra@outlook.com")
-    cand_phone = profile.get("phone", "+56-996974170")
-    cand_linkedin = profile.get("linkedin", "https://www.linkedin.com/in/rigbarra")
+    cand_email = profile.get("email", "")
+    cand_phone = profile.get("phone", "")
+    cand_linkedin = profile.get("linkedin", "")
 
     lang_display = "ESPAÑOL" if language == "es" else "ENGLISH"
     prompt_user = f"""

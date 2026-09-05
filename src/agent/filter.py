@@ -42,9 +42,10 @@ CHILE_TERMS = [
     ", cl",
     "cl,",
     " rm",
-    ", vs",
-    ", bi",
-    ", an",
+    ", region metropolitana",
+    ", v region",
+    ", viii region",
+    ", ii region",
 ]
 
 
@@ -279,20 +280,32 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
     if too_low:
         return False, f"Descarte algorítmico: {salary_reason}"
 
-    # 6. Validar antigüedad máxima de la oferta en días
-    max_age_days = config.get("search_filters", {}).get("max_job_age_days", 3)
+    # 6. Validar antigüedad máxima de la oferta en días (ventana móvil)
+    max_age_days = float(config.get("search_filters", {}).get("max_job_age_days", 1))
     if job.posted_at:
         now = datetime.now(tz=UTC)
         posted_at = job.posted_at
-        if posted_at.tzinfo is None:
-            posted_at = posted_at.replace(tzinfo=UTC)
+        if isinstance(posted_at, str):
+            try:
+                posted_at = datetime.fromisoformat(posted_at)
+            except Exception:
+                posted_at = None
+        if posted_at:
+            if posted_at.tzinfo is None:
+                posted_at = posted_at.replace(tzinfo=UTC)
 
-        age_days = (now - posted_at).total_seconds() / 86400.0
-        if age_days > max_age_days:
-            return (
-                False,
-                f"Descarte algorítmico: La oferta fue publicada hace {int(age_days)} días (máximo: {max_age_days} días).",
-            )
+            # Si posted_at no incluye hora (medianoche 00:00:00 de LinkedIn/Indeed),
+            # calculamos días calendario para evitar que la hora del día convierta 1 día en 1.8 días.
+            if posted_at.hour == 0 and posted_at.minute == 0 and posted_at.second == 0:
+                age_days = float((now.date() - posted_at.date()).days)
+            else:
+                age_days = (now - posted_at).total_seconds() / 86400.0
+
+            if age_days > max_age_days:
+                return (
+                    False,
+                    f"Descarte algorítmico: La oferta fue publicada hace {int(age_days)} días (máximo: {max_age_days} días).",
+                )
 
     # 7. Validar modalidad Híbrida / Presencial / Remota
     is_chile_location = any(term in location_lower for term in CHILE_TERMS)
@@ -371,7 +384,24 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
         # 1. ¿Es una vacante con ubicación puramente remota global o LATAM?
         generic_remote_loc = loc_lower_clean in ["remote", "remoto", "100% remote", "100% remoto", "worldwide", "global", "latin america", "latam", "anywhere"]
         open_geo_in_loc = any(r in loc_lower_clean for r in ["worldwide", "latin america", "latam", "global", "anywhere", "chile"])
-        open_geo_in_desc = any(r in text_combined for r in ["remote - latam", "remote - latin america", "remote - worldwide", "remote - global", "remote (latam)", "remote (worldwide)", "remote (global)", "hiring in latam", "candidates in latam", "residentes en latam", "latin america remote"])
+        open_geo_in_desc = any(
+            r in text_combined for r in [
+                "remote - latam",
+                "remote - latin america",
+                "remote - worldwide",
+                "remote - global",
+                "remote (latam)",
+                "remote (worldwide)",
+                "remote (global)",
+                "hiring in latam",
+                "candidates in latam",
+                "residentes en latam",
+                "latin america remote",
+                "remoto latam",
+                "remoto latinoamerica",
+                "remoto en latam",
+            ]
+        )
 
         open_geo_match = generic_remote_loc or open_geo_in_loc or open_geo_in_desc
 

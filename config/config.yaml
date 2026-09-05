@@ -7,25 +7,39 @@ search_scope: "all"
 search_filters:
   keywords:
     - "Analytics Engineer"
+    - "Ingeniero de Analítica"
     - "Data Engineer"
     - "Ingeniero de Datos"
+    - "Data Platform Engineer"
+    - "Cloud Data Engineer"
+    - "Big Data Engineer"
+    - "ETL Developer"
+    - "BI Developer"
+    - "Desarrollador BI"
+    - "Business Intelligence Engineer"
+    - "Ingeniero BI"
+    - "Power BI Developer"
+    - "Analista BI"
+    - "Data Analyst"
+    - "Analista de Datos"
+    - "Inteligencia de Negocios"
     - "AI Engineer"
     - "Ingeniero IA"
-    - "Data Analyst"
-    - "Analista BI"
+    - "GenAI Engineer"
+    - "LLM Engineer"
   locations:
     - "Chile"
-    - "Santiago"
-    - "Valparaíso"
-    - "Valparaiso"
-    - "Viña del Mar"
-    - "Vina del Mar"
+    - "Santiago, Chile"
+    - "Valparaíso, Chile"
+    - "Viña del Mar, Chile"
   international_locations:
     - "Latin America"
+    - "South America"
+    - "Americas"
     - "Worldwide"
-  max_job_age_days: 1    # Ventana de 24 horas para corridas recurrentes (3 veces al día)
-  experience_level: "4"  # Nivel de experiencia LinkedIn (f_E=4: Mid-Senior Level)
-  limit_per_source: 35
+  max_job_age_days: 1    # Ventana móvil estricta de 1 día (24 horas) para avisos nuevos
+  experience_level: ""   # Vacío para capturar todas las ofertas (el filtro algorítmico local descarta juniors y jefaturas)
+  limit_per_source: 100
   excluded_companies:
     - "BairesDev"
 
@@ -43,13 +57,13 @@ sources:
   
 # Control de Notificaciones y Evaluación por Ubicación y Tier
 notification_rules:
-  min_score_to_notify: 80    # A-4: umbral único de score para disparar notificación y generar CV
+  min_score_to_notify: 75    # Umbral calibrado: notifica Tier 1 y Tier 2 de alto impacto (75-100 pts)
   national:
     allow_tier_1: true    # Match Directo Chile
     allow_tier_2: true    # Match con Retoque Chile
   international:
     allow_tier_1: true    # Match Directo Internacional (LATAM / Contractor)
-    allow_tier_2: true    # Match con Retoque Internacional (Activado para calibración)
+    allow_tier_2: false   # Desactivado: Para el extranjero solo competir con Match Directo (Tier 1)
 
 # Cautela y Control de Bloqueos (Rate Limiting)
 rate_limiting:
@@ -78,11 +92,14 @@ algorithmic_filter:
     - "etl"
     - "pipeline"
     - "intelligence"
+    - "inteligencia"
     - "inteligencia artificial"
     - "machine learning"
     - "mlops"
     - "ia engineer"
     - "ai engineer"
+    - "genai"
+    - "llm"
   # La descripción debe contener AL MENOS UNA de estas palabras (OR, no AND).
   # Antes era AND (sql Y python) lo que rechazaba avisos legítimos con descripciones cortas.
   description_keywords_any:
@@ -187,4 +204,11 @@ tracked_technologies:
   "PostgreSQL / MySQL": "\\bpostgresql\\b|\\bpostgres\\b|\\bmysql\\b"
   "Dagster / Prefect": "\\bdagster\\b|\\bprefect\\b"
   "DuckDB / Polars": "\\bduckdb\\b|\\bpolars\\b"
+
+# Configuración del Vault de Obsidian y Kanban
+obsidian:
+  vault_path: "/mnt/c/job-fit-obsidian"
+  auto_clean_orphans: true      # Si borras una tarjeta del tablero, purga automáticamente sus archivos .md y .pdf del disco
+  start_cutoff: "2026-09-04 21:10:00"  # Punto de corte temporal para vacantes nuevas
+
 

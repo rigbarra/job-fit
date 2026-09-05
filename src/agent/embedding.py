@@ -3,7 +3,7 @@ from typing import Any
 import yaml
 from pathlib import Path
 
-from config.settings import settings
+from config.settings import settings, get_profile_path
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def get_embedding_model() -> Any | None:
 
 def get_candidate_profile_text() -> str:
     """Construye un resumen técnico representativo del perfil desde profile.yaml."""
-    profile_path = settings.project_root / "config" / "profile.yaml"
+    profile_path = get_profile_path()
     try:
         with open(profile_path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}

@@ -155,6 +155,18 @@ def main():
             )
             continue
 
+        # Prioridad absoluta a Chile: El grupo internacional solo procede si hay cuota sobrante reservando para Chile
+        if not is_local:
+            from src.database.repository import get_match_results_count_today
+            calls_today = get_match_results_count_today()
+            reserve_for_chile = 30
+            if calls_today >= (settings.llm_max_calls_per_day - reserve_for_chile):
+                logger.info(
+                    f"Saltando grupo internacional ({source_name.upper()}): Priorizando Chile. "
+                    f"Cuota hoy: {calls_today}/{settings.llm_max_calls_per_day} (reserva mínima Chile: {reserve_for_chile})."
+                )
+                continue
+
         # Verificar si la fuente de datos está activa en config.yaml
         if not active_sources.get(source_name, False):
             logger.info(f"Saltando fuente '{source_name}' (desactivada en config.yaml).")
@@ -205,7 +217,8 @@ def main():
             logger.info(
                 f"Scrapeando {source_name} con keywords={keywords} y locs={group_locs if source_name != 'remotive' else 'API'}"
             )
-            jobs = scraper.fetch_jobs(keywords=keywords, locations=group_locs, limit=limit)
+            group_limit = limit if is_local else min(limit, 30)
+            jobs = scraper.fetch_jobs(keywords=keywords, locations=group_locs, limit=group_limit)
             total_found += len(jobs)
             logger.info(f"Scraper '{source_name}' extrajo {len(jobs)} vacantes.")
 
@@ -297,6 +310,8 @@ def main():
     # 5. Pasada final para vacantes pendientes rezagadas (manuales o por fallas temporales de red previas)
     catchall_pending = get_pending_jobs()
     if catchall_pending and not quota_exhausted and api_key_configured:
+        # Priorizar siempre vacantes de Chile sobre internacionales
+        catchall_pending.sort(key=lambda j: not is_local_location(j.location))
         logger.info(f"=== PASADA FINAL: EVALUANDO {len(catchall_pending)} VACANTES PENDIENTES REZAGADAS/MANUALES ===")
         for job in catchall_pending:
             try:
@@ -344,6 +359,14 @@ def main():
         logger.info(f"Estudio de Mercado Histórico actualizado en: {canonical_path}")
     except Exception as me:
         logger.error(f"Error actualizando estudio de mercado: {me}")
+
+    # 8. Sincronización automática del Vault de Obsidian (Markdown + Kanban)
+    try:
+        from src.obsidian_exporter import sync_obsidian_vault
+        res = sync_obsidian_vault()
+        logger.info(f"Vault de Obsidian sincronizado automáticamente ({res['cards_created']} fichas).")
+    except Exception as oe:
+        logger.error(f"Error sincronizando Vault de Obsidian: {oe}")
 
 
 if __name__ == "__main__":

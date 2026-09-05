@@ -5,6 +5,7 @@ from datetime import datetime
 
 from config.settings import settings
 from src.cover_engine.builder import build_cover_letter_tex
+from src.cv_engine.builder import load_profile
 from src.cv_engine.compiler import compile_tex_to_pdf, detect_job_language, sanitize_filename
 from src.database.models import Job
 
@@ -31,8 +32,11 @@ def generate_cover_letter_for_job(
     timestamp = datetime.now().strftime("%y%m%d")
     company_clean = sanitize_filename(job.company, max_words=3, max_len=20)
     title_clean = sanitize_filename(job.title, max_words=4, max_len=30)
+    profile = load_profile(language=job_lang)
+    cand_parts = profile.get("name", "Candidate").strip().split()
+    cand_name = "_".join(cand_parts) if cand_parts else "Candidate"
 
-    filename_base = f"CoverLetter_Rigoberto_Barra_{title_clean}_{company_clean}_{timestamp}"
+    filename_base = f"CoverLetter_{cand_name}_{title_clean}_{company_clean}_{timestamp}"
     tex_path = os.path.join(out_directory, f"{filename_base}.tex")
     pdf_path = os.path.join(out_directory, f"{filename_base}.pdf")
 

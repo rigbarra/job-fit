@@ -3,7 +3,7 @@ import shutil
 
 import pytest
 
-from src.cv_engine.builder import build_cv_tex, escape_latex
+from src.cv_engine.builder import build_cv_tex, escape_latex, load_profile
 from src.cv_engine.compiler import (
     compile_tex_to_pdf,
     detect_job_language,
@@ -55,19 +55,19 @@ def test_detect_job_language():
 
 def test_build_cv_tex_base():
     """Valida la generación de código LaTeX para CV base bilingüe (Tier 1)."""
+    profile_es = load_profile(language="es")
     tex_es = build_cv_tex(match_result=None, language="es")
     assert r"\documentclass" in tex_es
-    assert "Rigoberto Barra" in tex_es
+    assert profile_es["name"] in tex_es
     assert "Resumen Profesional" in tex_es
-    assert "Ingeniero Civil Industrial" in tex_es
-    assert "Banco Estado" in tex_es
+    assert profile_es["experience"][0]["company"] in tex_es
 
+    profile_en = load_profile(language="en")
     tex_en = build_cv_tex(match_result=None, language="en")
     assert r"\documentclass" in tex_en
-    assert "Rigoberto Barra" in tex_en
+    assert profile_en["name"] in tex_en
     assert "Professional Summary" in tex_en
-    assert "Industrial Engineer" in tex_en
-    assert "Banco Estado" in tex_en
+    assert profile_en["experience"][0]["company"] in tex_en
 
 
 def test_build_cv_tex_tier_2_adapted():

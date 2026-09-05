@@ -36,13 +36,30 @@ def handle_apply(args):
     cv_pdf = cv_snapshot.pdf_path
     logger.info(f"CV generado: {cv_pdf}")
 
-    # (Cover Letter desactivado por preferencia del usuario; desmarcar si se requiere en el futuro)
-    # logger.info("--- 3. Generando Carta de Presentación (PDF) ---")
-    # cover_pdf, cover_tex = generate_cover_letter_for_job(job)
-    # logger.info(f"Carta de Presentación generada: {cover_pdf}")
+    # Copiar exclusivamente este CV puntual a la carpeta Descargas de Windows
+    import os
+    import shutil
+    from pathlib import Path
+    from src.obsidian_exporter import get_windows_downloads_dir, to_windows_display_path
+    downloads_dir = get_windows_downloads_dir()
+    win_pdf_path = None
+    if downloads_dir and downloads_dir.exists() and cv_pdf and os.path.exists(cv_pdf):
+        dest_file = downloads_dir / Path(cv_pdf).name
+        shutil.copy2(cv_pdf, dest_file)
+        win_pdf_path = to_windows_display_path(dest_file)
 
-    print("\n¡Aplicación preparada exitosamente!")
-    print(f"CV PDF: {cv_pdf}")
+    # Sincronizar automáticamente la tarjeta en Obsidian
+    try:
+        from src.obsidian_exporter import sync_obsidian_vault
+        sync_obsidian_vault()
+    except Exception as ex:
+        logger.warning(f"No se pudo sincronizar Obsidian: {ex}")
+
+    print("\n¡Postulación preparada exitosamente!")
+    if win_pdf_path:
+        print(f"📥 CV adaptado descargado en tu carpeta de Windows:\n   {win_pdf_path}\n")
+    else:
+        print(f"📄 CV PDF generado en:\n   {cv_pdf}\n")
 
 
 def handle_interview(args):
@@ -97,7 +114,7 @@ def handle_market_study(args):
 def handle_clean(args):
     """Ejecuta la purga de archivos y datos temporales con antigüedad mayor a N días."""
     init_db()
-    days = getattr(args, "days", 30)
+    days = getattr(args, "days", 90)
     logger.info(f"--- Ejecutando Purga y Limpieza de Datos Temporales (> {days} días) ---")
     from src.cleaner import clean_all_temporary_data
     summary = clean_all_temporary_data(days=days)
@@ -107,6 +124,17 @@ def handle_clean(args):
     print(f"  • Archivos temporales en tmp: {summary['tmp_files_removed']}")
     print(f"  • Snapshots de CV eliminados en BD: {summary['db_cv_snapshots_removed']}")
     print(f"  • Vacantes descartadas antiguas eliminadas en BD: {summary['db_tier3_jobs_removed']}\n")
+
+
+def handle_obsidian(args):
+    """Sincroniza la base de datos de empleos con el Vault de Obsidian (Markdown + Kanban)."""
+    init_db()
+    logger.info("--- Sincronizando Vault de Obsidian (Kanban + Markdown) ---")
+    from src.obsidian_exporter import sync_obsidian_vault
+    res = sync_obsidian_vault()
+    print("\n¡Sincronización con Obsidian completada!")
+    print(f"  • Fichas exportadas en jobs/: {res['cards_created']}")
+    print(f"  • Tablero Kanban actualizado en: {res['kanban_file']}\n")
 
 
 def _get_or_create_job(target: str) -> Job | None:
@@ -162,9 +190,13 @@ def main():
     p_market.set_defaults(func=handle_market_study)
 
     # Comando: clean
-    p_clean = subparsers.add_parser("clean", help="Limpia archivos y registros temporales antiguos (> 30 días)")
-    p_clean.add_argument("--days", type=int, default=30, help="Días de antigüedad máxima para mantener data temporal (default: 30)")
+    p_clean = subparsers.add_parser("clean", help="Limpia archivos y registros temporales antiguos (> 90 días)")
+    p_clean.add_argument("--days", type=int, default=90, help="Días de antigüedad máxima para mantener data temporal (default: 90)")
     p_clean.set_defaults(func=handle_clean)
+
+    # Comando: sync-obsidian
+    p_obsidian = subparsers.add_parser("sync-obsidian", help="Exporta postulaciones a Obsidian Vault y Kanban")
+    p_obsidian.set_defaults(func=handle_obsidian)
 
     args = parser.parse_args()
     args.func(args)

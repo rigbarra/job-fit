@@ -13,7 +13,7 @@ from src.database.repository import engine
 logger = logging.getLogger(__name__)
 
 
-def clean_old_files(directory: str | Path, days: int = 30) -> int:
+def clean_old_files(directory: str | Path, days: int = 90) -> int:
     """
     Elimina archivos en un directorio (y sus subdirectorios) cuya fecha de modificación
     sea superior a 'days' días.
@@ -41,7 +41,7 @@ def clean_old_files(directory: str | Path, days: int = 30) -> int:
     return removed_count
 
 
-def clean_old_db_records(days: int = 30) -> dict[str, int]:
+def clean_old_db_records(days: int = 90) -> dict[str, int]:
     """
     Elimina registros obsoletos de la base de datos:
     - CVSnapshots cuya fecha de creación sea > 'days' días o cuyos archivos PDF/TeX ya no existan.
@@ -79,7 +79,7 @@ def clean_old_db_records(days: int = 30) -> dict[str, int]:
     return stats
 
 
-def clean_all_temporary_data(days: int = 30) -> dict[str, int]:
+def clean_all_temporary_data(days: int = 90) -> dict[str, int]:
     """
     Ejecuta el pipeline completo de purga de artefactos temporales
     y mantenimientos en base de datos.

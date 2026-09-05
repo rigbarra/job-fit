@@ -8,7 +8,7 @@ from typing import Any
 import jinja2
 import yaml
 
-from config.settings import settings
+from config.settings import settings, get_profile_path
 from src.database.models import MatchResult
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ def load_profile(language: str = "es", profile_path: str | None = None) -> dict[
     Carga los datos del perfil profesional desde el archivo YAML en el idioma especificado ('es' o 'en').
     """
     if not profile_path:
-        path = settings.project_root / "config" / "profile.yaml"
+        path = get_profile_path()
     else:
         path = Path(profile_path)
 
@@ -86,10 +86,10 @@ def load_profile(language: str = "es", profile_path: str | None = None) -> dict[
     if lang_key in raw_data:
         lang_data = raw_data[lang_key]
         return {
-            "name": raw_data.get("name", "Rigoberto Barra"),
-            "phone": raw_data.get("phone", "+56-996974170"),
-            "email": raw_data.get("email", "rigbarra@outlook.com"),
-            "linkedin": raw_data.get("linkedin", "linkedin.com/in/rigbarra"),
+            "name": raw_data.get("name", "Candidato"),
+            "phone": raw_data.get("phone", ""),
+            "email": raw_data.get("email", ""),
+            "linkedin": raw_data.get("linkedin", ""),
             "skills": raw_data.get("skills", {}),
             "work_preferences": raw_data.get("work_preferences", {}),
             "title": lang_data.get("title", ""),
@@ -232,7 +232,7 @@ def build_cv_tex(
         template = env.get_template("cv_base.tex")
 
     context = {
-        "name": escape_latex(profile.get("name", "Rigoberto Barra")),
+        "name": escape_latex(profile.get("name", "Candidato")),
         "phone": escape_latex(profile.get("phone", "")),
         "email": escape_latex(profile.get("email", "")),
         "linkedin": escape_latex(profile.get("linkedin", "")),

@@ -45,15 +45,15 @@ def send_job_notification(
         )
         return False
 
-    # Solo notificar vacantes con ATS Score >= 80.0 pts (Tier 1 o Tier 2 de alto impacto)
-    if match_result.score < 80.0:
+    config = load_config()
+    min_score = float(config.get("notification_rules", {}).get("min_score_to_notify", 75.0))
+    if match_result.score < min_score:
         logger.debug(
-            f"Discord Notifier: Omitiendo notificación para vacante {job.id} con ATS score {match_result.score:.1f} pts (< 80.0 pts)."
+            f"Discord Notifier: Omitiendo notificación para vacante {job.id} con ATS score {match_result.score:.1f} pts (< {min_score:.1f} pts)."
         )
         return False
 
     # Omitir empresas excluidas exclusivamente de notificaciones de Discord (ej: BairesDev)
-    config = load_config()
     excluded_companies = config.get("search_filters", {}).get("excluded_companies", [])
     company_lower = (job.company or "").lower()
     for ex_comp in excluded_companies:

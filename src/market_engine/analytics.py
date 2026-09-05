@@ -572,7 +572,7 @@ def generate_market_study_report(output_path: str | None = None, scope: str | No
         "| **Modalidad** | Clasificación por detección de patrones de texto en título, descripción y campo de ubicación |",
         "| **Salarios** | Extraídos de campos estructurados del portal o por regex en la descripción. Anuales convertidos a mensuales. Rango válido: $600.000–$12.000.000 CLP/mes |",
         f"| **Tipo de cambio** | 1 USD = ${USD_TO_CLP:,} CLP (referencia fija de configuración) |",
-        "| **Fit personal (Tier 1+2)** | Evaluación LLM del perfil de Rigoberto Barra contra cada oferta. Es un dato personal, no de mercado. |",
+        "| **Fit personal (Tier 1+2)** | Evaluación LLM del perfil del candidato contra cada oferta. Es un dato personal, no de mercado. |",
         "| **Limitaciones** | Muestra acotada a portales configurados. Salarios explícitos en minoría (~25%). Modalidad puede no estar especificada en aviso. |",
     ]
 

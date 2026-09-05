@@ -1,6 +1,8 @@
 import json
-from src.database.models import Job
+
 from src.cover_engine.builder import build_cover_letter_tex
+from src.cv_engine.builder import load_profile
+from src.database.models import Job
 
 
 def test_build_cover_letter_tex(mocker):
@@ -34,6 +36,7 @@ def test_build_cover_letter_tex(mocker):
 
     tex = build_cover_letter_tex(job, language="es")
     assert "Accenture" in tex
-    assert "Rigoberto Barra" in tex
+    profile = load_profile(language="es")
+    assert profile["name"] in tex
     assert "Senior Data Engineer" in tex
     assert "Atentamente" in tex

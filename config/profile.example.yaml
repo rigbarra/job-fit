@@ -1,0 +1,144 @@
+# ==============================================================================
+# PERFIL DEL CANDIDATO (EJEMPLO / PLANTILLA DE CONFIGURACIÓN)
+# ==============================================================================
+# Copia este archivo a config/profile.yaml y personalízalo con tus datos reales.
+# config/profile.yaml está ignorado por git para proteger tu privacidad.
+
+name: "Alex Morgan"
+phone: "+56 9 1234 5678"
+email: "alex.morgan@example.com"
+linkedin: "linkedin.com/in/alexmorgan"
+
+skills:
+  data_engineering:
+    category_es: "Data Engineering & Modeling"
+    category_en: "Data Engineering & Modeling"
+    items: "SQL (Joins complejos, CTEs, Window Functions), Python (Pandas, Polars, PySpark), DuckDB, dbt, Dagster, Docker"
+  cloud_bigdata:
+    category_es: "Cloud & Big Data Stack"
+    category_en: "Cloud & Big Data Stack"
+    items: "AWS (Lambda, Step Functions, Glue, Athena, S3, Redshift, CloudWatch, IAM), GCP (BigQuery), Azure"
+  ai_engineering:
+    category_es: "Generative AI & Agentic Systems"
+    category_en: "Generative AI & Agentic Systems"
+    items: "LLMs, RAG (Retrieval-Augmented Generation), MCP (Model Context Protocol), Function Calling, Vector Search, OpenAI API, LangChain"
+  bi_analytics:
+    category_es: "BI, Analytics & Visualization"
+    category_en: "BI, Analytics & Visualization"
+    items: "Power BI (DAX), Tableau, Looker, Apache Superset, Quarto"
+  quality_governance:
+    category_es: "Data Quality & Governance"
+    category_en: "Data Quality & Governance"
+    items: "Git (GitHub), Testing (Pytest), CI/CD Pipelines (GitHub Actions)"
+
+work_preferences:
+  modality: "International: 100% Remote / Contractor B2B ONLY. Local Chile: 100% Remote or Hybrid (max 2 days on-site per week)"
+  target_regions:
+    - "Chile (Remote or Hybrid max 2 days on-site)"
+    - "Latin America / LATAM (100% Remote ONLY)"
+    - "USA / Canada / Europe (100% Remote LATAM Contractor B2B ONLY)"
+    - "Worldwide / Anywhere (100% Remote ONLY)"
+  english_proficiency: "Professional Working Proficiency (B2+ / Fluent English)"
+  availability: "Immediate / Full-time Contractor or Employee"
+
+# ==============================================================================
+# PERFIL EN ESPAÑOL (Para ofertas locales en Chile o de habla hispana)
+# ==============================================================================
+es:
+  title: "Analytics Engineer | Data Engineer"
+  location: "Santiago, Chile"
+  summary: "Ingeniero Civil Industrial con más de 8 años de experiencia diseñando arquitecturas de datos escalables y productos analíticos de alto impacto utilizando el Modern Data Stack (SQL, Python, AWS Serverless, dbt, Power BI). Experiencia liderando migraciones a la nube, optimización de pipelines de datos y proyectos de automatización analítica. Diplomados en Data Science y Business Intelligence. Inglés Profesional (B2+)."
+  experience:
+    - company: "Banco Nacional"
+      company_type: "Sector Financiero & Banca"
+      company_description: "Institución financiera líder con más de 5M clientes"
+      role: "Senior Data Engineer"
+      period: "Ene 2024 – Presente"
+      location: "Santiago, Chile"
+      bullets:
+        - "Diseñé e implementé pipelines ETL serverless utilizando AWS (Lambda, Glue, Step Functions, Athena) bajo arquitectura Medallion para automatizar reportes críticos del negocio."
+        - "Lideré el diseño y modelamiento del ecosistema analítico, implementando modelos semánticos y tableros ejecutivos en Power BI con DAX optimizado."
+        - "Implementé suites de pruebas automatizadas con PyTest y validaciones de calidad de datos previas al despliegue en producción."
+    - company: "Global FinTech"
+      company_type: "FinTech & Pagos Digitales"
+      company_description: "Plataforma de pagos digitales con presencia regional"
+      role: "Analytics Engineer"
+      period: "Mar 2021 – Dic 2023"
+      location: "Santiago, Chile (Remoto)"
+      bullets:
+        - "Lideré la migración y modernización de modelos analíticos hacia Snowflake y dbt, reduciendo tiempos de consulta en un 45%."
+        - "Diseñé la arquitectura Customer 360 unificando eventos de aplicación móvil y transacciones financieras."
+        - "Construí modelos de segmentación y análisis de cohortes en Python para optimizar estrategias comerciales."
+    - company: "Retail Corp"
+      company_type: "Retail & E-commerce"
+      company_description: "Cadena de retail con amplia red de distribución"
+      role: "Business Intelligence Analyst"
+      period: "Jul 2018 – Feb 2021"
+      location: "Santiago, Chile"
+      bullets:
+        - "Desarrollé cuadros de mando operacionales en Power BI y Tableau consumiendo data marts en PostgreSQL y SQL Server."
+        - "Automaticé extracciones de datos mediante scripts en Python reduciendo tareas manuales recurrentes en 15 horas semanales."
+  education:
+    - degree: "Diplomado en Data Science"
+      school: "Pontificia Universidad Católica de Chile"
+      period: "2021"
+      location: "Santiago, Chile"
+    - degree: "Diplomado en Business Intelligence"
+      school: "Universidad de Chile"
+      period: "2019"
+      location: "Santiago, Chile"
+    - degree: "Ingeniería Civil Industrial"
+      school: "Universidad de Chile"
+      period: "2012 – 2018"
+      location: "Santiago, Chile"
+
+# ==============================================================================
+# PERFIL EN INGLÉS (Para ofertas internacionales o redactadas en inglés)
+# ==============================================================================
+en:
+  title: "Analytics Engineer | Data Engineer"
+  location: "Santiago, Chile (Open to Remote)"
+  summary: "Industrial Engineer with 8+ years of experience designing scalable data architectures and high-impact analytical solutions using the Modern Data Stack (SQL, Python, AWS Serverless, dbt, Power BI). Proven track record leading cloud migrations, automated ETL/ELT pipelines, and cross-functional data enablement. Fluent in English (B2+)."
+  experience:
+    - company: "National Bank"
+      company_type: "Financial Services & Banking"
+      company_description: "Leading banking institution with 5M+ customers"
+      role: "Senior Data Engineer"
+      period: "Jan 2024 – Present"
+      location: "Santiago, Chile"
+      bullets:
+        - "Architected and deployed serverless ETL pipelines using AWS (Lambda, Glue, Step Functions, Athena) under Medallion architecture to automate financial reporting."
+        - "Spearheaded analytical modeling, deploying robust semantic layers and executive dashboards in Power BI with optimized DAX."
+        - "Enforced data reliability with automated PyTest test suites and CI/CD deployment gates."
+    - company: "Global FinTech"
+      company_type: "FinTech & Digital Payments"
+      company_description: "Regional digital payments platform"
+      role: "Analytics Engineer"
+      period: "Mar 2021 – Dec 2023"
+      location: "Santiago, Chile (Remote)"
+      bullets:
+        - "Led modernization of analytical models into Snowflake and dbt, cutting query execution times by 45%."
+        - "Architected Customer 360 models integrating mobile app events with transactional payment logs."
+        - "Developed customer segmentation and cohort retention models using Python and SQL."
+    - company: "Retail Corp"
+      company_type: "Retail & E-commerce"
+      company_description: "Omnichannel retailer with national distribution network"
+      role: "Business Intelligence Analyst"
+      period: "Jul 2018 – Feb 2021"
+      location: "Santiago, Chile"
+      bullets:
+        - "Built operational BI dashboards in Power BI and Tableau querying data marts on PostgreSQL and SQL Server."
+        - "Automated recurring reporting workflows using Python scripts, saving 15 manual hours per week."
+  education:
+    - degree: "Postgraduate Diploma in Data Science"
+      school: "Pontificia Universidad Católica de Chile"
+      period: "2021"
+      location: "Santiago, Chile"
+    - degree: "Postgraduate Diploma in Business Intelligence"
+      school: "Universidad de Chile"
+      period: "2019"
+      location: "Santiago, Chile"
+    - degree: "B.S. in Industrial Engineering"
+      school: "Universidad de Chile"
+      period: "2012 – 2018"
+      location: "Santiago, Chile"

@@ -79,6 +79,8 @@ class WebScraper(ABC):
         max_blocks = self.rate_config.get("max_errors_before_circuit_break", 1)
 
         for keyword in keywords:
+            if len(jobs_found) >= limit:
+                break
             for location in locations:
                 if len(jobs_found) >= limit:
                     break

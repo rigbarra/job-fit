@@ -76,7 +76,7 @@ def generate_interview_prep(
         str: Ruta absoluta del archivo Markdown generado (.md).
     """
     profile = load_profile(language=language, profile_path=profile_path)
-    cand_name = profile.get("name", "Rigoberto Barra")
+    cand_name = profile.get("name", "Candidato")
     cand_title = profile.get("title", "Analytics Engineer / Data Engineer")
 
     lang_display = "ESPAÑOL" if language == "es" else "ENGLISH"

@@ -57,11 +57,13 @@ Tu tarea es realizar una evaluación de compatibilidad estructurada (Job Fit Eva
 ### METODOLOGÍA DE EVALUACIÓN MULTIDIMENSIONAL (5 DIMENSIONES):
 
 #### 1. Compuertas de Elegibilidad e Idioma (Hard Gates - Pass/Fail):
-- **Elegibilidad Territorial y Contractual:** 
-  - El candidato reside físicamente en Chile (Viña del Mar).
-  - Para ofertas en Chile: Acepta 100% Remoto o Híbrido hasta 2 días/semana presencial.
-  - Para ofertas del extranjero (EE.UU., Europa, LATAM): El candidato NO posee visa ni permiso de trabajo extranjero (W-2 / nómina local extranjera). Por lo tanto, SOLO es elegible si la vacante permite contratación 100% Remota bajo modalidad Contractor / B2B / 1099 / Global Remote abierta a residentes en Chile / LATAM / Worldwide.
-  - Si una vacante internacional es un empleo directo local (W-2, nómina local extranjera, o restringido a residentes de EE.UU./Europa/España/UK) -> FALLA las compuertas de elegibilidad -> Asignar un score de 1.0 a 39.0 pts inmediatamente.
+- **Elegibilidad Territorial y Contractual (Lectura Rigurosa de Ubicación y Alcance Remoto):**
+  - El candidato reside físicamente en Chile (Viña del Mar) y NO posee visa ni permiso de trabajo extranjero (W-2 / nómina local extranjera).
+  - **Para ofertas en Chile:** Acepta 100% Remoto o Híbrido (hasta 2 días/semana presencial).
+  - **Para ofertas con ubicación o publicación en el extranjero (ej. EE.UU., Europa, o países específicos de LATAM como Colombia, Argentina, México, etc.):**
+    - Si la vacante figura con ubicación en una ciudad o país extranjero específico (ej. "Medellín, Colombia", "Buenos Aires, Argentina", "Madrid, España") aunque diga "remoto / 100% remote": **DEBES LEER LA DESCRIPCIÓN CON ESTRICTO RIGOR**.
+    - **PASA la compuerta territorial:** Solo si la descripción explicita CLARAMENTE apertura a postulantes de la región o desde Chile (ej: "remoto LATAM", "open to candidates anywhere in Latin America", "puede trabajar desde LATAM", "postulantes en Chile / Colombia / Argentina", "Global remote / Worldwide / Anywhere", "100% remote contractor").
+    - **FALLA la compuerta territorial (Tier 3, asignar 1.0 a 39.0 pts):** Si el aviso está localizado en un país extranjero específico y en ninguna parte de su texto aclara que acepta personas de otros países/LATAM/Chile (por ejemplo, remotos locales que exigen residencia fiscal o contrato local en Colombia/Argentina). NUNCA asumas que un aviso localizado en una ciudad extranjera es elegible para Chile solo porque contenga la palabra genérica "remote".
 - **Idioma:** Inglés nivel B2+ (2 años residiendo en Dublín, Irlanda) y Español nativo.
 - Si incumple estas compuertas -> Asignar un score de 1.0 a 39.0 pts inmediatamente.
 

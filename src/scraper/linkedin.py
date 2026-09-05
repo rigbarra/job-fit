@@ -1,6 +1,7 @@
 import logging
+import re
 import urllib.parse
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from bs4 import BeautifulSoup
 from curl_cffi import requests
@@ -71,11 +72,24 @@ class LinkedInScraper(WebScraper):
             clean_url = link_el["href"].strip().split("?")[0]
 
             posted_at = None
-            if time_el and time_el.get("datetime"):
-                try:
-                    posted_at = datetime.fromisoformat(time_el["datetime"]).replace(tzinfo=UTC)
-                except Exception:
-                    pass
+            if time_el:
+                time_text = time_el.get_text().strip().lower()
+                m_hours = re.search(r"(\d+)\s*(hour|hora)", time_text)
+                m_mins = re.search(r"(\d+)\s*(minute|minuto|min)", time_text)
+                m_days = re.search(r"(\d+)\s*(day|dia|día)", time_text)
+
+                now_utc = datetime.now(tz=UTC)
+                if m_hours:
+                    posted_at = now_utc - timedelta(hours=int(m_hours.group(1)))
+                elif m_mins:
+                    posted_at = now_utc - timedelta(minutes=int(m_mins.group(1)))
+                elif m_days:
+                    posted_at = now_utc - timedelta(days=int(m_days.group(1)))
+                elif time_el.get("datetime"):
+                    try:
+                        posted_at = datetime.fromisoformat(time_el["datetime"]).replace(tzinfo=UTC)
+                    except Exception:
+                        pass
 
             cards.append(
                 RawJobCard(

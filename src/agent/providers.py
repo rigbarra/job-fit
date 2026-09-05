@@ -121,7 +121,7 @@ class GeminiProvider(BaseLLMProvider):
             },
         }
 
-        data = _http_post_json(self.url, headers, payload, timeout=30)
+        data = _http_post_json(self.url, headers, payload, timeout=60)
         candidates = data.get("candidates", [])
         if not candidates:
             raise RuntimeError("Respuesta vacía recibida de Google Gemini API")

@@ -14,8 +14,12 @@ data/generated_cvs/*.pdf
 data/generated_cvs/*.tex
 data/raw/*
 
-# Local Environment Variables
+# Local Environment Variables & Secrets
 .env
+config/profile.yaml
+
+# Local output files
+output/
 
 # Virtual Environments
 .venv/

@@ -1,0 +1,14 @@
+services:
+  job-fit:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: job-fit-app
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+      - ./output:/app/output
+    env_file:
+      - path: .env
+        required: false
+    restart: "no"
