@@ -130,15 +130,26 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
     auto_clean_orphans = bool(obsidian_cfg.get("auto_clean_orphans", True))
     summary = {"total_jobs": 0, "cards_created": 0, "kanban_file": str(kanban_path)}
 
-    # ─── 1. Leer tarjetas activas en el Kanban ────────────────────────────────
-    active_card_filenames: set[str] = set()
+    # ─── 1. Leer tarjetas activas en el Kanban y su columna actual ───────────
+    # La fuente de verdad del estado (etapa) ES el Kanban, no el frontmatter del .md
+    # card_current_col[filename] = columna actual según el Kanban
+    card_current_col: dict[str, str] = {}
     if kanban_path.exists():
         try:
             k_text = kanban_path.read_text(encoding="utf-8")
-            for m in re.finditer(r'\[\[jobs/([^\|\]]+\.md)', k_text):
-                active_card_filenames.add(m.group(1))
+            current_col = ""
+            for line in k_text.splitlines():
+                # Detectar encabezado de columna
+                if line.startswith("## "):
+                    current_col = line[3:].strip()
+                # Detectar referencia a tarjeta en la columna actual
+                m = re.search(r'\[\[jobs/([^\|\]]+\.md)', line)
+                if m and current_col:
+                    card_current_col[m.group(1)] = current_col
         except Exception as ex:
             logger.warning(f"Error leyendo Kanban: {ex}")
+
+    active_card_filenames = set(card_current_col.keys())
 
     # ─── 2. Purgar fichas huérfanas (tarjeta borrada en Obsidian) ─────────────
     deleted_job_ids: set[int] = set()
@@ -216,8 +227,10 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
             file_name = f"{pub_date_str}_{clean_company}_{clean_title}.md"
             card_path = jobs_dir / file_name
 
-            # Preservar etapa, expectativa salarial, contacto y notas si la ficha ya existe
-            existing_etapa = None
+            # ─── Preservar estado desde el Kanban (fuente de verdad) ─────────
+            # El usuario mueve tarjetas en Obsidian → el Kanban cambia, el .md NO.
+            # Por eso leemos la columna actual del Kanban, no del frontmatter del .md.
+            existing_etapa = card_current_col.get(file_name)  # None si es tarjeta nueva
             existing_exp_sal = ""
             existing_contacto = ""
             existing_notes_body = None
@@ -225,9 +238,6 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
             if card_path.exists():
                 try:
                     old_text = card_path.read_text(encoding="utf-8")
-                    m_etapa = re.search(r'^etapa:\s*"(.*?)"', old_text, re.MULTILINE)
-                    if m_etapa and m_etapa.group(1) in kanban_columns:
-                        existing_etapa = m_etapa.group(1)
                     m_exp = re.search(r'^expectativa_salarial:\s*"(.*?)"', old_text, re.MULTILINE)
                     if m_exp:
                         existing_exp_sal = m_exp.group(1)
@@ -247,7 +257,7 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
             if not snapshot and not should_notify and not existing_etapa:
                 continue
 
-            if existing_etapa:
+            if existing_etapa and existing_etapa in kanban_columns:
                 status_col = existing_etapa
             elif should_notify or snapshot:
                 status_col = "📥 Bandeja Notificados (Discord)"
