@@ -87,7 +87,7 @@ def _resolve_vault(base_dir: Path | None, obsidian_cfg: dict) -> Path:
 
 
 def _purge_orphaned_md(jobs_dir: Path, active_card_filenames: set[str]) -> set[int]:
-    """Elimina fichas .md de jobs_dir que ya no están en el tablero Kanban.
+    """Elimina fichas .md huérfanas (tarjeta borrada en el Kanban) y su PDF generado.
     Retorna los job_ids eliminados para excluirlos del render."""
     deleted_job_ids: set[int] = set()
     if not jobs_dir.exists():
@@ -100,7 +100,13 @@ def _purge_orphaned_md(jobs_dir: Path, active_card_filenames: set[str]) -> set[i
             jid_match = re.search(r'^job_id:\s*(\d+)', m_text, re.MULTILINE)
             if jid_match:
                 deleted_job_ids.add(int(jid_match.group(1)))
-            # Eliminar la ficha huérfana
+            # Borrar el PDF generado (ruta guardada en el frontmatter pdf_path)
+            pdf_match = re.search(r'^pdf_path:\s*"([^"]+)"', m_text, re.MULTILINE)
+            if pdf_match:
+                pdf_file = Path(pdf_match.group(1))
+                if pdf_file.exists():
+                    pdf_file.unlink()
+                    logger.info(f"Purgado CV PDF huérfano: {pdf_file.name}")
             md_file.unlink()
             logger.info(f"Purgada ficha huérfana: {md_file.name}")
         except Exception as ex:
