@@ -63,3 +63,10 @@ class CVSnapshot(SQLModel, table=True):
     pdf_path: str  # Ruta del PDF generado
     tex_path: str  # Ruta del código fuente .tex generado
     created_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
+
+
+class SyncState(SQLModel, table=True):
+    """Marca de agua para sincronización incremental con Obsidian.
+    Solo existe una fila (key='obsidian_last_sync'). Se actualiza al final de cada sync exitosa."""
+    key: str = Field(primary_key=True)
+    last_sync: datetime

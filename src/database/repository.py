@@ -7,7 +7,7 @@ from sqlalchemy import func, text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from config.settings import settings
-from src.database.models import CVSnapshot, Job, MatchResult
+from src.database.models import CVSnapshot, Job, MatchResult, SyncState
 
 # Crear motor de base de datos SQLite
 engine = create_engine(settings.database_url, echo=False)
@@ -28,7 +28,7 @@ def init_db():
 
     SQLModel.metadata.create_all(engine)
 
-    # Migración liviana y modo WAL para concurrencia SQLite (CLI + Streamlit)
+    # Migración liviana: WAL mode + columnas legacy
     with engine.connect() as conn:
         try:
             conn.execute(text("PRAGMA journal_mode=WAL;"))
@@ -163,3 +163,25 @@ def get_match_results_count_today() -> int:
             )
         )
         return session.exec(statement).one()
+
+
+_OBSIDIAN_SYNC_KEY = "obsidian_last_sync"
+
+
+def get_obsidian_last_sync() -> datetime | None:
+    """Devuelve el timestamp de la última sincronización exitosa con Obsidian, o None si nunca se ha ejecutado."""
+    with Session(engine) as session:
+        row = session.get(SyncState, _OBSIDIAN_SYNC_KEY)
+        return row.last_sync if row else None
+
+
+def set_obsidian_last_sync(ts: datetime) -> None:
+    """Persiste el timestamp de fin de sincronización con Obsidian."""
+    with Session(engine) as session:
+        row = session.get(SyncState, _OBSIDIAN_SYNC_KEY)
+        if row:
+            row.last_sync = ts
+        else:
+            row = SyncState(key=_OBSIDIAN_SYNC_KEY, last_sync=ts)
+            session.add(row)
+        session.commit()

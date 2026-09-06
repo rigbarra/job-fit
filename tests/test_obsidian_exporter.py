@@ -28,9 +28,18 @@ def test_sanitize_filename():
 
 
 def test_sync_obsidian_vault_creates_structure(tmp_path):
-    """Valida que sync_obsidian_vault inicialice correctamente la estructura en cualquier S.O."""
+    """Valida que sync_obsidian_vault inicialice la estructura mínima (sin CVs/, solo jobs/)."""
     res = sync_obsidian_vault(base_dir=tmp_path)
     assert (tmp_path / "Tablero_Postulaciones.md").exists()
     assert (tmp_path / "jobs").is_dir()
-    assert (tmp_path / "CVs").is_dir()
+    assert not (tmp_path / "CVs").exists(), "CVs/ no debe crearse — links UNC directos al PDF original"
     assert res["kanban_file"] == str(tmp_path / "Tablero_Postulaciones.md")
+
+
+def test_to_wsl_unc_path():
+    """Valida la conversión de ruta Linux a UNC path de Windows para abrir desde Obsidian."""
+    from src.obsidian_exporter import to_wsl_unc_path
+    p = Path("/home/rigbarra/projects/job-fit/data/generated_cvs/cv.pdf")
+    unc = to_wsl_unc_path(p, distro="Debian")
+    assert unc.startswith("\\\\wsl$\\Debian\\")
+    assert "home/rigbarra" in unc or "home\\rigbarra" in unc
