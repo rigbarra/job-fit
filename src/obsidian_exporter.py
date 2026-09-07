@@ -13,15 +13,18 @@ from src.main import is_local_location
 
 logger = logging.getLogger("obsidian-exporter")
 
+_BANDEJA_COL = "📥 Bandeja Notificados (Discord)"
+_KANBAN_HEADER = "---\nkanban-plugin: basic\n---\n"
+
 
 def to_wsl_unc_path(linux_path: Path, distro: str = "Debian") -> str:
-    r"""Convierte una ruta Linux/WSL a UNC de Windows (\\wsl$\Debian\...) para abrir desde Obsidian/Windows."""
+    r"""Convierte ruta Linux/WSL a UNC de Windows (\\wsl$\Debian\...) para abrir desde Obsidian."""
     resolved = str(linux_path.resolve()).replace("/", "\\")
     return f"\\\\wsl$\\{distro}{resolved}"
 
 
 def to_file_url(path: Path) -> str:
-    """Convierte una ruta /mnt/c/... en file:///C:/... para Obsidian Windows. Ruta Linux → as_uri()."""
+    """Convierte /mnt/c/... en file:///C:/... para Obsidian Windows. Linux → as_uri()."""
     p_str = str(path.resolve()).replace("\\", "/")
     if p_str.startswith("/mnt/") and len(p_str) > 6 and p_str[6] == "/":
         drive = p_str[5].upper()
@@ -31,7 +34,7 @@ def to_file_url(path: Path) -> str:
 
 
 def to_display_path(path: Path) -> str:
-    r"""Convierte /mnt/c/... → C:\... para mostrar, o mantiene la ruta Linux nativa."""
+    r"""Convierte /mnt/c/... → C:\... para mostrar, o mantiene ruta Linux."""
     p_str = str(path.resolve())
     if p_str.startswith("/mnt/") and len(p_str) > 6 and p_str[6] == "/":
         drive = p_str[5].upper()
@@ -46,33 +49,26 @@ to_windows_display_path = to_display_path
 
 
 def sanitize_filename(text: str) -> str:
-    """Limpia caracteres especiales para nombres de archivo válidos en cualquier S.O."""
     clean = re.sub(r'[^\w\s-]', '', text or '').strip()
     clean = re.sub(r'[\s-]+', '_', clean)
     return clean[:50]
 
 
 def is_job_notified(job: Job, match: MatchResult, notification_rules: dict, search_filters: dict) -> bool:
-    """Verifica si la vacante cumple las reglas para ser notificada a Discord."""
     min_score = float(notification_rules.get("min_score_to_notify", 75.0))
     if match.score < min_score:
         return False
-
     is_local = is_local_location(job.location)
     group_key = "national" if is_local else "international"
-    tier_key = f"allow_tier_{match.tier}"
-    if not bool(notification_rules.get(group_key, {}).get(tier_key, False)):
+    if not bool(notification_rules.get(group_key, {}).get(f"allow_tier_{match.tier}", False)):
         return False
-
     excluded_comps = search_filters.get("excluded_companies", [])
     if any(ex.lower() in (job.company or "").lower() for ex in excluded_comps):
         return False
-
     return True
 
 
 def _resolve_vault(base_dir: Path | None, obsidian_cfg: dict) -> Path:
-    """Determina el directorio raíz del vault de Obsidian de forma agnóstica al S.O."""
     if base_dir:
         return base_dir
     configured_vault = obsidian_cfg.get("vault_path")
@@ -86,101 +82,118 @@ def _resolve_vault(base_dir: Path | None, obsidian_cfg: dict) -> Path:
     return Path(settings.project_root) / "output" / "obsidian"
 
 
-def _purge_orphaned_md(jobs_dir: Path, active_card_filenames: set[str]) -> set[int]:
-    """Elimina fichas .md huérfanas (tarjeta borrada en el Kanban) y su PDF generado.
-    Retorna los job_ids eliminados para excluirlos del render."""
-    deleted_job_ids: set[int] = set()
+def _read_kanban_filenames(kanban_path: Path) -> set[str]:
+    """Devuelve el conjunto de filenames referenciados en el Kanban (cualquier columna)."""
+    if not kanban_path.exists():
+        return set()
+    try:
+        return set(re.findall(r'\[\[jobs/([^\|\]]+\.md)', kanban_path.read_text(encoding="utf-8")))
+    except Exception as ex:
+        logger.warning(f"Error leyendo Kanban: {ex}")
+        return set()
+
+
+def _purge_orphaned_md(jobs_dir: Path, active_filenames: set[str]) -> set[int]:
+    """Elimina .md huérfanos (borrados del Kanban) y su PDF generado."""
+    deleted_ids: set[int] = set()
     if not jobs_dir.exists():
-        return deleted_job_ids
+        return deleted_ids
     for md_file in jobs_dir.glob("*.md"):
-        if md_file.name in active_card_filenames:
+        if md_file.name in active_filenames:
             continue
         try:
-            m_text = md_file.read_text(encoding="utf-8")
-            jid_match = re.search(r'^job_id:\s*(\d+)', m_text, re.MULTILINE)
-            if jid_match:
-                deleted_job_ids.add(int(jid_match.group(1)))
-            # Borrar el PDF generado (ruta guardada en el frontmatter pdf_path)
-            pdf_match = re.search(r'^pdf_path:\s*"([^"]+)"', m_text, re.MULTILINE)
-            if pdf_match:
-                pdf_file = Path(pdf_match.group(1))
+            text = md_file.read_text(encoding="utf-8")
+            m = re.search(r'^job_id:\s*(\d+)', text, re.MULTILINE)
+            if m:
+                deleted_ids.add(int(m.group(1)))
+            pdf_m = re.search(r'^pdf_path:\s*"([^"]+)"', text, re.MULTILINE)
+            if pdf_m:
+                pdf_file = Path(pdf_m.group(1))
                 if pdf_file.exists():
                     pdf_file.unlink()
-                    logger.info(f"Purgado CV PDF huérfano: {pdf_file.name}")
+                    logger.info(f"Purgado PDF: {pdf_file.name}")
             md_file.unlink()
-            logger.info(f"Purgada ficha huérfana: {md_file.name}")
+            logger.info(f"Purgada ficha: {md_file.name}")
         except Exception as ex:
             logger.warning(f"Error purgando {md_file.name}: {ex}")
-    return deleted_job_ids
+    return deleted_ids
+
+
+def _insert_cards_into_kanban(kanban_path: Path, new_card_refs: list[str]) -> None:
+    """Inserta nuevas tarjetas en la columna Bandeja del Kanban SIN tocar el resto."""
+    if not new_card_refs:
+        return
+
+    if kanban_path.exists():
+        lines = kanban_path.read_text(encoding="utf-8").splitlines()
+    else:
+        lines = [*_KANBAN_HEADER.splitlines(), "", f"## {_BANDEJA_COL}", ""]
+
+    # Buscar la línea del encabezado de la columna Bandeja
+    insert_idx = None
+    for i, line in enumerate(lines):
+        if line.strip() == f"## {_BANDEJA_COL}":
+            # Insertar justo después del encabezado (y línea vacía opcional)
+            insert_idx = i + 1
+            if insert_idx < len(lines) and lines[insert_idx].strip() == "":
+                insert_idx += 1
+            break
+
+    if insert_idx is None:
+        # La columna no existe: crearla al final
+        lines += ["", f"## {_BANDEJA_COL}", ""]
+        insert_idx = len(lines)
+
+    for ref in reversed(new_card_refs):
+        lines.insert(insert_idx, f"- [ ] {ref}")
+
+    kanban_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
     """
     Sincronización incremental con Obsidian.
-    Solo exporta vacantes nuevas desde la última sync exitosa (marca de agua en SQLite).
-    Purga .md huérfanos cuando el usuario elimina tarjetas del Kanban.
-    Sin carpeta CVs/, sin visor embebido. Link UNC directo al PDF original en WSL.
+
+    Regla fundamental: el Kanban nunca se reconstruye desde cero.
+    Solo se agregan tarjetas NUEVAS a la columna Bandeja.
+    Las tarjetas existentes (incluyendo las movidas por el usuario) jamás se tocan.
     """
     config = load_config()
-    obsidian_cfg = config.get("obsidian", {})\
-    
+    obsidian_cfg = config.get("obsidian", {})
     search_filters = config.get("search_filters", {})
     notification_rules = config.get("notification_rules", {})
 
     target_dir = _resolve_vault(base_dir, obsidian_cfg)
     jobs_dir = target_dir / "jobs"
     jobs_dir.mkdir(parents=True, exist_ok=True)
-    # CVs/ ya no se crea — los links apuntan al PDF original en Linux/WSL
-
     kanban_path = target_dir / "Tablero_Postulaciones.md"
     auto_clean_orphans = bool(obsidian_cfg.get("auto_clean_orphans", True))
     summary = {"total_jobs": 0, "cards_created": 0, "kanban_file": str(kanban_path)}
 
-    # ─── 1. Leer tarjetas activas en el Kanban y su columna actual ───────────
-    # La fuente de verdad del estado (etapa) ES el Kanban, no el frontmatter del .md
-    # card_current_col[filename] = columna actual según el Kanban
-    card_current_col: dict[str, str] = {}
-    if kanban_path.exists():
-        try:
-            k_text = kanban_path.read_text(encoding="utf-8")
-            current_col = ""
-            for line in k_text.splitlines():
-                # Detectar encabezado de columna
-                if line.startswith("## "):
-                    current_col = line[3:].strip()
-                # Detectar referencia a tarjeta en la columna actual
-                m = re.search(r'\[\[jobs/([^\|\]]+\.md)', line)
-                if m and current_col:
-                    card_current_col[m.group(1)] = current_col
-        except Exception as ex:
-            logger.warning(f"Error leyendo Kanban: {ex}")
+    # ─── 1. Leer filenames activos en el Kanban ───────────────────────────────
+    active_filenames = _read_kanban_filenames(kanban_path)
 
-    active_card_filenames = set(card_current_col.keys())
-
-    # ─── 2. Purgar fichas huérfanas (tarjeta borrada en Obsidian) ─────────────
+    # ─── 2. Purgar .md huérfanos (tarjeta borrada en el Kanban) ──────────────
     deleted_job_ids: set[int] = set()
-    if auto_clean_orphans and active_card_filenames:
-        deleted_job_ids = _purge_orphaned_md(jobs_dir, active_card_filenames)
+    if auto_clean_orphans and active_filenames:
+        deleted_job_ids = _purge_orphaned_md(jobs_dir, active_filenames)
 
-    # ─── 3. Determinar ventana temporal incremental ───────────────────────────
+    # ─── 3. Ventana temporal incremental ─────────────────────────────────────
     last_sync = get_obsidian_last_sync()
-    # Si nunca se ha sincronizado, usar el start_cutoff de config como punto de inicio
     if last_sync is None:
         cutoff_str = obsidian_cfg.get("start_cutoff")
-        if cutoff_str:
-            try:
-                last_sync = datetime.strptime(cutoff_str, "%Y-%m-%d %H:%M:%S")
-            except Exception:
-                last_sync = datetime(2026, 9, 4, 21, 10, 0)
-        else:
+        try:
+            last_sync = datetime.strptime(cutoff_str, "%Y-%m-%d %H:%M:%S") if cutoff_str else datetime(2026, 9, 4, 21, 10, 0)
+        except Exception:
             last_sync = datetime(2026, 9, 4, 21, 10, 0)
-    # Asegurar que sea naive (sin tzinfo) para comparar con la BD
     if last_sync.tzinfo is not None:
         last_sync = last_sync.replace(tzinfo=None)
 
     sync_start = datetime.now(tz=UTC).replace(tzinfo=None)
 
-    # ─── 4. Consultar solo vacantes nuevas desde last_sync ────────────────────
+    # ─── 4. Consultar vacantes nuevas desde last_sync ────────────────────────
+    new_card_refs: list[str] = []
+
     with Session(engine) as session:
         applied_since = select(CVSnapshot.job_id).where(CVSnapshot.created_at >= last_sync)
         results = session.exec(
@@ -193,19 +206,6 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
         ).all()
 
         summary["total_jobs"] = len(results)
-
-        kanban_columns = {
-            "📥 Bandeja Notificados (Discord)": [],
-            "📤 Aplicado": [],
-            "📞 Primer Contacto (Recruiter)": [],
-            "🧠 Prueba Psicológica": [],
-            "💻 Prueba Técnica": [],
-            "👔 Reunión Jefatura / Manager": [],
-            "📜 Carta Oferta": [],
-            "👻 Ghosted / Sin Respuesta": [],
-            "❌ Rechazado": [],
-        }
-
         today_date = date.today()
 
         for job, match in results:
@@ -227,65 +227,28 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
 
             pub_date = match.created_at.date() if (match and match.created_at) else today_date
             pub_date_str = pub_date.strftime("%Y-%m-%d")
-
             clean_company = sanitize_filename(job.company)
             clean_title = sanitize_filename(job.title)
             file_name = f"{pub_date_str}_{clean_company}_{clean_title}.md"
             card_path = jobs_dir / file_name
 
-            # ─── Preservar estado desde el Kanban (fuente de verdad) ─────────
-            # El usuario mueve tarjetas en Obsidian → el Kanban cambia, el .md NO.
-            # Por eso leemos la columna actual del Kanban, no del frontmatter del .md.
-            existing_etapa = card_current_col.get(file_name)  # None si es tarjeta nueva
-            existing_exp_sal = ""
-            existing_contacto = ""
-            existing_notes_body = None
-
-            if card_path.exists():
-                try:
-                    old_text = card_path.read_text(encoding="utf-8")
-                    m_exp = re.search(r'^expectativa_salarial:\s*"(.*?)"', old_text, re.MULTILINE)
-                    if m_exp:
-                        existing_exp_sal = m_exp.group(1)
-                    m_contact = re.search(r'^contacto_reclutador:\s*"(.*?)"', old_text, re.MULTILINE)
-                    if m_contact:
-                        existing_contacto = m_contact.group(1)
-                    if "### 🗣️ Bitácora de Entrevistas & Notas" in old_text:
-                        parts = old_text.split("### 🗣️ Bitácora de Entrevistas & Notas")
-                        body_after = parts[1]
-                        if "### 📄 Descripción Original de la Oferta" in body_after:
-                            body_after = body_after.split("### 📄 Descripción Original de la Oferta")[0]
-                        existing_notes_body = body_after.strip()
-                except Exception as ex:
-                    logger.warning(f"Error leyendo ficha existente {file_name}: {ex}")
-
-            should_notify = is_job_notified(job, match, notification_rules, search_filters)
-            if not snapshot and not should_notify and not existing_etapa:
+            # Si ya existe en el Kanban, NUNCA la tocamos (ni el .md ni su posición)
+            if file_name in active_filenames:
                 continue
 
-            if existing_etapa and existing_etapa in kanban_columns:
-                status_col = existing_etapa
-            elif should_notify or snapshot:
-                status_col = "📥 Bandeja Notificados (Discord)"
-            else:
-                status_col = "❌ Rechazado"
-
-            if status_col not in kanban_columns:
-                kanban_columns[status_col] = []
-
-            post_date_str = snapshot.created_at.strftime("%Y-%m-%d") if (snapshot and snapshot.created_at) else ""
-            dias_postulado = (today_date - snapshot.created_at.date()).days if (snapshot and snapshot.created_at) else 0
+            should_notify = is_job_notified(job, match, notification_rules, search_filters)
+            if not snapshot and not should_notify:
+                continue
 
             modality, country, origin_type = extract_modality_and_country(job.location, job.description, job.source)
             min_sal, max_sal, currency = parse_salary_details(job.salary or "")
-
             sal_str = "No especificado en aviso"
             if min_sal and max_sal:
                 sal_str = f"{min_sal:,.0f} {currency}" if min_sal == max_sal else f"{min_sal:,.0f} - {max_sal:,.0f} {currency}"
 
-            exp_salarial_val = existing_exp_sal or ""
+            post_date_str = snapshot.created_at.strftime("%Y-%m-%d") if (snapshot and snapshot.created_at) else ""
+            dias_postulado = (today_date - snapshot.created_at.date()).days if (snapshot and snapshot.created_at) else 0
 
-            # ─── Bloque PDF: UNC path directo, sin copia, sin embed ──────────
             if snapshot and snapshot.pdf_path and os.path.exists(snapshot.pdf_path):
                 pdf_path_obj = Path(snapshot.pdf_path)
                 unc_path = to_wsl_unc_path(pdf_path_obj)
@@ -296,7 +259,6 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
             else:
                 pdf_block = "> [!TIP] **CV Adaptado**\n> *Sin CV generado aún para esta vacante.*"
 
-            # ─── Notas por defecto ────────────────────────────────────────────
             default_notes_body = f"""> [!TIP] **Seguimiento & Preparación**
 > - **Contacto Reclutador:** *(Ingresa nombre / email / LinkedIn del reclutador)*
 > - [ ] **Guía de Entrevista Técnica:** `python -m src.cli interview {job.id}`
@@ -337,20 +299,16 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
 > [!NOTE] **Análisis de Desempeño por IA**
 > *(Escribe arriba tus preguntas y respuestas, luego ejecuta el evaluador de IA para recomendaciones de mejora).*"""
 
-            active_notes_body = existing_notes_body if existing_notes_body else default_notes_body
-
             score_badge = f"🟩 {match.score:.0f}% Fit" if match.score >= 80 else f"🟨 {match.score:.0f}% Fit"
             loc_icon = "🇨🇱" if country == "Chile" else "🌎"
 
-            # ─── Contenido de la ficha (orden: Frontmatter → Resumen oferta →
-            #     Justificación FIT + GAPS → CV → Notas → Descripción) ─────────
             md_content = f"""---
 job_id: {job.id}
 empresa: "{job.company}"
 cargo: "{job.title}"
 fuente: "{job.source.upper()}"
 url: "{job.url}"
-etapa: "{status_col}"
+etapa: "{_BANDEJA_COL}"
 modalidad: "{modality}"
 pais: "{country}"
 origen_tipo: "{origin_type}"
@@ -359,10 +317,10 @@ fecha_postulacion: "{post_date_str}"
 dias_desde_postulacion: {dias_postulado}
 score_fit: {match.score:.1f}
 tier: {match.tier}
-expectativa_salarial: "{exp_salarial_val}"
+expectativa_salarial: ""
 oferta_rango: "{sal_str}"
 moneda: "{currency or 'CLP'}"
-contacto_reclutador: "{existing_contacto}"
+contacto_reclutador: ""
 pdf_path: "{snapshot.pdf_path if snapshot else ''}"
 tags:
   - job-fit
@@ -373,7 +331,7 @@ tags:
 # {job.title} @ {job.company}
 
 > **{loc_icon} {job.location}** · **{modality}** · {score_badge} (Tier {match.tier}) · [{job.source.upper()}]({job.url})
-> 💵 Sueldo oferta: **{sal_str}** · 💰 Expectativa: {exp_salarial_val or '*(por definir)*'} · 📅 Publicado: {pub_date_str}
+> 💵 Sueldo oferta: **{sal_str}** · 📅 Publicado: {pub_date_str}
 
 ---
 
@@ -404,59 +362,21 @@ tags:
 ---
 
 ### 🗣️ Bitácora de Entrevistas & Notas
-{active_notes_body}
+{default_notes_body}
 """
-
             card_path.write_text(md_content, encoding="utf-8")
             summary["cards_created"] += 1
-            card_title = f"{score_badge} | {job.company} - {job.title}"
-            card_ref = f"[[jobs/{file_name}|{card_title}]]"
-            kanban_columns[status_col].append(card_ref)
+            card_ref = f"[[jobs/{file_name}|{score_badge} | {job.company} - {job.title}]]"
+            new_card_refs.append(card_ref)
 
-    # ─── 5. Reconstruir el Kanban incluyendo tarjetas ya existentes ───────────
-    # Re-leer fichas existentes en jobs/ para no perder tarjetas anteriores del Kanban
-    existing_cards_by_etapa: dict[str, list[str]] = {}
-    for md_file in jobs_dir.glob("*.md"):
-        if md_file.name in {fn for refs in [active_card_filenames] for fn in refs}:
-            try:
-                text = md_file.read_text(encoding="utf-8")
-                m_etapa = re.search(r'^etapa:\s*"(.*?)"', text, re.MULTILINE)
-                m_score = re.search(r'^score_fit:\s*([\d.]+)', text, re.MULTILINE)
-                m_empresa = re.search(r'^empresa:\s*"(.*?)"', text, re.MULTILINE)
-                m_cargo = re.search(r'^cargo:\s*"(.*?)"', text, re.MULTILINE)
-                if m_etapa and m_empresa and m_cargo:
-                    etapa = m_etapa.group(1)
-                    score = float(m_score.group(1)) if m_score else 80.0
-                    score_b = f"🟩 {score:.0f}% Fit" if score >= 80 else f"🟨 {score:.0f}% Fit"
-                    card_title = f"{score_b} | {m_empresa.group(1)} - {m_cargo.group(1)}"
-                    card_ref = f"[[jobs/{md_file.name}|{card_title}]]"
-                    existing_cards_by_etapa.setdefault(etapa, [])
-                    # Agregar solo si no fue recién generada (evita duplicados)
-                    already_in_col = any(md_file.name in ref for ref in kanban_columns.get(etapa, []))
-                    if not already_in_col:
-                        existing_cards_by_etapa[etapa].append(card_ref)
-            except Exception:
-                pass
+    # ─── 5. Insertar solo las tarjetas nuevas en el Kanban ────────────────────
+    # El Kanban existente NO se toca. Solo se agregan refs nuevas a la Bandeja.
+    _insert_cards_into_kanban(kanban_path, new_card_refs)
 
-    for etapa, refs in existing_cards_by_etapa.items():
-        if etapa not in kanban_columns:
-            kanban_columns[etapa] = []
-        kanban_columns[etapa].extend(refs)
-
-    # ─── 6. Escribir Tablero_Postulaciones.md ─────────────────────────────────
-    kanban_lines = ["---", "kanban-plugin: basic", "---", ""]
-    for col_name, cards in kanban_columns.items():
-        kanban_lines.append(f"## {col_name}")
-        kanban_lines.append("")
-        kanban_lines.extend(f"- [ ] {card}" for card in cards) if cards else kanban_lines.append("- [ ] ")
-        kanban_lines.append("")
-
-    kanban_path.write_text("\n".join(kanban_lines), encoding="utf-8")
-
-    # ─── 7. Actualizar marca de agua ──────────────────────────────────────────
+    # ─── 6. Actualizar marca de agua ─────────────────────────────────────────
     set_obsidian_last_sync(sync_start)
 
-    logger.info(f"Sync Obsidian completada: {summary['cards_created']} fichas nuevas exportadas.")
+    logger.info(f"Sync Obsidian: {summary['cards_created']} fichas nuevas.")
     return summary
 
 
