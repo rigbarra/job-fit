@@ -137,6 +137,17 @@ def handle_obsidian(args):
     print(f"  • Tablero Kanban actualizado en: {res['kanban_file']}\n")
 
 
+def handle_linkedin(args):
+    """Genera ideas de publicaciones y estrategia SEO para LinkedIn en Obsidian."""
+    init_db()
+    topic = getattr(args, "topic", None)
+    logger.info("--- Generando Estrategia y Publicaciones Técnicas para LinkedIn ---")
+    from src.linkedin_engine.generator import generate_linkedin_content
+    file_path, content = generate_linkedin_content(custom_topic=topic)
+    print("\n¡Estrategia y Publicaciones de LinkedIn generadas exitosamente!")
+    print(f"📄 Guardado en: {file_path}\n")
+
+
 def _get_or_create_job(target: str) -> Job | None:
     if target.isdigit():
         return get_job_by_id(int(target))
@@ -197,6 +208,11 @@ def main():
     # Comando: sync-obsidian
     p_obsidian = subparsers.add_parser("sync-obsidian", help="Exporta postulaciones a Obsidian Vault y Kanban")
     p_obsidian.set_defaults(func=handle_obsidian)
+
+    # Comando: linkedin / post
+    p_linkedin = subparsers.add_parser("linkedin", aliases=["post"], help="Genera ideas de publicaciones y estrategia SEO para LinkedIn en Obsidian")
+    p_linkedin.add_argument("--topic", default=None, help="Tema técnico específico o debate a priorizar (opcional)")
+    p_linkedin.set_defaults(func=handle_linkedin)
 
     args = parser.parse_args()
     args.func(args)
