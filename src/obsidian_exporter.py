@@ -17,6 +17,27 @@ _BANDEJA_COL = "📥 Bandeja Notificados (Discord)"
 _KANBAN_HEADER = "---\nkanban-plugin: basic\n---\n"
 
 
+def get_windows_downloads_dir() -> Path | None:
+    """Detecta dinámicamente la carpeta Descargas del usuario activo en Windows sin quemar nombres."""
+    userprofile = os.environ.get("USERPROFILE")
+    if userprofile:
+        drive_letter = userprofile[0].lower()
+        subpath = userprofile[2:].replace("\\", "/")
+        p = Path(f"/mnt/{drive_letter}{subpath}/Downloads")
+        if p.exists():
+            return p
+
+    c_users = Path("/mnt/c/Users")
+    if c_users.exists():
+        excluded = {"default", "default user", "public", "all users"}
+        for user_dir in c_users.iterdir():
+            if user_dir.is_dir() and user_dir.name.lower() not in excluded:
+                dl = user_dir / "Downloads"
+                if dl.exists():
+                    return dl
+    return None
+
+
 def to_wsl_unc_path(linux_path: Path, distro: str = "Debian") -> str:
     r"""Convierte ruta Linux/WSL a UNC de Windows (\\wsl$\Debian\...) para abrir desde Obsidian."""
     resolved = str(linux_path.resolve()).replace("/", "\\")
