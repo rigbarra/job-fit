@@ -252,19 +252,34 @@ def test_should_evaluate_job_passes_chile_hybrid_general():
     assert reason == ""
 
 
-def test_should_evaluate_job_fails_control_de_gestion_in_description():
-    """Valida el descarte de vacantes que mencionan 'Control de Gestión' en la descripción."""
+def test_should_evaluate_job_fails_control_de_gestion_in_title():
+    """Valida el descarte de vacantes cuyo título es estrictamente Control de Gestión."""
     job = Job(
-        title="Analista de Datos Senior",
+        title="Analista Control de Gestión Senior",
         company="Empresa Test",
         location="Santiago, Chile",
-        description="El candidato reportará al área de Control de Gestión construyendo tableros en SQL y Python.",
-        url="https://example.com/job/cdg-test",
+        description="Manejo de estados financieros y planillas contables.",
+        url="https://example.com/job/cdg-title-test",
         source="test",
     )
     passed, reason = should_evaluate_job(job)
     assert not passed
-    assert "Control de Gestión" in reason
+    assert "control de gestion" in reason.lower()
+
+
+def test_should_evaluate_job_passes_control_de_gestion_in_description():
+    """Valida que cargos técnicos de datos que apoyan a Control de Gestión en la descripción NO se descarten."""
+    job = Job(
+        title="Data Automation Analyst",
+        company="Empresa Test",
+        location="Santiago, Chile",
+        description="El candidato automatizará pipelines de datos en SQL y Python para el área de Control de Gestión.",
+        url="https://example.com/job/cdg-tech-desc-test",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert passed
+    assert reason == ""
 
 
 def test_should_evaluate_job_fails_foreign_city_without_b2b_or_latam():

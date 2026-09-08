@@ -193,11 +193,11 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
     location_lower = normalize_text(job.location)
     text_combined = f"{title} {location_lower} {description}"
 
-    # 1. Lista Negra de Títulos y Áreas Excluidas (Control de Gestión, Ciencia de Datos pura, etc.)
-    if "control de gestion" in text_combined:
-        return False, "Descarte algorítmico: Oferta pertenece al área excluida por el candidato ('Control de Gestión')."
-
+    # 1. Lista Negra de Títulos Excluidos (Control de Gestión tradicional, Ciencia de Datos pura, Jr, etc.)
     title_blacklist = [
+        "control de gestion",
+        "control de gestión",
+        "controller",
         "cientifico de datos",
         "cientista de datos",
         "data science",
