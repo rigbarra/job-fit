@@ -246,7 +246,12 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
                 select(CVSnapshot).where(CVSnapshot.job_id == job.id).order_by(CVSnapshot.id.desc())
             ).first()
 
-            pub_date = match.created_at.date() if (match and match.created_at) else today_date
+            if hasattr(match.created_at, "date"):
+                pub_date = match.created_at.date()
+            elif isinstance(match.created_at, date):
+                pub_date = match.created_at
+            else:
+                pub_date = today_date
             pub_date_str = pub_date.strftime("%Y-%m-%d")
             clean_company = sanitize_filename(job.company)
             clean_title = sanitize_filename(job.title)
@@ -268,7 +273,11 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
                 sal_str = f"{min_sal:,.0f} {currency}" if min_sal == max_sal else f"{min_sal:,.0f} - {max_sal:,.0f} {currency}"
 
             post_date_str = snapshot.created_at.strftime("%Y-%m-%d") if (snapshot and snapshot.created_at) else ""
-            dias_postulado = (today_date - snapshot.created_at.date()).days if (snapshot and snapshot.created_at) else 0
+            if snapshot and snapshot.created_at:
+                snap_date = snapshot.created_at.date() if hasattr(snapshot.created_at, "date") else snapshot.created_at
+                dias_postulado = (today_date - snap_date).days
+            else:
+                dias_postulado = 0
 
             if snapshot and snapshot.pdf_path and os.path.exists(snapshot.pdf_path):
                 pdf_path_obj = Path(snapshot.pdf_path)

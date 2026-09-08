@@ -44,7 +44,7 @@ def compile_tex_to_pdf(tex_content: str, output_pdf_path: str) -> str:
         cmd = [pdflatex_bin, "-interaction=nonstopmode", "-halt-on-error", "cv.tex"]
 
         logger.info(f"Compilando CV con pdflatex en {temp_dir}...")
-        result = subprocess.run(cmd, cwd=temp_dir, capture_output=True, text=True, check=False)
+        result = subprocess.run(cmd, cwd=temp_dir, capture_output=True, text=True, errors="replace", check=False)
 
         # Si falló la compilación o no se generó el PDF
         if result.returncode != 0 or not os.path.exists(temp_pdf_path):
