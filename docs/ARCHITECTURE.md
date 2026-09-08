@@ -11,13 +11,13 @@ sequenceDiagram
     autonumber
     participant Main as src/main.py
     participant DB as SQLite DB
-    participant Scraper as Scrapers (LinkedIn/Remotive)
+    participant Scraper as "Scrapers (LinkedIn y Remotive)"
     participant Filter as Algorithmic Filter
     participant LLM as OpenRouter LLM
-    participant Compiler as LaTeX Compiler (pdflatex)
+    participant Compiler as "LaTeX Compiler (pdflatex)"
     participant Discord as Discord Notifier
 
-    Main->>DB: init_db() [Crear tablas si no existen]
+    Main->>DB: init_db() - Crear tablas si no existen
     Main->>Scraper: fetch_jobs(keywords, locations, limit)
     
     loop Por cada vacante encontrada
@@ -34,7 +34,7 @@ sequenceDiagram
     
     loop Por cada vacante pendiente
         Main->>Filter: should_evaluate_job(job)
-        alt Falla filtro (Título, SQL, >3d, Híbrido int., 3+días presencial Chile)
+        alt Falla filtro algorítmico
             Filter-->>Main: False, rationale
             Main->>DB: save_match_result(Tier 3, Score 10%)
         else Pasa filtro algorítmico
@@ -43,7 +43,7 @@ sequenceDiagram
             Main->>Main: normalize_llm_json() -> Pydantic MatchEvaluation
             Main->>DB: save_match_result(MatchResult)
             
-            alt Tier 1 (>=85%) o Tier 2 (60-84%)
+            alt Match Tier 1 o Tier 2
                 Main->>Compiler: generate_cv_for_job(job, match_result)
                 Compiler->>Compiler: Jinja2 render (cv_base_es/en.tex) + pdflatex
                 Compiler->>DB: save_cv_snapshot(CVSnapshot)
@@ -62,8 +62,8 @@ La persistencia se realiza mediante **SQLite** y el ORM **SQLModel** (basado en 
 
 ```mermaid
 erDiagram
-    JOB ||--o{ MATCH_RESULT : "posee evaluacion"
-    JOB ||--o{ CV_SNAPSHOT : "posee snapshot PDF"
+    JOB ||--o{ MATCH_RESULT : "evaluaciones"
+    JOB ||--o{ CV_SNAPSHOT : "cv_snapshots"
 
     JOB {
         int id PK
@@ -71,8 +71,8 @@ erDiagram
         string company
         string location
         string description
-        string url UK
-        string hash_url UK
+        string url
+        string hash_url
         string source
         string salary
         string job_type

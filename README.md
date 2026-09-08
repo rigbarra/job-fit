@@ -40,16 +40,16 @@ pdflatex -output-directory=data/generated_cvs data/generated_cvs/NOMBRE_DEL_ARCH
 flowchart TD
     A["Cron Diario / CLI"] --> B["src/main.py: Orquestador Secuencial"]
     
-    subgraph id_chile ["Grupo Chile (Prioritario)"]
+    subgraph id_chile["Grupo Chile (Prioritario)"]
         B --> C1["Scraping Get on Board API, LinkedIn Chile & Indeed Chile"]
         C1 --> D1["Deduplicación SHA-256 en SQLite"]
         D1 --> E1["Filtro Algorítmico Local 0 Tokens"]
         E1 --> F1["Evaluador Multidimensional LLM"]
     end
 
-    F1 -->|Match Tier 1 o 2 (Excluyendo empresas en blacklist)| G1["CV Engine: Compilación LaTeX pdflatex"]
-    F1 -->|Con opción apply| G2["Cover Engine: Carta de Presentación pdflatex"]
-    F1 -->|Con opción interview| G3["Interview Engine: Guía Técnica Markdown"]
+    F1 -->|"Match Tier 1 o Tier 2 (sin blacklist)"| G1["CV Engine: Compilación LaTeX pdflatex"]
+    F1 -->|"Con opción apply"| G2["Cover Engine: Carta de Presentación pdflatex"]
+    F1 -->|"Con opción interview"| G3["Interview Engine: Guía Técnica Markdown"]
 
     G1 --> H["Notificación Discord con Embed + PDF Adjunto"]
 ```
