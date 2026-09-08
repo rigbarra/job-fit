@@ -147,7 +147,7 @@ crontab -l
 
 ### Configuración típica en cron (9:00, 14:00 y 19:00 horas)
 ```bash
-0 9,14,19 * * * cd /home/rigbarra/projects/job-fit && .venv/bin/python -m src.cli scrape >> data/cron.log 2>&1
+0 9,14,19 * * * cd /ruta/a/tu/proyecto/job-fit && .venv/bin/python -m src.cli scrape >> data/cron.log 2>&1
 ```
 
 ### Si reinicias Windows (Asegurar que el servicio cron esté corriendo en WSL2)

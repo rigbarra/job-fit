@@ -162,7 +162,7 @@ def test_send_job_notification_tier_2_with_pdf(tmp_path, monkeypatch, mocker):
     )
 
     # Crear un PDF simulado en disco
-    pdf_file = tmp_path / "CV_Rigoberto_Barra_FinTech_20_T2_es_20260814.pdf"
+    pdf_file = tmp_path / "CV_Candidato_FinTech_20_T2_es_20260814.pdf"
     pdf_file.write_bytes(b"%PDF-1.4 mock pdf content")
 
     mock_resp = mocker.MagicMock()

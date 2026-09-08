@@ -22,7 +22,7 @@ Si usas tu PC todos los días durante la jornada de trabajo:
    ```
 2. Añade las siguientes líneas para ejecutar la ingesta 3 veces al día (08:30, 13:30, 19:30 hrs):
    ```cron
-   30 8,13,19 * * * /home/rigbarra/projects/job-fit/scripts/run_pipeline.sh
+   30 8,13,19 * * * /ruta/a/tu/proyecto/job-fit/scripts/run_pipeline.sh
    ```
 3. Asegúrate de que el servicio `cron` esté corriendo en WSL2:
    ```bash
@@ -31,7 +31,7 @@ Si usas tu PC todos los días durante la jornada de trabajo:
 
 *(Alternativa Windows sin abrir terminal)*: Puedes crear una **Tarea Programada en Windows (Task Scheduler)** que ejecute al iniciar sesión el comando:
 ```cmd
-wsl.exe -d Debian /home/rigbarra/projects/job-fit/scripts/run_pipeline.sh
+wsl.exe -d Ubuntu /ruta/a/tu/proyecto/job-fit/scripts/run_pipeline.sh
 ```
 
 ---

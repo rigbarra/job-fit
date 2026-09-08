@@ -39,7 +39,7 @@ def test_sync_obsidian_vault_creates_structure(tmp_path):
 def test_to_wsl_unc_path():
     """Valida la conversión de ruta Linux a UNC path de Windows para abrir desde Obsidian."""
     from src.obsidian_exporter import to_wsl_unc_path
-    p = Path("/home/rigbarra/projects/job-fit/data/generated_cvs/cv.pdf")
+    p = Path("/home/user/projects/job-fit/data/generated_cvs/cv.pdf")
     unc = to_wsl_unc_path(p, distro="Debian")
     assert unc.startswith("\\\\wsl$\\Debian\\")
-    assert "home/rigbarra" in unc or "home\\rigbarra" in unc
+    assert "home/user" in unc or "home\\user" in unc

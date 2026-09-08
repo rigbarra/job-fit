@@ -79,8 +79,9 @@ flowchart TD
 * **Catch-All Pass en Pipeline:** Garantiza que cualquier vacante rezagada por micro-interrupción de red o postulación manual se evalúe inmediatamente en la misma corrida sin esperar al próximo cron.
 
 ### 5. Motores de Documentos, Nombres Cronológicos y Dashboard Streamlit
-* **CV Engine (`src/cv_engine/`):** Genera archivos con nombre estandarizado y ordenable alfabéticamente (`{yymmdd}_CV_RBarra_{cargo}_{empresa}.pdf`) y compila Jinja2 + `pdflatex` con re-ordenamiento inteligente de habilidades técnicas según la oferta.
+* **CV Engine (`src/cv_engine/`):** Genera archivos con nombre estandarizado y ordenable alfabéticamente (`{yymmdd}_CV_{slug}_{cargo}_{empresa}.pdf`) y compila Jinja2 + `pdflatex` con re-ordenamiento inteligente de habilidades técnicas según la oferta.
 * **Interview Prep Engine (`src/interview_engine/`):** Genera guías Markdown completas con 10-12 preguntas técnicas con código y 4 escenarios STAR.
+* **LinkedIn Content Engine (`src/linkedin_engine/`):** Genera ideas de publicaciones técnicas y estrategia SEO para LinkedIn en Obsidian a partir de las ofertas más demandadas.
 * **Continuous Market Study (`src/market_engine/`):** Genera y actualiza automáticamente el informe vivo en `data/market_study/market_study.md` y ofrece el Dashboard Interactivo Web en Streamlit (`app.py`) con tema Catppuccin Dark y monitoreo de sueldos en IA.
 
 ---
@@ -90,6 +91,7 @@ flowchart TD
 ```
 job-fit/
 ├── AGENTS.md            # Guía de habilidades para Antigravity CLI
+├── LICENSE              # Licencia MIT de código abierto
 ├── config/              # Configuración general y del perfil
 │   ├── config.yaml      # Búsquedas, role_normalization, tracked_technologies, excluded_companies, search_scope
 │   ├── profile.example.yaml # Plantilla de perfil sanitizada y lista para personalizar
@@ -101,18 +103,19 @@ job-fit/
 ├── output/              # Salidas agnósticas (Obsidian vault, descargas)
 ├── src/                 # Código fuente principal
 │   ├── agent/           # Evaluador LLM agnóstico, pre-filtro algorítmico, proveedores y cuotas
-│   ├── cli.py           # Entrypoint CLI interactivo (apply, interview, cover-letter, scrape, market-study)
+│   ├── cli.py           # Entrypoint CLI interactivo (apply, interview, cover-letter, scrape, market-study, linkedin)
 │   ├── cover_engine/    # Generador y compilador de Cartas de Presentación LaTeX
 │   ├── cv_engine/       # Builder de plantillas LaTeX dinámicas y compilador pdflatex
 │   ├── database/        # Modelos ORM (SQLModel) y repositorio SQLite
 │   ├── interview_engine/# Generador de Guías de Entrevista Técnica en Markdown
+│   ├── linkedin_engine/ # Generador de contenidos y estrategia SEO para LinkedIn
 │   ├── market_engine/   # Analizador de mercado (analytics.py) y Dashboard Streamlit (app.py)
 │   ├── notifier/        # Despachador de Webhooks a Discord (Multipart PDF upload)
 │   ├── obsidian_exporter.py # Exportador agnóstico de fichas Kanban para Obsidian
 │   ├── scraper/         # Scrapers (Get on Board API, LinkedIn, Indeed, Remotive)
 │   └── main.py          # Orquestador del pipeline end-to-end (con Pasada Final Catch-All)
 ├── templates/           # Plantillas LaTeX (.tex) dinámicas para CV y Cover Letters
-└── tests/               # Suite de 56 pruebas unitarias completas (pytest)
+└── tests/               # Suite de 60 pruebas unitarias completas (pytest)
 ```
 
 ---

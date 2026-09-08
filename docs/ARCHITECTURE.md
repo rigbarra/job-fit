@@ -129,22 +129,22 @@ erDiagram
 
 ### 🔴 Problema 1: Variaciones de Esquema JSON en LLMs Gratuitos (`openrouter/free`)
 * **Síntoma:** Modelos gratuitos pequeños de OpenRouter a veces devuelven `match_score` en vez de `score`, o devuelven `adapted_bullets` como una lista `[{'clave': '...', 'valor': '...'}]` en lugar de un diccionario `{original: adaptado}`.
-* **Solución:** Implementación de la función `normalize_llm_json()` en [`src/agent/evaluator.py`](file:///home/rigbarra/projects/job-fit/src/agent/evaluator.py). Parsea flexiblemente sinónimos de claves y convierte listas de viñetas en un diccionario `dict[str, str]` normalizado antes de la validación estricta con `Pydantic`.
+* **Solución:** Implementación de la función `normalize_llm_json()` en [`src/agent/evaluator.py`](../src/agent/evaluator.py). Parsea flexiblemente sinónimos de claves y convierte listas de viñetas en un diccionario `dict[str, str]` normalizado antes de la validación estricta con `Pydantic`.
 
 ### 🔴 Problema 2: Bloqueos de Red e IP en Scraping (Cloudflare / HTTP 429)
 * **Síntoma:** Scraping masivo tradicional desencadena bloqueos por firma TLS de Python (`requests` o `urllib`).
 * **Solución:** 
   1. Uso de `curl_cffi` para emular la huella TLS de Chrome 120.
-  2. Implementación de la clase abstracta [`WebScraper`](file:///home/rigbarra/projects/job-fit/src/scraper/base.py) con pausas aleatorias de 4 a 8 segundos antes de bajar detalles.
+  2. Implementación de la clase abstracta [`WebScraper`](../src/scraper/base.py) con pausas aleatorias de 4 a 8 segundos antes de bajar detalles.
   3. **Circuit Breaker:** Si se detecta una respuesta `403` o `429`, el scraper aborta inmediatamente la búsqueda para proteger la dirección IP.
 
 ### 🔴 Problema 3: Errores de Compilación TeX por Caracteres Especiales del LLM
 * **Síntoma:** `pdflatex` falla al compilar cuando el texto adaptado por la IA incluye %, &, $, #, _ o comillas dobles.
-* **Solución:** Función `escape_latex()` en [`src/cv_engine/builder.py`](file:///home/rigbarra/projects/job-fit/src/cv_engine/builder.py). Escapa mediante expresiones regulares los caracteres especiales que no estén ya escapados sin alterar comandos LaTeX legítimos.
+* **Solución:** Función `escape_latex()` en [`src/cv_engine/builder.py`](../src/cv_engine/builder.py). Escapa mediante expresiones regulares los caracteres especiales que no estén ya escapados sin alterar comandos LaTeX legítimos.
 
 ### 🔴 Problema 4: Envío de PDFs Adjuntos a Discord sin Dependencias Pesadas
 * **Síntoma:** La API de Discord requiere peticiones `multipart/form-data` para adjuntar archivos junto con el JSON del Embed.
-* **Solución:** Implementación nativa usando `urllib.request` con delimitadores `boundary` generados con `uuid.uuid4().hex` en [`src/notifier/discord.py`](file:///home/rigbarra/projects/job-fit/src/notifier/discord.py). Evita la dependencia de `requests` estándar que arroja `NotImplementedError` en `curl_cffi` con multipart.
+* **Solución:** Implementación nativa usando `urllib.request` con delimitadores `boundary` generados con `uuid.uuid4().hex` en [`src/notifier/discord.py`](../src/notifier/discord.py). Evita la dependencia de `requests` estándar que arroja `NotImplementedError` en `curl_cffi` con multipart.
 
 ---
 
