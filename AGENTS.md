@@ -20,6 +20,7 @@ Puedes invocar las siguientes habilidades directamente usando Antigravity CLI:
 
 - **`/scrape`**: Inicia el pipeline de scraping e ingesta secuencial (Get on Board Chile, LinkedIn Chile, Remotive).
 - **`/apply <job_id_or_url>`**: Genera la evaluación detallada de fit, el CV adaptado en LaTeX (.pdf) y la Carta de Presentación (.pdf).
+- **`/cv [es|en|all]`**: Compila inmediatamente el CV base estándar en LaTeX (.pdf) en español, inglés o ambos (sin IA ni scraping) y lo descarga en Windows.
 - **`/interview <job_id_or_url>`**: Genera la Guía Completa de Entrevista Técnica y Conductual (.md) específica para el puesto.
 - **`/market-study`**: Genera el estudio analítico de mercado con estadísticas salariales, herramientas más cotizadas y recomendaciones de negociación.
 - **`/linkedin`**: Genera la estrategia y 4 borradores de publicaciones de alto impacto técnico y SEO para LinkedIn en Obsidian (`Ideas_LinkedIn.md`).

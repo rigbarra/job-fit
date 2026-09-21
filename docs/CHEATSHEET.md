@@ -42,7 +42,21 @@ PYTHONPATH=. .venv/bin/python -m src.cli cover-letter 39
 
 ---
 
-### D. Recompilar Manualmente un CV editado (.tex a .pdf)
+### D. Generar CV Estándar / Base (Español e Inglés sin IA)
+Compila instantáneamente tu CV profesional estándar a partir de `config/profile.yaml` y lo copia directamente a tu carpeta de **Descargas de Windows**:
+```bash
+# Compilar en ambos idiomas (ES y EN):
+PYTHONPATH=. .venv/bin/python -m src.cli cv
+
+# O compilar solo en un idioma específico:
+PYTHONPATH=. .venv/bin/python -m src.cli cv --lang es
+PYTHONPATH=. .venv/bin/python -m src.cli cv --lang en
+```
+* **PDFs generados en:** `data/generated_cvs/` y descargados en `C:\Users\<TuUsuario>\Downloads\`
+
+---
+
+### E. Recompilar Manualmente un CV editado (.tex a .pdf)
 Si abriste un archivo `.tex` en VSCode dentro de `data/generated_cvs/` y le hiciste cambios manuales, recompílalo a PDF con este comando de 1 segundo:
 ```bash
 pdflatex -output-directory=data/generated_cvs data/generated_cvs/NOMBRE_DEL_ARCHIVO.tex

@@ -27,8 +27,19 @@ def handle_apply(args):
         logger.error(f"No se encontró la vacante para '{args.target}'")
         sys.exit(1)
 
-    logger.info(f"--- 1. Evaluando Fit para '{job.title}' @ '{job.company}' ---")
-    match_result = evaluate_job(job)
+    match_result = None
+    if job.id and not getattr(args, "force", False):
+        from sqlmodel import Session, select
+        from src.database.repository import engine
+        from src.database.models import MatchResult
+        with Session(engine) as session:
+            match_result = session.exec(select(MatchResult).where(MatchResult.job_id == job.id)).first()
+
+    if match_result:
+        logger.info(f"--- 1. Utilizando evaluación previa de Fit para '{job.title}' @ '{job.company}' ---")
+    else:
+        logger.info(f"--- 1. Evaluando Fit para '{job.title}' @ '{job.company}' ---")
+        match_result = evaluate_job(job)
     logger.info(f"Score: {match_result.score:.1f} / 100 pts | Tier: {match_result.tier}")
 
     logger.info("--- 2. Generando CV Adaptado (PDF) ---")
@@ -85,7 +96,53 @@ def handle_cover_letter(args):
 
     logger.info(f"--- Generando Carta de Presentación para '{job.title}' @ '{job.company}' ---")
     cover_pdf, cover_tex = generate_cover_letter_for_job(job)
-    print(f"\nCarta de Presentación PDF generada en:\n{cover_pdf}")
+
+    # Copiar a Descargas de Windows si está disponible
+    import os
+    import shutil
+    from pathlib import Path
+    from src.obsidian_exporter import get_windows_downloads_dir, to_windows_display_path
+    downloads_dir = get_windows_downloads_dir()
+    win_pdf_path = None
+    if downloads_dir and downloads_dir.exists() and cover_pdf and os.path.exists(cover_pdf):
+        dest_file = downloads_dir / Path(cover_pdf).name
+        shutil.copy2(cover_pdf, dest_file)
+        win_pdf_path = to_windows_display_path(dest_file)
+
+    if win_pdf_path:
+        print(f"\n📥 Carta de Presentación descargada en tu carpeta de Windows:\n   {win_pdf_path}\n")
+    else:
+        print(f"\nCarta de Presentación PDF generada en:\n{cover_pdf}\n")
+
+
+def handle_base_cv(args):
+    """Genera el CV estándar/base en Español e Inglés sin adaptar a vacantes."""
+    import os
+    import shutil
+    from pathlib import Path
+    from src.cv_engine.builder import build_cv_tex
+    from src.cv_engine.compiler import compile_tex_to_pdf
+    from src.obsidian_exporter import get_windows_downloads_dir, to_windows_display_path
+
+    downloads_dir = get_windows_downloads_dir()
+    langs = [args.lang] if getattr(args, "lang", None) and args.lang != "all" else ["es", "en"]
+
+    for lang in langs:
+        suffix = "ES" if lang == "es" else "EN"
+        logger.info(f"--- Generando CV Base [{suffix}] ---")
+        tex_content = build_cv_tex(language=lang)
+        out_pdf = f"data/generated_cvs/CV_Rigoberto_Barra_Base_{suffix}.pdf"
+        compile_tex_to_pdf(tex_content, out_pdf)
+        win_path = None
+        if downloads_dir and downloads_dir.exists() and os.path.exists(out_pdf):
+            dst = downloads_dir / Path(out_pdf).name
+            shutil.copy2(out_pdf, dst)
+            win_path = to_windows_display_path(dst)
+
+        if win_path:
+            print(f"📥 CV Base [{suffix}] descargado en tu carpeta de Windows:\n   {win_path}\n")
+        else:
+            print(f"📄 CV Base [{suffix}] generado en:\n   {out_pdf}\n")
 
 
 from src.market_engine.analytics import generate_market_study_report
@@ -183,6 +240,7 @@ def main():
     # Comando: apply
     p_apply = subparsers.add_parser("apply", help="Genera CV + Carta de Presentación adaptada para una vacante")
     p_apply.add_argument("target", help="ID de la vacante en la BD o URL/descripción")
+    p_apply.add_argument("--force", "-f", action="store_true", help="Fuerza una nueva re-evaluación con el LLM")
     p_apply.set_defaults(func=handle_apply)
 
     # Comando: interview
@@ -214,8 +272,17 @@ def main():
     p_linkedin.add_argument("--topic", default=None, help="Tema técnico específico o debate a priorizar (opcional)")
     p_linkedin.set_defaults(func=handle_linkedin)
 
+    # Comando: cv / base-cv
+    p_cv = subparsers.add_parser("cv", aliases=["base-cv"], help="Genera el CV estándar/base (Español e Inglés)")
+    p_cv.add_argument("--lang", choices=["es", "en", "all"], default="all", help="Idioma del CV base (default: all)")
+    p_cv.set_defaults(func=handle_base_cv)
+
     args = parser.parse_args()
-    args.func(args)
+    try:
+        args.func(args)
+    except KeyboardInterrupt:
+        print("\n\n🛑 Proceso interrumpido por el usuario (Ctrl+C).")
+        sys.exit(130)
 
 
 if __name__ == "__main__":

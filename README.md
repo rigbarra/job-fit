@@ -23,12 +23,17 @@ PYTHONPATH=. .venv/bin/python -m src.cli interview 39
 # 4. Generar únicamente la Carta de Presentación (.pdf)
 PYTHONPATH=. .venv/bin/python -m src.cli cover-letter 39
 
-# 5. Generar/Actualizar informe analítico de mercado y estudio salarial (.md y Streamlit Web)
+# 5. Generar CV Estándar / Base (Español e Inglés, sin IA, descarga directa a Windows)
+PYTHONPATH=. .venv/bin/python -m src.cli cv
+# O solo un idioma:
+PYTHONPATH=. .venv/bin/python -m src.cli cv --lang es   # o --lang en
+
+# 6. Generar/Actualizar informe analítico de mercado y estudio salarial (.md y Streamlit Web)
 PYTHONPATH=. .venv/bin/python -m src.cli market-study
 # O abrir directamente el Dashboard Interactivo Streamlit (Catppuccin Dark):
 .venv/bin/streamlit run src/market_engine/app.py
 
-# 6. Recompilar manualmente un CV (.tex modificado a .pdf en 1 segundo)
+# 7. Recompilar manualmente un CV (.tex modificado a .pdf en 1 segundo)
 pdflatex -output-directory=data/generated_cvs data/generated_cvs/NOMBRE_DEL_ARCHIVO.tex
 ```
 

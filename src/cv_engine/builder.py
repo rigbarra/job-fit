@@ -147,9 +147,9 @@ def prepare_skills_list(
                 item["priority"] = 1
             elif cid == "bi_analytics" and any(k in job_text for k in ["bi", "power bi", "tableau", "looker", "visualization", "dashboard", "report"]):
                 item["priority"] = 2
-            elif cid == "data_engineering" and any(k in job_text for k in ["data engineer", "pipeline", "etl", "dbt", "sql", "pyspark"]):
+            elif cid == "data_engineering" and any(k in job_text for k in ["data engineer", "pipeline", "etl", "dbt", "sql", "pyspark", "databricks"]):
                 item["priority"] = 3
-            elif cid == "cloud_bigdata" and any(k in job_text for k in ["aws", "gcp", "azure", "cloud", "emr", "bigquery", "redshift"]):
+            elif cid == "cloud_bigdata" and any(k in job_text for k in ["aws", "gcp", "azure", "cloud", "emr", "bigquery", "redshift", "databricks"]):
                 item["priority"] = 4
 
         formatted_skills.sort(key=lambda x: x["priority"])
