@@ -1,9 +1,14 @@
 import argparse
+import os
+import shutil
 import sys
 import logging
+from pathlib import Path
 
-from src.database.repository import get_job_by_id, init_db, save_job
-from src.database.models import Job
+from sqlmodel import Session, select
+
+from src.database.repository import get_job_by_id, init_db, save_job, engine
+from src.database.models import Job, MatchResult
 from src.agent.evaluator import evaluate_job
 from src.cv_engine.compiler import generate_cv_for_job
 from src.cover_engine.compiler import generate_cover_letter_for_job
@@ -29,9 +34,6 @@ def handle_apply(args):
 
     match_result = None
     if job.id and not getattr(args, "force", False):
-        from sqlmodel import Session, select
-        from src.database.repository import engine
-        from src.database.models import MatchResult
         with Session(engine) as session:
             match_result = session.exec(select(MatchResult).where(MatchResult.job_id == job.id)).first()
 
@@ -98,9 +100,6 @@ def handle_cover_letter(args):
     cover_pdf, cover_tex = generate_cover_letter_for_job(job)
 
     # Copiar a Descargas de Windows si está disponible
-    import os
-    import shutil
-    from pathlib import Path
     from src.obsidian_exporter import get_windows_downloads_dir, to_windows_display_path
     downloads_dir = get_windows_downloads_dir()
     win_pdf_path = None
@@ -117,13 +116,11 @@ def handle_cover_letter(args):
 
 def handle_base_cv(args):
     """Genera el CV estándar/base en Español e Inglés sin adaptar a vacantes."""
-    import os
-    import shutil
-    from pathlib import Path
-    from src.cv_engine.builder import build_cv_tex
+    from src.cv_engine.builder import build_cv_tex, load_profile
     from src.cv_engine.compiler import compile_tex_to_pdf
     from src.obsidian_exporter import get_windows_downloads_dir, to_windows_display_path
 
+    candidate_name = load_profile().get("name", "Candidato").replace(" ", "_")
     downloads_dir = get_windows_downloads_dir()
     langs = [args.lang] if getattr(args, "lang", None) and args.lang != "all" else ["es", "en"]
 
@@ -131,7 +128,7 @@ def handle_base_cv(args):
         suffix = "ES" if lang == "es" else "EN"
         logger.info(f"--- Generando CV Base [{suffix}] ---")
         tex_content = build_cv_tex(language=lang)
-        out_pdf = f"data/generated_cvs/CV_Rigoberto_Barra_Base_{suffix}.pdf"
+        out_pdf = f"data/generated_cvs/CV_{candidate_name}_Base_{suffix}.pdf"
         compile_tex_to_pdf(tex_content, out_pdf)
         win_path = None
         if downloads_dir and downloads_dir.exists() and os.path.exists(out_pdf):
@@ -143,6 +140,7 @@ def handle_base_cv(args):
             print(f"📥 CV Base [{suffix}] descargado en tu carpeta de Windows:\n   {win_path}\n")
         else:
             print(f"📄 CV Base [{suffix}] generado en:\n   {out_pdf}\n")
+
 
 
 from src.market_engine.analytics import generate_market_study_report

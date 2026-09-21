@@ -39,9 +39,9 @@ def get_windows_downloads_dir() -> Path | None:
 
 
 def to_wsl_unc_path(linux_path: Path, distro: str = "Debian") -> str:
-    r"""Convierte ruta Linux/WSL a UNC de Windows (\\wsl$\Debian\...) para abrir desde Obsidian."""
-    resolved = str(linux_path.resolve()).replace("/", "\\")
-    return f"\\\\wsl$\\{distro}{resolved}"
+    r"""Convierte ruta Linux/WSL a file:// URI (file://///wsl$/Debian/...) para abrir desde Obsidian."""
+    resolved = str(linux_path.resolve())
+    return f"file://///wsl$/{distro}{resolved}"
 
 
 def to_file_url(path: Path) -> str:
