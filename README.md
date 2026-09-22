@@ -172,6 +172,12 @@ Los errores más comunes y su solución:
 
 ## Comandos Rápidos CLI (`src/cli.py`) & Operación Diaria
 
+> **¿Necesito un asistente de IA (Antigravity, Claude, Cursor...) para usar esto?**
+> No. El proyecto es un CLI Python puro que se ejecuta directamente en la terminal.
+> Los comandos `/scrape`, `/apply` etc. que aparecen en `AGENTS.md` son atajos opcionales
+> para quienes usan Antigravity CLI — hacen exactamente lo mismo que los comandos de abajo.
+> Si usas cualquier otro asistente o ninguno, los comandos de esta sección son todo lo que necesitas.
+
 > 📖 **Guía Completa de Operación:** Consulta el [**Manual Operativo y Cheat Sheet**](docs/CHEATSHEET.md) para ver todos los comandos de configuración, re-compilación manual, mantenimiento de cron y reinicio limpio.
 
 ```bash
