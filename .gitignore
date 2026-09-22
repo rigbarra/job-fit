@@ -12,10 +12,12 @@ data/db/*.db-journal
 data/db/*.db-shm
 data/db/*.db-wal
 
-# Generated output files
-data/generated_cvs/*.pdf
-data/generated_cvs/*.tex
+# Generated output files (CVs, cartas, guías de entrevista — datos personales)
+data/generated_cvs/*
+!data/generated_cvs/.gitkeep
 data/raw/*
+data/interview_prep/*
+!data/interview_prep/.gitkeep
 
 # Local Environment Variables & Secrets
 .env
