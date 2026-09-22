@@ -6,6 +6,170 @@ Diseñado bajo la filosofía **Ponytail (Minimalismo y YAGNI)**: arquitectura de
 
 ---
 
+## Tabla de Contenidos
+
+1. [¿Nunca has usado una terminal? Empieza aquí](#-primeros-pasos-desde-cero-windows--wsl2)
+2. [Comandos Rápidos CLI y Operación Diaria](#comandos-rápidos-cli-srcclipy--operación-diaria)
+3. [Diagrama de Flujo del Pipeline](#diagrama-de-flujo-del-pipeline)
+4. [Características Principales](#características-principales)
+5. [Estructura del Repositorio](#estructura-del-repositorio)
+6. [Requisitos e Instalación (Linux / macOS / Docker)](#requisitos-e-instalación)
+
+---
+
+## 🚀 Primeros pasos desde cero (Windows + WSL2)
+
+> Esta sección es para quienes nunca han usado una terminal ni instalado Python. Si ya tienes Linux o macOS con Python funcionando, salta directo a [Requisitos e Instalación](#requisitos-e-instalación).
+
+### Paso 1 — Instalar WSL2 con Debian en Windows
+
+WSL2 te permite correr Linux dentro de Windows sin instalar nada extra. Solo necesitas Windows 10 (versión 2004 o superior) o Windows 11.
+
+1. Abre **PowerShell como Administrador** (clic derecho en el menú Inicio → "Windows PowerShell (Administrador)") y ejecuta:
+   ```powershell
+   wsl --install -d Debian
+   ```
+2. Cuando termine, **reinicia tu PC**.
+3. Al volver, Windows abrirá automáticamente una ventana de Debian. Te pedirá crear un usuario y contraseña de Linux (puede ser cualquier nombre y clave, solo para uso local).
+4. Una vez dentro, actualiza los paquetes del sistema:
+   ```bash
+   sudo apt-get update && sudo apt-get upgrade -y
+   ```
+
+> **¿Cómo abro la terminal de Debian después?** Busca "Debian" en el menú Inicio, o abre la app "Terminal" de Windows y selecciona Debian en el menú desplegable.
+
+---
+
+### Paso 2 — Instalar Git y Python
+
+Dentro de tu terminal Debian:
+```bash
+sudo apt-get install -y git python3 python3-pip python3-venv
+```
+
+Verifica que todo quedó bien:
+```bash
+python3 --version   # debe mostrar Python 3.11 o superior
+git --version       # debe mostrar git version 2.x
+```
+
+---
+
+### Paso 3 — Obtener una API Key del proveedor de IA (elige una opción)
+
+El sistema soporta dos proveedores. **Elige el que prefieras**, solo necesitas uno:
+
+#### Opción A — Google AI Studio (Gemini) · Recomendado para empezar
+Es gratuito y la configuración es mínima. Límite: ~1.500 requests/día con Gemini Flash Lite, suficiente para uso personal.
+
+1. Ve a [aistudio.google.com](https://aistudio.google.com) e inicia sesión con tu cuenta Google.
+2. En el panel izquierdo, haz clic en **"Get API key"** → **"Create API key"**.
+3. Copia la clave (empieza con `AIzaSy...` o `AQ....`). **Guárdala**, la necesitarás en el Paso 5.
+
+En tu `.env` usarás:
+```env
+LLM_API_KEY=AIzaSy...tu_clave_aqui
+LLM_MODEL=gemini-2.5-flash-lite
+```
+
+#### Opción B — OpenRouter · Para acceder a otros modelos (Claude, DeepSeek, GPT-4o...)
+OpenRouter es un intermediario que da acceso a decenas de modelos, varios con capa gratuita.
+
+1. Ve a [openrouter.ai](https://openrouter.ai) y crea una cuenta.
+2. Entra al **Dashboard** → **API Keys** → **Create Key**.
+3. Copia la clave (empieza con `sk-or-...`). **Guárdala**, la necesitarás en el Paso 5.
+
+En tu `.env` usarás:
+```env
+LLM_API_KEY=sk-or-...tu_clave_aqui
+LLM_MODEL=google/gemma-3-27b-it:free
+```
+
+> El sistema detecta automáticamente el proveedor según el formato de la clave — no necesitas configurar nada más.
+
+---
+
+### Paso 4 — Crear un Webhook de Discord para notificaciones (opcional)
+
+El sistema puede enviarte una notificación a Discord cada vez que encuentra una oferta que encaja con tu perfil, adjuntando el CV generado en PDF. Si no usas Discord o no te interesan las notificaciones, puedes saltarte este paso (deja `DISCORD_WEBHOOK_URL` vacío en el `.env`).
+
+Si quieres activarlo:
+1. Abre Discord → entra al servidor y canal donde quieres recibir las alertas.
+2. Clic en el ícono ⚙️ del canal → **"Integraciones"** → **"Webhooks"** → **"Nuevo Webhook"**.
+3. Dale un nombre (ej: `job-fit-bot`), copia la **URL del Webhook** y guárdala.
+
+---
+
+### Paso 5 — Clonar el proyecto y configurarlo
+
+```bash
+# Clonar el repositorio
+git clone https://github.com/rigbarra/job-fit.git
+cd job-fit
+
+# Crear el entorno virtual de Python (una carpeta aislada con las dependencias)
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Instalar TeX Live (para compilar los CVs a PDF)
+sudo apt-get install -y texlive-latex-base texlive-latex-extra texlive-fonts-recommended texlive-lang-spanish
+
+# Copiar los archivos de configuración de ejemplo
+cp .env.example .env
+cp config/profile.example.yaml config/profile.yaml
+```
+
+Ahora edita los dos archivos que copiaste:
+
+**`.env`** — abre con cualquier editor de texto:
+```bash
+nano .env
+```
+Reemplaza los valores de ejemplo con los tuyos:
+```env
+LLM_API_KEY="pega-aqui-tu-api-key-de-google-ai-studio"
+DISCORD_WEBHOOK_URL="pega-aqui-tu-webhook-url-o-deja-vacio"
+LLM_MODEL="gemini-2.5-flash-lite"
+```
+Guarda con `Ctrl+O`, `Enter`, `Ctrl+X`.
+
+**`config/profile.yaml`** — abre y reemplaza los datos del perfil de ejemplo (Alex Morgan) con los tuyos: nombre, teléfono, email, LinkedIn, experiencia laboral y educación. Este archivo es tu CV en formato texto.
+
+---
+
+### Paso 6 — Verificar que todo funciona
+
+```bash
+pytest
+```
+
+Si todos los tests pasan (o solo falla alguno relacionado a LaTeX), el sistema está listo.
+
+Para hacer una primera ejecución manual:
+```bash
+PYTHONPATH=. .venv/bin/python -m src.cli scrape
+```
+
+Verás en la terminal cómo el sistema busca ofertas, las evalúa con IA y te notifica en Discord las que coinciden con tu perfil.
+
+---
+
+### ¿Y si algo falla?
+
+Los errores más comunes y su solución:
+
+| Error | Causa | Solución |
+|---|---|---|
+| `pdflatex: command not found` | TeX Live no instalado | `sudo apt-get install -y texlive-latex-extra` |
+| `LLM_API_KEY not set` | Falta la clave en `.env` | Editar `.env` con la clave real |
+| `ModuleNotFoundError` | Entorno virtual no activado | Ejecutar `source .venv/bin/activate` |
+| `Permission denied` | Falta permisos en un script | `chmod +x scripts/run_pipeline.sh` |
+
+---
+
 ## Comandos Rápidos CLI (`src/cli.py`) & Operación Diaria
 
 > 📖 **Guía Completa de Operación:** Consulta el [**Manual Operativo y Cheat Sheet**](docs/CHEATSHEET.md) para ver todos los comandos de configuración, re-compilación manual, mantenimiento de cron y reinicio limpio.

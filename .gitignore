@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Generated data outputs (personal job search data)
+data/market_study/
+
 # Database
 data/db/*.db
 data/db/*.db-journal
