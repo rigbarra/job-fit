@@ -17,7 +17,7 @@ Diseñado bajo la filosofía **Ponytail (Minimalismo y YAGNI)**: arquitectura de
 
 ---
 
-## 🚀 Primeros pasos desde cero (Windows + WSL2)
+## Primeros pasos desde cero (Windows + WSL2)
 
 > Esta sección es para quienes nunca han usado una terminal ni instalado Python. Si ya tienes Linux o macOS con Python funcionando, salta directo a [Requisitos e Instalación](#requisitos-e-instalación).
 
