@@ -6,8 +6,8 @@ from typing import Any
 
 import yaml
 
-from config.settings import settings, get_profile_path
-from src.agent.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, MatchEvaluation
+from config.settings import settings, get_profile_path, load_config
+from src.agent.prompts import build_system_prompt, USER_PROMPT_TEMPLATE, MatchEvaluation
 from src.agent.providers import get_llm_provider
 from src.agent.quota import RateLimitError, call_with_retry
 from src.cv_engine.builder import load_profile
@@ -161,7 +161,7 @@ def evaluate_job(
     provider = get_llm_provider()
 
     def _make_llm_call():
-        return provider.generate(SYSTEM_PROMPT, user_prompt)
+        return provider.generate(build_system_prompt(load_config()), user_prompt)
 
     logger.info(
         f"LLM [{settings.llm_provider.upper() if settings.llm_provider else 'AUTO'}]: Evaluando '{job.title}' @ '{job.company}' [{lang_display}]..."

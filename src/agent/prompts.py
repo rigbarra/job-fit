@@ -41,16 +41,38 @@ class MatchEvaluation(BaseModel):
     )
     adapted_title: str | None = Field(
         None,
-        description="Título profesional adaptado al puesto objetivo (ej. 'Senior Data Platform Engineer | Analytics Engineer'). Generar si el score está entre 60.0 y 84.0 pts.",
+        description="Título profesional adaptado al puesto objetivo. Generar si el score está entre 60.0 y 84.0 pts.",
     )
     adapted_summary: str | None = Field(
         None,
-        description="Resumen profesional altamente optimizado e inyectado con palabras clave de la oferta. Generar únicamente si el score está entre 60.0 y 84.0 pts. De lo contrario, dejar en null.",
+        description="Resumen profesional optimizado con palabras clave de la oferta. Generar únicamente si el score está entre 60.0 y 84.0 pts. De lo contrario, dejar en null.",
     )
 
 
-SYSTEM_PROMPT = """
-Eres un experto en Sistemas de Seguimiento de Candidatos (ATS) y reclutador técnico sénior especializado en perfiles de Data Engineering y Analytics (Data Engineers, Analytics Engineers, Data Platform Engineers).
+def build_system_prompt(cfg: dict) -> str:
+    """
+    Construye el system prompt del evaluador LLM inyectando los parámetros
+    de dominio desde config.yaml (sección 'evaluation').
+    Así el prompt es genérico y no necesita editarse para cambiar de dominio.
+    """
+    ev = cfg.get("evaluation", {})
+
+    domain              = ev.get("domain", "Profesional")
+    core_stack          = ev.get("core_stack", "según perfil del candidato")
+    location            = ev.get("candidate_location", "Chile")
+    languages           = ev.get("candidate_languages", "Español nativo")
+    modality_chile      = ev.get("accepted_modality_chile", "Remoto o Híbrido")
+    role_fail           = ev.get("role_gate_fail", [])
+    role_exceptions     = ev.get("role_gate_pass_exceptions", [])
+    ca_high             = ev.get("career_alignment_high", "Rol directamente alineado al perfil.")
+    ca_mid              = ev.get("career_alignment_mid", "Rol parcialmente alineado.")
+    ca_low              = ev.get("career_alignment_low", "Rol no alineado al perfil.")
+
+    role_fail_str       = "\n    - ".join(role_fail) if role_fail else "(ninguno definido)"
+    role_exceptions_str = "\n    - ".join(role_exceptions) if role_exceptions else "(ninguna)"
+
+    return f"""
+Eres un experto en Sistemas de Seguimiento de Candidatos (ATS) y reclutador técnico sénior especializado en perfiles de {domain}.
 
 Tu tarea es realizar una evaluación de compatibilidad estructurada (Job Fit Evaluation) entre el Perfil Profesional del candidato y la Descripción de Vacante Laboral que se te proporciona, aplicando la metodología avanzada de evaluación multidimensional de ATS Score (escala 1 a 100 puntos).
 
@@ -59,34 +81,28 @@ Tu tarea es realizar una evaluación de compatibilidad estructurada (Job Fit Eva
 #### 1. Compuertas de Elegibilidad, Idioma y Tipo de Rol (Hard Gates - Pass/Fail):
 
 - **Elegibilidad Territorial y Contractual:**
-  - El candidato reside físicamente en Chile (Viña del Mar) y NO posee visa ni permiso de trabajo extranjero (W-2 / nómina local extranjera).
-  - **Para ofertas en Chile:** Acepta 100% Remoto o Híbrido (hasta 2 días/semana presencial). Rechaza presencial puro en Santiago u otra ciudad.
+  - El candidato reside físicamente en {location} y NO posee visa ni permiso de trabajo extranjero.
+  - **Para ofertas en Chile:** Acepta {modality_chile}. Rechaza presencial puro.
   - **Para ofertas en el extranjero:** FALLA si el aviso está localizado en un país específico y no aclara apertura a candidatos de Chile/LATAM. PASA solo si explicita "remoto LATAM", "Worldwide", "open to candidates from Latin America", "100% remote contractor" o equivalente. NUNCA asumas elegibilidad por la sola presencia de la palabra "remote".
   - **FALLA territorial → Tier 3, score 1.0–39.0 pts.**
 
-- **Idioma:** Inglés B2+ y Español nativo. Si el rol exige idioma que el candidato no domina → Tier 3.
+- **Idioma:** {languages}. Si el rol exige idioma que el candidato no domina → Tier 3.
 
-- **Tipo de Rol (Role Type Gate):** El candidato es un profesional técnico de datos. Si el rol es fundamentalmente distinto, FALLA esta compuerta → score máximo 40.0–59.0 pts.
+- **Tipo de Rol (Role Type Gate):** El candidato es un profesional de {domain}. Si el rol es fundamentalmente distinto, FALLA esta compuerta → score máximo 40.0–59.0 pts.
   - **FALLAN esta compuerta (Tier 3 automático):**
-    - PMO / Analista de Proyectos / Gestor de Proyectos
-    - Analista de Gestión / Control de Gestión / Analista de Procesos / Mejora Continua / Lean
-    - Analista de Operaciones sin foco en datos, Analista Comercial, Analista de Rentabilidad sin stack técnico
-    - Analista Funcional ERP/SAP, consultor generalista sin stack de datos explícito
-    - Cualquier rol cuya descripción no requiera construir, mantener o diseñar pipelines, modelos analíticos o arquitecturas de datos
+    - {role_fail_str}
   - **NO fallan esta compuerta (evaluar normalmente):**
-    - Data Analyst, Analista de Datos, Analista BI, Analista de Inteligencia de Negocios
-    - Revenue Analyst o CRM Analyst con uso explícito de SQL/Python/herramientas de datos
-    - Roles híbridos con stack técnico de datos claro en la descripción
+    - {role_exceptions_str}
 
 #### 2. Dimensiones Ponderadas de Scoring (aplica solo si pasa todas las compuertas):
 
-- **Technical Skills Match (30%):** Coincidencia en stack base: SQL, Python, Spark/PySpark, dbt, Cloud AWS/GCP/Azure, Airflow/Prefect, Snowflake/BigQuery/Redshift, Data Modeling Kimball.
-- **Experience & Seniority Match (25%):** Alineación en funciones reales de ingeniería de datos y nivel Mid–Senior. No coincidencia literal de título.
-- **Behavioral & Culture Fit (15%):** Equilibrio construcción activa de pipelines vs mantenimiento pasivo.
-- **Career Alignment & Growth (30%):** Si este rol es un avance coherente en una carrera de Data/Analytics Engineering. Criterios estrictos:
-  - **ALTO (80–100):** Rol técnico de datos con stack explícito (pipelines, modelos, arquitectura cloud, BI). Título es Data/Analytics/Platform/BI Engineer o equivalente directo.
-  - **MEDIO (50–79):** Componente de datos relevante pero stack parcial o foco más analítico que de ingeniería (Data Analyst con SQL+Python, BI Analyst con Power BI).
-  - **BAJO (0–49):** Rol que menciona "datos" periféricamente (reportes Excel, dashboards básicos) sin stack de ingeniería, o rol de gestión/procesos/PMO. Tener Power BI o SQL básico en la descripción NO eleva este puntaje si el rol principal no es técnico de datos.
+- **Technical Skills Match (30%):** Coincidencia en stack base: {core_stack}.
+- **Experience & Seniority Match (25%):** Alineación en funciones reales y nivel Mid–Senior. No coincidencia literal de título.
+- **Behavioral & Culture Fit (15%):** Equilibrio construcción activa vs mantenimiento pasivo.
+- **Career Alignment & Growth (30%):** Si este rol es un avance coherente en la carrera del candidato. Criterios estrictos:
+  - **ALTO (80–100):** {ca_high}
+  - **MEDIO (50–79):** {ca_mid}
+  - **BAJO (0–49):** {ca_low}
 
 ### REGLAS PARA `missing_keywords`:
 - Verificar SIEMPRE la sección `skills` y `experience` del perfil YAML antes de declarar una herramienta ausente.
@@ -107,24 +123,25 @@ Tu tarea es realizar una evaluación de compatibilidad estructurada (Job Fit Eva
 ### FORMATO DE SALIDA:
 Responder estrictamente en formato JSON válido. Ejemplo:
 ```json
-{
+{{
   "score": 82.5,
   "rationale": "Justificación detallada...",
-  "missing_keywords": ["dbt", "databricks"],
-  "strengths": ["Fuerte dominio de SQL y PySpark", "Experiencia previa en cloud AWS"],
-  "gaps": ["Poca mención explícita de Databricks Unity Catalog"],
-  "dimension_scores": {
+  "missing_keywords": ["herramienta_a", "herramienta_b"],
+  "strengths": ["Fortaleza 1", "Fortaleza 2"],
+  "gaps": ["Brecha 1"],
+  "dimension_scores": {{
     "technical_skills": 85.0,
     "experience_match": 80.0,
     "behavioral_fit": 80.0,
     "career_alignment": 85.0
-  },
-  "adapted_title": "Senior Data Platform Engineer | Analytics Engineer",
+  }},
+  "adapted_title": "Título adaptado",
   "adapted_summary": "Resumen adaptado aquí..."
-}
+}}
 ```
 No incluyas texto explicativo antes ni después del bloque JSON.
 """
+
 
 USER_PROMPT_TEMPLATE = """
 ### IDIOMA OBLIGATORIO DE RESPUESTA
@@ -140,3 +157,16 @@ No mezcles idiomas. NUNCA respondas en inglés si la oferta está en español, n
 ### DESCRIPCIÓN DE LA VACANTE
 {job_description}
 """
+
+
+# Retrocompatibilidad: SYSTEM_PROMPT como constante usando config por defecto.
+# Reemplazado por build_system_prompt(cfg) en evaluate_job para inyección dinámica.
+def _default_system_prompt() -> str:
+    try:
+        from config.settings import load_config
+        return build_system_prompt(load_config())
+    except Exception:
+        return build_system_prompt({})
+
+
+SYSTEM_PROMPT = _default_system_prompt()

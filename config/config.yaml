@@ -211,4 +211,60 @@ obsidian:
   auto_clean_orphans: true      # Si borras una tarjeta del tablero, purga automáticamente sus archivos .md y .pdf del disco
   start_cutoff: "2026-09-04 21:10:00"  # Punto de corte temporal para vacantes nuevas
 
+# ==============================================================================
+# EVALUACIÓN LLM — Adapta esta sección para personalizar el dominio profesional.
+# Todo lo de aquí se inyecta en el prompt de evaluación. No tocar prompts.py.
+# ==============================================================================
+evaluation:
+  # Descripción del dominio profesional del candidato (para el rol del evaluador LLM)
+  domain: "Data Engineering y Analytics (Data Engineers, Analytics Engineers, Data Platform Engineers)"
+
+  # Stack técnico base que define un "Technical Skills Match" alto
+  core_stack: "SQL, Python, Spark/PySpark, dbt, Cloud AWS/GCP/Azure, Airflow/Prefect, Snowflake/BigQuery/Redshift, Data Modeling Kimball"
+
+  # Ubicación física del candidato (para compuerta territorial)
+  candidate_location: "Chile (Viña del Mar)"
+
+  # Idiomas del candidato (para compuerta de idioma)
+  candidate_languages: "Inglés B2+ y Español nativo"
+
+  # Modalidad aceptada para ofertas en Chile
+  accepted_modality_chile: "100% Remoto o Híbrido (hasta 2 días/semana presencial)"
+
+  # Compuerta de tipo de rol: estos roles son Tier 3 automático (score 40–59 pts máximo).
+  # Ajusta esta lista según tu perfil y los roles que NO quieres postular.
+  role_gate_fail:
+    - "PMO"
+    - "Analista de Proyectos"
+    - "Gestor de Proyectos"
+    - "Analista de Gestión"
+    - "Control de Gestión"
+    - "Analista de Procesos"
+    - "Mejora Continua"
+    - "Lean"
+    - "Analista de Operaciones"
+    - "Analista Comercial"
+    - "Analista Funcional ERP"
+    - "Analista Funcional SAP"
+    - "consultor generalista"
+
+  # Roles que parecen fuera del dominio pero SÍ se evalúan normalmente.
+  role_gate_pass_exceptions:
+    - "Data Analyst"
+    - "Analista de Datos"
+    - "Analista BI"
+    - "Analista de Inteligencia de Negocios"
+    - "Revenue Analyst con SQL"
+    - "CRM Analyst con SQL"
+
+  # Definición de career_alignment alto (Tier 1 / score alto en esa dimensión)
+  career_alignment_high: "Rol técnico de datos con stack explícito (pipelines, modelos, arquitectura cloud, BI). Título es Data/Analytics/Platform/BI Engineer o equivalente directo."
+
+  # Definición de career_alignment medio
+  career_alignment_mid: "Componente de datos relevante pero stack parcial o foco más analítico que de ingeniería (Data Analyst con SQL+Python, BI Analyst con Power BI)."
+
+  # Definición de career_alignment bajo (Tier 3 en esa dimensión)
+  career_alignment_low: "Rol que menciona datos periféricamente (reportes Excel, dashboards básicos) sin stack de ingeniería, o rol de gestión/procesos/PMO."
+
+
 
