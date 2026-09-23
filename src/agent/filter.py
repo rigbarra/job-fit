@@ -109,13 +109,13 @@ def extract_modality_and_country(location: str, description: str, source: str = 
         country = "Chile" if is_chile_loc else "Internacional / Remote"
         origin_type = "Internacional / LATAM (Remoto)"
 
-    # Modalidad
-    if any(k in text for k in ["100% remoto", "remote", "remoto", "teletrabajo", "work from home", "wfh"]):
-        if any(h in text for h in ["hibrido", "hybrid"]):
+    # Modalidad (text ya está normalizado sin tildes por normalize_text)
+    if any(k in text for k in ["100% remoto", "100% remota", "remote", "remoto", "remota", "teletrabajo", "work from home", "wfh"]):
+        if any(h in text for h in ["hibrido", "hibrida", "hybrid"]):
             modality = "Híbrido"
         else:
             modality = "Remoto 100%"
-    elif any(k in text for k in ["hibrido", "hybrid"]):
+    elif any(k in text for k in ["hibrido", "hibrida", "hybrid"]):
         modality = "Híbrido"
         m = re.search(r"\b([1-4])\s*(x|por)\s*([1-4])\b", text)
         if m:
@@ -123,7 +123,9 @@ def extract_modality_and_country(location: str, description: str, source: str = 
     elif any(k in text for k in ["presencial", "on-site", "onsite", "en oficina"]):
         modality = "Presencial"
     else:
-        modality = "Híbrido / Remoto" if is_chile_loc else "Presencial / Local"
+        # Sin mención explícita de modalidad → presencial por defecto.
+        # ponytail: no asumir remoto si la oferta no lo dice.
+        modality = "Presencial"
 
     return modality, country, origin_type
 
