@@ -200,6 +200,21 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
         "control de gestion",
         "control de gestión",
         "controller",
+        "analista de procesos",
+        "analista de operaciones",
+        "analista de calidad",
+        "analista contable",
+        "analista de gestion",
+        "analista de gestión",
+        "gestion y procesos",
+        "gestión y procesos",
+        "pmo",
+        "rrhh",
+        "recursos humanos",
+        "seleccion",
+        "selección",
+        "abastecimiento",
+        "adquisiciones",
         "cientifico de datos",
         "cientista de datos",
         "data science",
@@ -455,6 +470,26 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
             return (
                 False,
                 "Descarte algorítmico: Vacante en Chile exige 3 o más días presenciales por semana.",
+            )
+
+        # Regla Innegociable para Santiago / Región Metropolitana:
+        # El candidato reside en Viña del Mar y rechaza traslados presenciales diarios a Santiago.
+        # Por ende, una vacante localizada en Santiago/RM DEBE ser Remota o Híbrida.
+        is_santiago = any(stgo in location_lower for stgo in [
+            "santiago", "region metropolitana", "región metropolitana", "las condes", 
+            "providencia", "huechuraba", "quilicura", "pudahuel", "san bernardo", 
+            "ciudad empresarial", "vitacura", "lo barnechea"
+        ])
+        
+        has_remote_or_hybrid = any(term in text_combined for term in [
+            "100% remoto", "100% remota", "remoto", "remota", "teletrabajo", 
+            "home office", "wfh", "work from home", "hibrido", "hibrida", "hybrid"
+        ])
+
+        if is_santiago and not has_remote_or_hybrid:
+            return (
+                False,
+                "Descarte algorítmico: Vacante en Santiago/RM descartada por no especificar modalidad Remota o Híbrida (presencial inviable desde Viña del Mar).",
             )
 
     # 8. Validar Similitud Semántica Vectorial Local (0 Tokens LLM)

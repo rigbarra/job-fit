@@ -49,7 +49,7 @@ def test_should_evaluate_job_passes_ai_engineer():
         title="AI Engineer",
         company="AI Labs Chile",
         location="Santiago, Chile",
-        description="Construcción de agentes y RAG. Requerido: Python, SQL y APIs LLM.",
+        description="Trabajo en modalidad híbrida. Construcción de agentes y RAG. Requerido: Python, SQL y APIs LLM.",
         url="https://example.com/job/ai-ok",
         source="test",
         salary="CLP $4.000.000 / mes",
@@ -252,6 +252,21 @@ def test_should_evaluate_job_passes_chile_hybrid_general():
     assert reason == ""
 
 
+def test_should_evaluate_job_fails_santiago_unstated_onsite():
+    """Valida que una vacante en Santiago que no especifica remoto/híbrido sea descartada (caso Banchile)."""
+    job = Job(
+        title="Data Engineer",
+        company="Banco Presencial Santiago",
+        location="Región Metropolitana de Santiago, Chile",
+        description="Requerimos Ingeniero de Datos con SQL, Python y AWS para nuestra casa matriz en Las Condes.",
+        url="https://example.com/job/santiago-no-remote",
+        source="test",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert not passed
+    assert "no especificar modalidad Remota o Híbrida" in reason
+
+
 def test_should_evaluate_job_fails_control_de_gestion_in_title():
     """Valida el descarte de vacantes cuyo título es estrictamente Control de Gestión."""
     job = Job(
@@ -273,7 +288,7 @@ def test_should_evaluate_job_passes_control_de_gestion_in_description():
         title="Data Automation Analyst",
         company="Empresa Test",
         location="Santiago, Chile",
-        description="El candidato automatizará pipelines de datos en SQL y Python para el área de Control de Gestión.",
+        description="Modalidad 100% remota. El candidato automatizará pipelines de datos en SQL y Python para el área de Control de Gestión.",
         url="https://example.com/job/cdg-tech-desc-test",
         source="test",
     )

@@ -48,6 +48,16 @@ def _maybe_notify(
     if any(ex.lower() in (job.company or "").lower() for ex in excluded_comps):
         should_notify = False
 
+    # Bloqueo de seguridad territorial: Nunca notificar vacantes presenciales en Santiago/RM
+    is_santiago = any(stgo in (job.location or "").lower() for stgo in [
+        "santiago", "metropolitana", "las condes", "providencia", "huechuraba", "ciudad empresarial"
+    ])
+    if is_santiago and getattr(job, "modality", None) == "Presencial":
+        logger.info(
+            f"Notificación omitida para vacante {job.id} ('{job.title}'): Modalidad Presencial en Santiago/RM."
+        )
+        should_notify = False
+
     if not should_notify:
         return
 

@@ -150,10 +150,19 @@ def evaluate_job(
         with open(profile_path, encoding="utf-8") as f:
             profile_text = f.read()
 
-    # 3. Construir prompt
+    # 3. Construir prompt con metadatos territoriales y de modalidad
+    modality = job.modality
+    if not modality:
+        from src.agent.filter import extract_modality_and_country
+        modality, _, _ = extract_modality_and_country(job.location or "", job.description or "", getattr(job, "source", ""))
+
     user_prompt = USER_PROMPT_TEMPLATE.format(
         job_language=lang_display,
         candidate_profile=profile_text,
+        job_title=job.title,
+        job_company=job.company or "Empresa Confidencial",
+        job_location=job.location or "No especificada",
+        job_modality=modality or "No especificada",
         job_description=job.description,
     )
 

@@ -151,10 +151,16 @@ Es ESTRICTAMENTE OBLIGATORIO que los campos 'rationale', 'strengths', 'gaps', 'a
 - Si la vacante es en Inglés -> Responde 100% en INGLÉS profesional.
 No mezcles idiomas. NUNCA respondas en inglés si la oferta está en español, ni respondas en español si la oferta está en inglés.
 
+### METADATOS DEL PUESTO
+- Cargo: {job_title}
+- Empresa: {job_company}
+- Ubicación registrada: {job_location}
+- Modalidad detectada: {job_modality}
+
 ### PERFIL DEL CANDIDATO (YAML)
 {candidate_profile}
 
-### DESCRIPCIÓN DE LA VACANTE
+### DESCRIPCIÓN DETALLADA DE LA VACANTE
 {job_description}
 """
 
