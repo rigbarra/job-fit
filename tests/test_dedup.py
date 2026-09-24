@@ -131,3 +131,37 @@ def test_save_job_sanitizes_nan_company():
     )
     saved_job, _ = save_job(job)
     assert saved_job.company == "Empresa Confidencial"
+
+
+def test_job_save_and_duplicate_by_fingerprint_repost():
+    """Valida que ofertas reposteadas con diferente URL pero misma empresa y título sean detectadas como duplicados."""
+    original_url = "https://cl.linkedin.com/jobs/view/analytics-engineer-at-acme-111111"
+    repost_url = "https://cl.linkedin.com/jobs/view/analytics-engineer-at-acme-999999"
+
+    job1 = Job(
+        title="Analytics Engineer",
+        company="Acme Corp Chile",
+        location="Santiago, Chile",
+        description="Buscamos Analytics Engineer con dbt y SQL.",
+        url=original_url,
+        source="linkedin",
+    )
+    saved1, is_new1 = save_job(job1)
+    assert is_new1 is True
+
+    # Comprobar que is_duplicate detecta el repost antes de descargar descripción
+    assert is_duplicate(repost_url, title="Analytics Engineer", company="Acme Corp Chile")
+
+    # Intentar guardar el repost con URL diferente
+    job2 = Job(
+        title="Analytics Engineer",
+        company="Acme Corp Chile",
+        location="Santiago, Chile",
+        description="Buscamos Analytics Engineer con dbt y SQL (repost).",
+        url=repost_url,
+        source="linkedin",
+    )
+    saved2, is_new2 = save_job(job2)
+    assert is_new2 is False
+    assert saved2.id == saved1.id
+

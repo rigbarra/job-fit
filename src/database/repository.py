@@ -55,26 +55,68 @@ def get_hash(value: str) -> str:
     return hashlib.sha256(clean_url(value).encode("utf-8")).hexdigest()
 
 
-def is_duplicate(url: str) -> bool:
-    """Verifica si la URL de la vacante ya existe en la base de datos."""
+def get_job_fingerprint(company: str, title: str, location: str = "") -> str:
+    """
+    Genera un hash SHA-256 único basado en la Empresa y Título normalizados
+    para detectar y descartar reposts con URLs distintas.
+    Para ofertas confidenciales, incluye la ubicación para no generar falsos positivos.
+    """
+    from src.agent.filter import normalize_text
+
+    norm_comp = normalize_text(company or "")
+    norm_title = normalize_text(title or "")
+
+    if not norm_comp or "confidencial" in norm_comp or norm_comp in ("nan", "none", ""):
+        norm_loc = normalize_text(location or "")
+        raw = f"confidential::{norm_loc}::{norm_title}"
+    else:
+        raw = f"{norm_comp}::{norm_title}"
+
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def is_duplicate(
+    url: str,
+    title: str | None = None,
+    company: str | None = None,
+    location: str | None = None,
+) -> bool:
+    """
+    Verifica si la vacante ya existe en la base de datos por:
+    1. Hash de la URL exacta.
+    2. O huella digital de (Empresa + Título) para evitar reposts.
+    """
+    url_hash = get_hash(url)
     with Session(engine) as session:
-        return session.exec(select(Job).where(Job.hash_url == get_hash(url))).first() is not None
+        # 1. Check por URL hash
+        if session.exec(select(Job).where(Job.hash_url == url_hash)).first() is not None:
+            return True
+
+        # 2. Check por huella Empresa + Título si están provistos
+        if company and title:
+            fp = get_job_fingerprint(company, title, location or "")
+            if session.exec(select(Job).where(Job.fingerprint == fp)).first() is not None:
+                return True
+
+    return False
 
 
 def save_job(job: Job) -> tuple[Job, bool]:
     """
-    Guarda una vacante si no existe previamente (deduplicación integrada) y enriquece sus metadatos.
+    Guarda una vacante si no existe previamente (deduplicación integrada por URL y Empresa+Título)
+    y enriquece sus metadatos.
 
     Returns:
         tuple[Job, bool]: (job guardado/existente, True si fue insertado como nuevo).
     """
     from src.agent.filter import extract_modality_and_country, parse_salary_details
 
-    job.hash_url = get_hash(job.url)
-
     # F-3: Sanitizar company "nan" (artefacto de pandas/JobSpy cuando el campo está vacío)
     if not job.company or str(job.company).strip().lower() in ("nan", "none", ""):
         job.company = "Empresa Confidencial"
+
+    job.hash_url = get_hash(job.url)
+    job.fingerprint = get_job_fingerprint(job.company, job.title, job.location)
 
     # Enriquecer modalidad, país y origin_type si no están definidos
     if not job.modality or not job.country or not job.origin_type:
@@ -91,8 +133,12 @@ def save_job(job: Job) -> tuple[Job, bool]:
         job.salary_currency = curr
 
     with Session(engine) as session:
-        # Verificar duplicados por URL
-        existing = session.exec(select(Job).where(Job.hash_url == job.hash_url)).first()
+        # Verificar duplicados por URL o por Huella (Empresa + Título)
+        existing = session.exec(
+            select(Job).where(
+                (Job.hash_url == job.hash_url) | (Job.fingerprint == job.fingerprint)
+            )
+        ).first()
         if existing:
             return existing, False
 

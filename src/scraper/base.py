@@ -130,9 +130,11 @@ class WebScraper(ABC):
                             )
                             return jobs_found
 
-                        # 1. Deduplicación previa: Si ya está en BD, no gastamos peticiones de red
-                        if is_duplicate(card.url):
-                            logger.debug(f"{self.name}: Omitiendo duplicado '{card.url}'")
+                        # 1. Deduplicación previa: Si ya está en BD (por URL o por Empresa+Título), no gastamos peticiones de red
+                        if is_duplicate(card.url, title=card.title, company=card.company, location=card.location):
+                            logger.info(
+                                f"{self.name}: Omitiendo repost/duplicado de '{card.title}' @ '{card.company}'"
+                            )
                             continue
 
                         # 2. Throttling antes de descargar descripción

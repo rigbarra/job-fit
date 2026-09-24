@@ -31,6 +31,7 @@ class Job(SQLModel, table=True):
     posted_at: datetime | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC))
     hash_url: str = Field(unique=True, index=True)  # hash de la URL para deduplicación rápida
+    fingerprint: str | None = Field(default=None, index=True)  # hash SHA-256 de Empresa + Título para deduplicar reposts
 
     # Relación uno-a-muchos con resultados de match
     match_results: list["MatchResult"] = Relationship(back_populates="job", cascade_delete=True)
