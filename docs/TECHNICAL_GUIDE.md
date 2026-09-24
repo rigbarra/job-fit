@@ -47,7 +47,7 @@ Cuando el sistema se ejecuta (a las 9:00 AM vía `crontab` o mediante `PYTHONPAT
    - **Grupo 2 (Internacional):** Remotive $\rightarrow$ Indeed Internacional $\rightarrow$ LinkedIn Internacional.
 3. **Deduplicación Previa:** Antes de descargar el cuerpo HTML o detalle de cada puesto, se calcula `hash_url = SHA-256(url)`. Si la URL ya está registrada en la BD, la petición de red se omite inmediatamente (ahorro de ancho de banda e IP).
 4. **Pre-Filtrado Algorítmico Local (`should_evaluate_job`):** Evalúa título, palabras clave obligatorias (`sql`), ventana de publicación (24h) y modalidad (híbrido presencial en Chile vs 100% remoto internacional). Si falla, se marca como Tier 3 directamente en la BD sin gastar tokens de LLM.
-5. **Evaluación ATS con LLM (`evaluate_job`):** Las vacantes aprobadas se envían a OpenRouter. El LLM retorna `score` (0-100), `rationale`, `missing_keywords`, y si el score está entre 60 y 84 (Tier 2), retorna `adapted_summary` y `adapted_bullets`.
+5. **Evaluación ATS con LLM (`evaluate_job`):** Las vacantes aprobadas se envían al proveedor LLM configurado (Google Gemini, OpenRouter o compatible OpenAI). El LLM retorna `score` (0-100), `rationale`, `missing_keywords`, y si el score está entre 60 y 84 (Tier 2), retorna `adapted_title` y `adapted_summary`.
 6. **Compilación de CV (`generate_cv_for_job`):** Si la oferta califica según las `notification_rules` (Tier 1 o Tier 2), Jinja2 renderiza la plantilla LaTeX (`cv_base_es.tex` o `cv_base_en.tex`) aplicando escapado de caracteres TeX, y `pdflatex` genera el PDF en un entorno temporal aislado.
 7. **Notificación en Discord (`send_job_notification`):** Se envía un Embed formateado a Discord con etiqueta `[CHILE]` o `[INTL]`, indicador de color por Tier y el archivo PDF adjunto vía `multipart/form-data`.
 
@@ -57,9 +57,9 @@ Cuando el sistema se ejecuta (a las 9:00 AM vía `crontab` o mediante `PYTHONPAT
 
 ### 3.1 Módulo de Configuración (`config/`)
 
-* **`settings.py`:** Utiliza `pydantic-settings` para cargar variables de entorno desde `.env` (`OPENROUTER_API_KEY`, `DISCORD_WEBHOOK_URL`, `DATABASE_URL`).
+* **`settings.py`:** Utiliza `pydantic-settings` para cargar variables de entorno desde `.env` (`LLM_API_KEY`, `LLM_MODEL`, `DISCORD_WEBHOOK_URL`, `DATABASE_URL`).
 * **`loader.py`:** Implementa `load_config()` que lee `config/config.yaml` y cachea el diccionario en memoria en la variable global `_cached_config` para evitar accesos I/O repetidos a disco.
-* **`config.yaml`:** **Single Source of Truth** de configuración operativa del sistema: incluye palabras clave de búsqueda, fuentes activas, reglas de notificación, `algorithmic_filter`, así como las categorías de normalización de roles (`role_normalization`) y los patrones de tecnologías (`tracked_technologies`) para el estudio de mercado.
+* **`config.yaml`:** **Single Source of Truth** de configuración operativa del sistema: incluye palabras clave de búsqueda, fuentes activas, reglas de notificación, `algorithmic_filter`, la sección desacoplada `evaluation` (dominio, stack base, compuertas de rol e idiomas), así como las categorías de normalización de roles (`role_normalization`) y los patrones de tecnologías (`tracked_technologies`) para el estudio de mercado.
 * **`profile.yaml`:** Almacena la hoja de vida estructurada del candidato (experiencia, tecnologías, educación y proyectos) tanto en español como en inglés.
 
 ### 3.2 Módulo de Base de Datos (`src/database/`)
@@ -67,28 +67,33 @@ Cuando el sistema se ejecuta (a las 9:00 AM vía `crontab` o mediante `PYTHONPAT
 El modelo utiliza **SQLModel** (híbrido entre SQLAlchemy 2.0 y Pydantic):
 
 * **`models.py`:**
-  * `Job`: Campos `id`, `title`, `company`, `location`, `description`, `url`, `hash_url` (único e indexado), `source`, `salary`, `posted_at`, `created_at`.
-  * `MatchResult`: Guarda `job_id`, `score`, `tier` (1, 2 o 3), `rationale`, `missing_keywords`, `adapted_summary`, `adapted_bullets`.
+  * `Job`: Campos `id`, `title`, `company`, `location`, `description`, `url`, `hash_url` (único e indexado), `fingerprint` (hash SHA-256 de Empresa + Título para deduplicar reposts), `source`, `salary`, `posted_at`, `created_at`.
+  * `MatchResult`: Guarda `job_id`, `score`, `tier` (1, 2 o 3), `rationale`, `missing_keywords`, `adapted_title`, `adapted_summary`.
   * `CVSnapshot`: Registra `job_id`, `pdf_path`, `tex_path` y la fecha de compilación.
-* **`repository.py`:** Contiene las operaciones CRUD del sistema (`init_db`, `save_job`, `get_pending_jobs`, `save_match_result`, `get_match_results_count_today`).
+* **`repository.py`:** Contiene las operaciones CRUD del sistema (`init_db`, `save_job`, `get_pending_jobs`, `save_match_result`, `is_duplicate`, `get_job_fingerprint`, `get_match_results_count_today`).
 
 ### 3.3 Módulo de Scraping y Extracción (`src/scraper/`)
 
 * **`base.py` (`WebScraper`):** Clase base abstracta que implementa el *Template Method Pattern*:
-  * **Throttling:** Pausas aleatorias con `random.uniform(4.0, 8.0)` segundos entre peticiones.
+  * **Deduplicación Previa por Huella:** Descarta avisos duplicados o reposts a nivel de tarjeta (`card`) antes de solicitar el HTML de la descripción, evitando peticiones de red redundantes.
+  * **Throttling:** Pausas aleatorias con `random.uniform(4.0, 7.0)` segundos entre peticiones.
   * **TLS Impersonation:** Uso de `curl_cffi.requests` con `impersonate="chrome120"` para imitar el handshake TLS de navegadores reales.
   * **Circuit Breaker:** Detiene el barrido si recibe respuestas `403 Forbidden` o `429 Too Many Requests`.
-* **`linkedin.py` (`LinkedInScraper`):** Consulta la Guest API de LinkedIn (`jobs-guest/jobs/api/seeMoreJobPostings/search`). Construye parámetros URL nativos como `f_TPR` (antigüedad), `f_WT` (modalidad) y `f_E` (seniority).
+* **`linkedin.py` (`LinkedInScraper`):** Consulta la Guest API de LinkedIn (`jobs-guest/jobs/api/seeMoreJobPostings/search`).
 * **`remotive.py` (`RemotiveScraper`):** Consulta la API REST pública de Remotive (`https://remotive.com/api/remote-jobs`).
 * **`indeed.py` (`IndeedScraper`):** Scraper HTML/JSON que extrae las tarjetas de empleo parseando la estructura interna de JavaScript `window.mosaic.providerData`.
 
 ### 3.4 Módulo de Filtrado y Evaluación LLM (`src/agent/`)
 
-* **`filter.py`:** `should_evaluate_job(job)` realiza la validación algorítmica local (0 tokens). Exporta la constante `CHILE_TERMS` compartida por todo el proyecto para identificar geográficamente empleos de Chile.
+* **`filter.py`:** `should_evaluate_job(job)` realiza la validación algorítmica local (0 tokens):
+  * Exclusión estricta de cargos operacionales/gestión/PMO (`title_blacklist`).
+  * Validación obligatoria de modalidad remota o híbrida para vacantes en Santiago/RM (inviabilidad de traslados diarios desde Viña del Mar).
+  * Similitud semántica vectorial local (`fastembed`) para pre-filtrar vacantes con bajo fit previo al LLM.
 * **`evaluator.py`:**
   * Detecta el idioma de la oferta (Español o Inglés).
   * Carga el perfil relevante (`profile.yaml`).
-  * `normalize_llm_json(raw_json)`: Función de limpieza que elimina bloques `<think>...</think>` (característicos de modelos de razonamiento como DeepSeek), extrae bloques ````json ... ```` y mapea cualquier clave variante (`match_score`, `missing_skills`) a la estructura Pydantic `MatchEvaluation`.
+  * Inyecta metadatos territoriales (cargo, empresa, ubicación, modalidad) en el prompt de la IA.
+  * `normalize_llm_json(raw_json)`: Función de limpieza que elimina bloques `<think>...</think>`, extrae bloques ````json ... ```` y valida contra `MatchEvaluation`.
 * **`quota.py`:**
   * `check_daily_quota()`: Consulta la BD para asegurar que no se supere `LLM_MAX_CALLS_PER_DAY`.
   * `enforce_rpm()`: Registra marcas de tiempo en los últimos 60 segundos para evitar sobrepasar `LLM_MAX_CALLS_PER_MINUTE`.
