@@ -69,7 +69,7 @@ Es gratuito y la configuración es mínima. Límite: ~1.500 requests/día con Ge
 En tu `.env` usarás:
 ```env
 LLM_API_KEY=AIzaSy...tu_clave_aqui
-LLM_MODEL=gemini-2.5-flash-lite
+LLM_MODEL=gemini-3.8-flash
 ```
 
 #### Opción B — OpenRouter · Para acceder a otros modelos (Claude, DeepSeek, GPT-4o...)
@@ -132,7 +132,7 @@ Reemplaza los valores de ejemplo con los tuyos:
 ```env
 LLM_API_KEY="pega-aqui-tu-api-key-de-google-ai-studio"
 DISCORD_WEBHOOK_URL="pega-aqui-tu-webhook-url-o-deja-vacio"
-LLM_MODEL="gemini-2.5-flash-lite"
+LLM_MODEL="gemini-3.8-flash"
 ```
 Guarda con `Ctrl+O`, `Enter`, `Ctrl+X`.
 
@@ -217,7 +217,7 @@ flowchart TD
     
     subgraph id_chile["Grupo Chile (Prioritario)"]
         B --> C1["Scraping Get on Board API, LinkedIn Chile & Indeed Chile"]
-        C1 --> D1["Deduplicación SHA-256 en SQLite"]
+        C1 --> D1["Deduplicación SHA-256 (URL + Empresa-Título) en SQLite"]
         D1 --> E1["Filtro Algorítmico Local 0 Tokens"]
         E1 --> F1["Evaluador Multidimensional LLM"]
     end
@@ -225,8 +225,10 @@ flowchart TD
     F1 -->|"Match Tier 1 o Tier 2 (sin blacklist)"| G1["CV Engine: Compilación LaTeX pdflatex"]
     F1 -->|"Con opción apply"| G2["Cover Engine: Carta de Presentación pdflatex"]
     F1 -->|"Con opción interview"| G3["Interview Engine: Guía Técnica Markdown"]
+    F1 -->|"Score >= 75"| G4["Obsidian Exporter: Fichas Kanban"]
 
     G1 --> H["Notificación Discord con Embed + PDF Adjunto"]
+    B --> I["Market Engine: Reporte MD + Dashboard Streamlit"]
 ```
 
 ---
@@ -244,7 +246,7 @@ flowchart TD
 * **Filtro Estricto de Modalidad:** Descarta vacantes 100% presenciales o con 3+ días en oficina en Chile.
 
 ### 3. Fábrica Universal y Agnóstica de LLM (`src/agent/providers.py`)
-* **Google Gemini API:** Integración nativa con `gemini-3.5-flash-lite`, `gemini-3.5-flash` o `gemini-3.1-pro` usando tu API Key oficial.
+* **Google Gemini API:** Integración nativa con `gemini-3.8-flash`, `gemini-3.6-flash` o `gemini-2.5-pro` usando tu API Key oficial.
 * **OpenRouter:** Soporte para modelos libres o pagados (`google/gemma-3-27b-it:free`, `anthropic/claude-3.5-sonnet`, `deepseek/deepseek-r1`).
 * **OpenAI / DeepSeek / Groq / Ollama Local:** Soporte para endpoints compatibles (`LLM_BASE_URL`).
 
@@ -290,7 +292,7 @@ job-fit/
 │   ├── scraper/         # Scrapers (Get on Board API, LinkedIn, Indeed, Remotive)
 │   └── main.py          # Orquestador del pipeline end-to-end (con Pasada Final Catch-All)
 ├── templates/           # Plantillas LaTeX (.tex) dinámicas para CV y Cover Letters
-└── tests/               # Suite de 60 pruebas unitarias completas (pytest)
+└── tests/               # Suite de 65 pruebas unitarias completas (pytest)
 ```
 
 ---

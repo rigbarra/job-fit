@@ -11,21 +11,22 @@ sequenceDiagram
     autonumber
     participant Main as src/main.py
     participant DB as SQLite DB
-    participant Scraper as "Scrapers (LinkedIn y Remotive)"
+    participant Scraper as "Scrapers (GetOnBoard, LinkedIn, Indeed, Remotive)"
     participant Filter as Algorithmic Filter
-    participant LLM as OpenRouter LLM
+    participant LLM as Universal LLM Provider
     participant Compiler as "LaTeX Compiler (pdflatex)"
     participant Discord as Discord Notifier
+    participant Obsidian as Obsidian Exporter
 
     Main->>DB: init_db() - Crear tablas si no existen
     Main->>Scraper: fetch_jobs(keywords, locations, limit)
     
     loop Por cada vacante encontrada
-        Scraper->>DB: is_duplicate(url)
-        alt URL no existe en BD
-            Scraper->>Scraper: Throttling pause (4-8s) & fetch description
+        Scraper->>DB: is_duplicate(url) / get_job_fingerprint(title, company)
+        alt Vacante nueva (no existe URL ni fingerprint)
+            Scraper->>Scraper: Throttling pause (4-7s) & fetch description
             Scraper->>DB: save_job(job) -> (job, is_new=True)
-        else URL ya existe
+        else URL o repost ya existe
             Scraper-->>Main: Omitir descarga de detalle (0 red)
         end
     end
@@ -52,6 +53,9 @@ sequenceDiagram
             end
         end
     end
+
+    Main->>Obsidian: sync_obsidian_vault() (Fichas Kanban con Score >= 75)
+    Main->>Main: generate_market_study_report() (Reporte MD y Streamlit Web)
 ```
 
 ---
@@ -103,7 +107,7 @@ erDiagram
 
 ### Descripción de Tablas
 
-* **`Job`**: Almacena las vacantes crudas extraídas por los scrapers. `hash_url` (SHA-256 de la URL limpia) garantiza deduplicación instantánea mediante un índice único.
+* **`Job`**: Almacena las vacantes crudas extraídas por los scrapers. Utiliza doble deduplicación: `hash_url` (SHA-256 de la URL limpia) y `fingerprint` (SHA-256 normalizado de `empresa + titulo`) para eliminar reposts idénticos a 0 costo de red.
 * **`MatchResult`**: Guarda la evaluación generada por el LLM o por el filtro algorítmico. 
   * `tier = 1`: Match Alto ($\ge 85\%$). Postulación directa con CV base.
   * `tier = 2`: Match Medio ($60\% - 84\%$). Genera CV adaptado inyectando `adapted_summary` y `adapted_bullets`.
@@ -116,10 +120,10 @@ erDiagram
 
 | Categoría | Filtro | Regla de Negocio | Acción ante Mismatch |
 |---|---|---|---|
-| **Deduplicación** | SHA-256 URL Hash | Si `hash_url` existe en la tabla `job` | Omite descarga de detalle (0 consumo de red) |
-| **Título** | `title_keywords_any` | El título debe contener palabras clave de datos (`data`, `analytics`, `bi`, `dbt`, `etl`, etc.) | Descarte Algorítmico Tier 3 (0 tokens LLM) |
-| **Descripción** | `description_keywords_all` | La descripción debe contener obligatoriamente `sql` | Descarte Algorítmico Tier 3 (0 tokens LLM) |
-| **Antigüedad** | `max_job_age_days` | Publicada en los últimos **3 días (72 hrs)**. LinkedIn pasa `f_TPR=r259200` | Descarte Algorítmico Tier 3 (0 tokens LLM) |
+| **Deduplicación** | SHA-256 URL + Fingerprint | Si `hash_url` o `fingerprint` (Empresa + Título) ya existen en la tabla `job` | Omite descarga de detalle y evita inserciones repetidas (0 consumo de red) |
+| **Título** | `title_keywords_any` | El título debe contener palabras clave de datos (`data`, `analytics`, `bi`, `dbt`, `etl`, `pipeline`, `ai engineer`, etc.) | Descarte Algorítmico Tier 3 (0 tokens LLM) |
+| **Descripción** | `description_keywords_any` | La descripción debe contener al menos una tecnología del stack (`sql`, `python`, `aws`, `gcp`, `azure`, `snowflake`, `bigquery`, `pyspark`, `dbt`, `airflow`, `dagster`, etc.) | Descarte Algorítmico Tier 3 (0 tokens LLM) |
+| **Antigüedad** | `max_job_age_days` | Publicada en las últimas **24 horas (1 día)** para ciclo de cron 3x diario | Descarte Algorítmico Tier 3 (0 tokens LLM) |
 | **Modalidad Int.** | Remoto / Contractor | Ofertas fuera de Chile DEBEN ser **100% Remotas** o **Contractor B2B** | Descarte Algorítmico Tier 3 (0 tokens LLM) |
 | **Modalidad Chile** | Remoto / Híbrido $\le 2$d | En Chile se acepta 100% Remoto e Híbrido (general o $\le 2$ días/semana) | Descarte si es 100% Presencial o exige 3+ días en oficina |
 

@@ -43,13 +43,13 @@ Cuando el sistema se ejecuta (a las 9:00 AM vía `crontab` o mediante `PYTHONPAT
 
 1. **Inicialización (`init_db` & `load_config`):** Se verifica la presencia del esquema SQLite en `data/db/job_fit.db` y se carga `config.yaml` en memoria.
 2. **Scraping por Grupos Secuenciales de Prioridad:**
-   - **Grupo 1 (Chile):** Indeed Chile $\rightarrow$ LinkedIn Chile.
-   - **Grupo 2 (Internacional):** Remotive $\rightarrow$ Indeed Internacional $\rightarrow$ LinkedIn Internacional.
-3. **Deduplicación Previa:** Antes de descargar el cuerpo HTML o detalle de cada puesto, se calcula `hash_url = SHA-256(url)`. Si la URL ya está registrada en la BD, la petición de red se omite inmediatamente (ahorro de ancho de banda e IP).
-4. **Pre-Filtrado Algorítmico Local (`should_evaluate_job`):** Evalúa título, palabras clave obligatorias (`sql`), ventana de publicación (24h) y modalidad (híbrido presencial en Chile vs 100% remoto internacional). Si falla, se marca como Tier 3 directamente en la BD sin gastar tokens de LLM.
-5. **Evaluación ATS con LLM (`evaluate_job`):** Las vacantes aprobadas se envían al proveedor LLM configurado (Google Gemini, OpenRouter o compatible OpenAI). El LLM retorna `score` (0-100), `rationale`, `missing_keywords`, y si el score está entre 60 y 84 (Tier 2), retorna `adapted_title` y `adapted_summary`.
+   - **Grupo 1 (Chile):** Get on Board Chile (API) $\rightarrow$ LinkedIn Chile $\rightarrow$ Indeed Chile.
+   - **Grupo 2 (Internacional):** Remotive (API) $\rightarrow$ Indeed Internacional $\rightarrow$ LinkedIn Internacional.
+3. **Deduplicación Previa por URL y Huella (Fingerprint):** Antes de descargar el cuerpo HTML o detalle de cada puesto, se evalúan `hash_url = SHA-256(url)` y `fingerprint = SHA-256(empresa + titulo)`. Si cualquiera ya existe en la BD, la petición de red se omite inmediatamente (eliminando reposts con 0 consumo de red).
+4. **Pre-Filtrado Algorítmico Local (`should_evaluate_job`):** Evalúa palabras clave en título (`title_keywords_any`), stack técnico en descripción (`description_keywords_any`), ventana de publicación (24h) y modalidad (híbrido presencial en Chile vs 100% remoto internacional). Si falla, se marca como Tier 3 directamente en la BD sin gastar tokens de LLM.
+5. **Evaluación ATS con LLM (`evaluate_job`):** Las vacantes aprobadas se envían al proveedor LLM configurado (Google Gemini, OpenRouter o compatible OpenAI). El LLM retorna `score` (0-100), `rationale`, `missing_keywords`, y si el score califica para adaptación, retorna `adapted_title` y `adapted_summary`.
 6. **Compilación de CV (`generate_cv_for_job`):** Si la oferta califica según las `notification_rules` (Tier 1 o Tier 2), Jinja2 renderiza la plantilla LaTeX (`cv_base_es.tex` o `cv_base_en.tex`) aplicando escapado de caracteres TeX, y `pdflatex` genera el PDF en un entorno temporal aislado.
-7. **Notificación en Discord (`send_job_notification`):** Se envía un Embed formateado a Discord con etiqueta `[CHILE]` o `[INTL]`, indicador de color por Tier y el archivo PDF adjunto vía `multipart/form-data`.
+7. **Notificación en Discord y Sincronización:** Se envía un Embed formateado a Discord con etiqueta `[CHILE]` o `[INTL]`, indicador de color por Tier y el archivo PDF adjunto. Posteriormente, se sincroniza el **Kanban de Obsidian** (Score >= 75) y se actualiza el **Estudio de Mercado**.
 
 ---
 
@@ -57,9 +57,8 @@ Cuando el sistema se ejecuta (a las 9:00 AM vía `crontab` o mediante `PYTHONPAT
 
 ### 3.1 Módulo de Configuración (`config/`)
 
-* **`settings.py`:** Utiliza `pydantic-settings` para cargar variables de entorno desde `.env` (`LLM_API_KEY`, `LLM_MODEL`, `DISCORD_WEBHOOK_URL`, `DATABASE_URL`).
-* **`loader.py`:** Implementa `load_config()` que lee `config/config.yaml` y cachea el diccionario en memoria en la variable global `_cached_config` para evitar accesos I/O repetidos a disco.
-* **`config.yaml`:** **Single Source of Truth** de configuración operativa del sistema: incluye palabras clave de búsqueda, fuentes activas, reglas de notificación, `algorithmic_filter`, la sección desacoplada `evaluation` (dominio, stack base, compuertas de rol e idiomas), así como las categorías de normalización de roles (`role_normalization`) y los patrones de tecnologías (`tracked_technologies`) para el estudio de mercado.
+* **`settings.py`:** Utiliza `pydantic-settings` para cargar variables de entorno desde `.env` (`LLM_API_KEY`, `LLM_MODEL`, `DISCORD_WEBHOOK_URL`, `DATABASE_URL`). También implementa `load_config()`, cacheando en memoria `config/config.yaml` para evitar accesos repetidos a disco.
+* **`config.yaml`:** **Single Source of Truth** de configuración operativa del sistema: incluye palabras clave de búsqueda, fuentes activas, reglas de notificación, `algorithmic_filter`, la sección desacoplada `evaluation` (dominio, stack base, compuertas de rol e idiomas), así como las categorías de normalización de roles (`role_normalization`), patrones de tecnologías (`tracked_technologies`) y configuración de Obsidian (`obsidian`).
 * **`profile.yaml`:** Almacena la hoja de vida estructurada del candidato (experiencia, tecnologías, educación y proyectos) tanto en español como en inglés.
 
 ### 3.2 Módulo de Base de Datos (`src/database/`)

@@ -119,12 +119,12 @@ search_scope: "chile"    # "chile" (solo nacional), "international" (solo USD/re
 ### Cambiar el Modelo de IA / LLM (`.env`)
 Para cambiar el modelo o proveedor sin tocar código, edita tu archivo `.env`:
 ```bash
-# Opción 1: Google Gemini (Recomendado - Gratuito y Rápido)
-LLM_MODEL="gemini-3.5-flash-lite"
+# Opción 1: Google Gemini (Recomendado - Gratuito, Rápido y Alto Razonamiento)
+LLM_MODEL="gemini-3.8-flash"
 LLM_API_KEY="AIzaSy..."
 
-# Opción 2: Google Gemini con mayor razonamiento
-LLM_MODEL="gemini-2.5-flash"
+# Opción 2: Google Gemini alternativo (Gemini 3.6 Flash)
+LLM_MODEL="gemini-3.6-flash"
 
 # Opción 3: OpenRouter
 LLM_MODEL="meta-llama/llama-3-70b-instruct"
@@ -174,7 +174,7 @@ sudo service cron start
 
 ## 6. Verificación de Salud del Proyecto
 
-Ejecutar la suite completa de 53 pruebas unitarias automatizadas:
+Ejecutar la suite completa de 65 pruebas unitarias automatizadas:
 ```bash
 .venv/bin/pytest -v
 ```

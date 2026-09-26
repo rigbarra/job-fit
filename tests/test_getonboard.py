@@ -1,4 +1,3 @@
-import json
 from src.scraper.getonboard import GetOnBoardScraper
 
 
