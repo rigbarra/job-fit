@@ -192,6 +192,8 @@ obsidian:
   vault_path: "/mnt/c/job-fit-obsidian"
   auto_clean_orphans: true      # Si borras una tarjeta del tablero, purga automáticamente sus archivos .md y .pdf del disco
   start_cutoff: "2026-09-04 21:10:00"  # Punto de corte temporal para vacantes nuevas
+  ghosted_days_threshold: 60    # Días desde publicación para mover automáticamente a 'Ghosted / Sin Respuesta'
+
 
 # ==============================================================================
 # EVALUACIÓN LLM — Adapta esta sección para personalizar el dominio profesional.

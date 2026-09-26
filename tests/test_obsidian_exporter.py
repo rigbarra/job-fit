@@ -100,3 +100,61 @@ def test_update_existing_cards(tmp_path):
     assert 'notas: ""' in text
     assert "Notas personalizadas del usuario que NO deben borrarse." in text
 
+
+def test_archive_ghosted_cards(tmp_path):
+    """Valida que _archive_ghosted_cards mueva solo avisos aplicados > 60 días a Ghosted."""
+    from datetime import date
+    from src.obsidian_exporter import _archive_ghosted_cards, _GHOSTED_COL
+
+    jobs_dir = tmp_path / "jobs"
+    jobs_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Archivo aplicado antiguo (> 60 días)
+    old_applied_md = jobs_dir / "2026-07-01_EmpresaA_Data_Eng.md"
+    old_applied_md.write_text('---\netapa: "📤 Aplicado"\n---\n# Postulación Antigua', encoding="utf-8")
+
+    # 2. Archivo aplicado reciente (< 60 días)
+    recent_applied_md = jobs_dir / "2026-09-20_EmpresaB_Analytics.md"
+    recent_applied_md.write_text('---\netapa: "📤 Aplicado"\n---\n# Postulación Reciente', encoding="utf-8")
+
+    # 3. Tablero Kanban con diferentes columnas
+    kanban_file = tmp_path / "Tablero_Postulaciones.md"
+    kanban_content = (
+        "---\nkanban-plugin: basic\n---\n\n"
+        "## 📥 Bandeja Notificados (Discord)\n\n"
+        "- [ ] [[jobs/2026-06-01_Bandeja_Vieja.md|Bandeja Vieja]] @{2026-06-01}\n\n"
+        "## 📤 Aplicado\n\n"
+        "- [ ] [[jobs/2026-07-01_EmpresaA_Data_Eng.md|Empresa A]] @{2026-07-01}\n"
+        "- [ ] [[jobs/2026-09-20_EmpresaB_Analytics.md|Empresa B]] @{2026-09-20}\n\n"
+        "## 👻 Ghosted / Sin Respuesta\n\n"
+        "## ❌ Rechazado\n\n"
+        "- [ ] [[jobs/2026-06-01_Rechazo_Viejo.md|Rechazado]] @{2026-06-01}\n"
+    )
+    kanban_file.write_text(kanban_content, encoding="utf-8")
+
+    fixed_today = date(2026, 9, 26)
+    moved_count = _archive_ghosted_cards(kanban_file, jobs_dir, fixed_today, threshold_days=60)
+
+    assert moved_count == 1
+
+    kanban_text = kanban_file.read_text(encoding="utf-8")
+    # Empresa A (> 60 días) debe estar bajo Ghosted
+    ghosted_section = kanban_text.split("## 👻 Ghosted / Sin Respuesta")[1].split("## ❌ Rechazado")[0]
+    assert "2026-07-01_EmpresaA_Data_Eng.md" in ghosted_section
+
+    # Empresa B (< 60 días) debe permanecer bajo Aplicado
+    aplicado_section = kanban_text.split("## 📤 Aplicado")[1].split("## 👻 Ghosted")[0]
+    assert "2026-09-20_EmpresaB_Analytics.md" in aplicado_section
+    assert "2026-07-01_EmpresaA_Data_Eng.md" not in aplicado_section
+
+    # Bandeja y Rechazado no deben moverse
+    bandeja_section = kanban_text.split("## 📥 Bandeja Notificados (Discord)")[1].split("## 📤 Aplicado")[0]
+    assert "2026-06-01_Bandeja_Vieja.md" in bandeja_section
+
+    rechazado_section = kanban_text.split("## ❌ Rechazado")[1]
+    assert "2026-06-01_Rechazo_Viejo.md" in rechazado_section
+
+    # Validar que la propiedad etapa se actualizó en el archivo .md
+    assert f'etapa: "{_GHOSTED_COL}"' in old_applied_md.read_text(encoding="utf-8")
+
+

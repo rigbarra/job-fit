@@ -14,6 +14,10 @@ from src.main import is_local_location
 logger = logging.getLogger("obsidian-exporter")
 
 _BANDEJA_COL = "📥 Bandeja Notificados (Discord)"
+_APLICADO_COL = "📤 Aplicado"
+_GHOSTED_COL = "👻 Ghosted / Sin Respuesta"
+_RECHAZADO_COL = "❌ Rechazado"
+_CARTA_OFERTA_COL = "📜 Carta Oferta"
 _KANBAN_HEADER = "---\nkanban-plugin: basic\n---\n"
 
 
@@ -260,6 +264,81 @@ def _update_existing_cards(jobs_dir: Path, today_date: date) -> int:
     return updated_count
 
 
+def _archive_ghosted_cards(kanban_path: Path, jobs_dir: Path, today_date: date, threshold_days: int = 60) -> int:
+    """
+    Mueve automáticamente a 'Ghosted / Sin Respuesta' las tarjetas aplicadas
+    con más de `threshold_days` (default: 60) días desde su publicación.
+    Aplica a cualquier columna desde 'Aplicado' en adelante, excepto 'Rechazado' y 'Carta Oferta'.
+    """
+    if not kanban_path.exists():
+        return 0
+
+    lines = kanban_path.read_text(encoding="utf-8").splitlines()
+    excluded_lanes = {_BANDEJA_COL, _GHOSTED_COL, _RECHAZADO_COL, _CARTA_OFERTA_COL}
+
+    current_lane = None
+    cards_to_move: list[str] = []
+    new_lines: list[str] = []
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("## "):
+            current_lane = stripped.lstrip("#").strip()
+            new_lines.append(line)
+            continue
+
+        if current_lane and current_lane not in excluded_lanes and stripped.startswith("- [ ]"):
+            m = re.search(r'\[\[jobs/(\d{4}-\d{2}-\d{2})_', stripped) or re.search(r'@\{(\d{4}-\d{2}-\d{2})\}', stripped)
+            if m:
+                try:
+                    pub_date = date.fromisoformat(m.group(1))
+                    if (today_date - pub_date).days >= threshold_days:
+                        cards_to_move.append(stripped)
+                        continue  # Se retira de la columna actual
+                except ValueError:
+                    pass
+
+        new_lines.append(line)
+
+    if not cards_to_move:
+        return 0
+
+    # Insertar en la columna Ghosted / Sin Respuesta
+    ghost_idx = None
+    for i, l in enumerate(new_lines):
+        if l.strip() == f"## {_GHOSTED_COL}":
+            ghost_idx = i + 1
+            if ghost_idx < len(new_lines) and new_lines[ghost_idx].strip() == "":
+                ghost_idx += 1
+            break
+
+    if ghost_idx is not None:
+        for card in reversed(cards_to_move):
+            new_lines.insert(ghost_idx, card)
+    else:
+        new_lines += ["", f"## {_GHOSTED_COL}", ""]
+        for card in cards_to_move:
+            new_lines.append(card)
+
+    kanban_path.write_text("\n".join(new_lines), encoding="utf-8")
+
+    # Actualizar la propiedad etapa en las fichas Markdown correspondientes
+    for card in cards_to_move:
+        fm_m = re.search(r'\[\[jobs/([^\|\]]+\.md)', card)
+        if fm_m:
+            card_path = jobs_dir / fm_m.group(1)
+            if card_path.exists():
+                try:
+                    c_text = card_path.read_text(encoding="utf-8")
+                    c_text = re.sub(r'^etapa:.*$', f'etapa: "{_GHOSTED_COL}"', c_text, flags=re.M)
+                    card_path.write_text(c_text, encoding="utf-8")
+                except Exception as ex:
+                    logger.warning(f"Error actualizando etapa a Ghosted en {card_path.name}: {ex}")
+
+    logger.info(f"Ghosted archive: {len(cards_to_move)} tarjetas movidas a '{_GHOSTED_COL}'.")
+    return len(cards_to_move)
+
+
 def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
     """
     Sincronización incremental con Obsidian.
@@ -278,7 +357,13 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
     jobs_dir.mkdir(parents=True, exist_ok=True)
     kanban_path = target_dir / "Tablero_Postulaciones.md"
     auto_clean_orphans = bool(obsidian_cfg.get("auto_clean_orphans", True))
-    summary = {"total_jobs": 0, "cards_created": 0, "cards_updated": 0, "kanban_file": str(kanban_path)}
+    summary = {
+        "total_jobs": 0,
+        "cards_created": 0,
+        "cards_updated": 0,
+        "cards_ghosted": 0,
+        "kanban_file": str(kanban_path),
+    }
 
     # ─── 1. Leer filenames activos en el Kanban ───────────────────────────────
     active_filenames = _read_kanban_filenames(kanban_path)
@@ -292,6 +377,12 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
 
     # Retrofit de tarjetas en Kanban para asegurar fecha @{YYYY-MM-DD} (ordenar por fecha)
     _retrofit_kanban_dates(kanban_path)
+
+    # Mover a Ghosted postulaciones inactivas con más de 60 días desde publicación
+    ghosted_threshold = int(obsidian_cfg.get("ghosted_days_threshold", 60))
+    summary["cards_ghosted"] = _archive_ghosted_cards(
+        kanban_path, jobs_dir, today_date, threshold_days=ghosted_threshold
+    )
 
     # Actualizar fichas existentes (días transcurridos, expectativa numérica, campo notas)
     summary["cards_updated"] = _update_existing_cards(jobs_dir, today_date)
