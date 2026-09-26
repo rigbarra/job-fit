@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # Configuración Universal y Agnóstica de LLM
     llm_api_key: str | None = Field(None, validation_alias="LLM_API_KEY")
-    llm_model: str = Field("gemini-3.6-flash", validation_alias="LLM_MODEL")
+    llm_model: str = Field("gemini-3.8-flash", validation_alias="LLM_MODEL")
     llm_base_url: str | None = Field(None, validation_alias="LLM_BASE_URL")
     llm_provider: str | None = Field(None, validation_alias="LLM_PROVIDER")
 
@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     openrouter_model: str | None = Field(None, validation_alias="OPENROUTER_MODEL")
 
     # Control de Cuotas y Rate Limiting del LLM
-    llm_max_calls_per_day: int = Field(150, validation_alias="LLM_MAX_CALLS_PER_DAY")
+    llm_max_calls_per_day: int = Field(300, validation_alias="LLM_MAX_CALLS_PER_DAY")
     llm_max_calls_per_minute: int = Field(10, validation_alias="LLM_MAX_CALLS_PER_MINUTE")
 
     # Notificaciones
