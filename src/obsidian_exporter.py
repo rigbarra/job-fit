@@ -171,6 +171,95 @@ def _insert_cards_into_kanban(kanban_path: Path, new_card_refs: list[str]) -> No
     kanban_path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _retrofit_kanban_dates(kanban_path: Path) -> int:
+    """Asegura que todas las tarjetas en el Kanban incluyan @{YYYY-MM-DD} para habilitar ordenar por fecha."""
+    if not kanban_path.exists():
+        return 0
+    text = kanban_path.read_text(encoding="utf-8")
+    updated = re.sub(r'(\[\[jobs/(\d{4}-\d{2}-\d{2})_[^\]]+\]\])(?!\s*@\{)', r'\1 @{\2}', text)
+    if updated != text:
+        kanban_path.write_text(updated, encoding="utf-8")
+        return len(re.findall(r'\[\[jobs/\d{4}-\d{2}-\d{2}_[^\]]+\]\]\s*@\{', updated))
+    return 0
+
+
+def _update_existing_cards(jobs_dir: Path, today_date: date) -> int:
+    """
+    Actualiza campos calculados y nuevos en las fichas existentes sin tocar notas ni contenido del usuario:
+    - dias_desde_publicacion = (today - fecha_publicacion)
+    - dias_desde_postulacion = (today - fecha_postulacion) si está definida, o null
+    - notas = campo de texto en propiedades inicializado si no existe
+    - expectativa_salarial = normalizado a numérico (int o null)
+    """
+    updated_count = 0
+    if not jobs_dir.exists():
+        return updated_count
+
+    for md_file in jobs_dir.glob("*.md"):
+        try:
+            content = md_file.read_text(encoding="utf-8")
+            m = re.match(r"^(---\n)(.*?\n)(---\n.*)$", content, re.DOTALL)
+            if not m:
+                continue
+            pre, fm, post = m.groups()
+            orig_fm = fm
+
+            # fecha_publicacion & dias_desde_publicacion
+            pub_m = re.search(r'^fecha_publicacion:\s*["\']?(\d{4}-\d{2}-\d{2})', fm, re.M)
+            pub_date = date.fromisoformat(pub_m.group(1)) if pub_m else None
+            dias_pub = (today_date - pub_date).days if pub_date else 0
+
+            if re.search(r"^dias_desde_publicacion:", fm, re.M):
+                fm = re.sub(r"^dias_desde_publicacion:.*$", f"dias_desde_publicacion: {dias_pub}", fm, flags=re.M)
+            else:
+                fm = re.sub(r"^(fecha_publicacion:.*?)$", f"\\1\ndias_desde_publicacion: {dias_pub}", fm, flags=re.M)
+
+            # fecha_postulacion
+            post_m = re.search(r'^fecha_postulacion:\s*["\']?([^"\'\r\n]*)', fm, re.M)
+            post_str = post_m.group(1).strip() if post_m else ""
+
+            # Si estaba en bandeja y era idéntica a fecha_publicacion, limpiar para que el usuario la complete
+            etapa_m = re.search(r'^etapa:\s*["\']?([^"\'\r\n]*)', fm, re.M)
+            etapa_str = etapa_m.group(1).strip() if etapa_m else ""
+            if pub_date and post_str == pub_date.isoformat() and _BANDEJA_COL in etapa_str:
+                post_str = ""
+                fm = re.sub(r"^fecha_postulacion:.*$", 'fecha_postulacion: ""', fm, flags=re.M)
+
+            try:
+                post_date = date.fromisoformat(post_str) if post_str else None
+            except ValueError:
+                post_date = None
+
+            dias_post = (today_date - post_date).days if post_date else "null"
+            if re.search(r"^dias_desde_postulacion:", fm, re.M):
+                fm = re.sub(r"^dias_desde_postulacion:.*$", f"dias_desde_postulacion: {dias_post}", fm, flags=re.M)
+            else:
+                fm = re.sub(r"^(fecha_postulacion:.*?)$", f"\\1\ndias_desde_postulacion: {dias_post}", fm, flags=re.M)
+
+            # notas
+            if not re.search(r"^notas:", fm, re.M):
+                if re.search(r"^tier:", fm, re.M):
+                    fm = re.sub(r"^(tier:.*?)$", '\\1\nnotas: ""', fm, flags=re.M)
+                else:
+                    fm += 'notas: ""\n'
+
+            # expectativa_salarial (numérico: entero o null)
+            sal_m = re.search(r'^expectativa_salarial:\s*["\']?([^"\'\r\n]*)', fm, re.M)
+            if sal_m:
+                val = sal_m.group(1).strip()
+                digits = re.sub(r"[^\d]", "", val)
+                new_val = digits if digits else "null"
+                fm = re.sub(r"^expectativa_salarial:.*$", f"expectativa_salarial: {new_val}", fm, flags=re.M)
+
+            if fm != orig_fm:
+                md_file.write_text(f"{pre}{fm}{post}", encoding="utf-8")
+                updated_count += 1
+        except Exception as ex:
+            logger.warning(f"Error actualizando ficha {md_file.name}: {ex}")
+
+    return updated_count
+
+
 def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
     """
     Sincronización incremental con Obsidian.
@@ -189,7 +278,7 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
     jobs_dir.mkdir(parents=True, exist_ok=True)
     kanban_path = target_dir / "Tablero_Postulaciones.md"
     auto_clean_orphans = bool(obsidian_cfg.get("auto_clean_orphans", True))
-    summary = {"total_jobs": 0, "cards_created": 0, "kanban_file": str(kanban_path)}
+    summary = {"total_jobs": 0, "cards_created": 0, "cards_updated": 0, "kanban_file": str(kanban_path)}
 
     # ─── 1. Leer filenames activos en el Kanban ───────────────────────────────
     active_filenames = _read_kanban_filenames(kanban_path)
@@ -198,6 +287,14 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
     deleted_job_ids: set[int] = set()
     if auto_clean_orphans and active_filenames:
         deleted_job_ids = _purge_orphaned_md(jobs_dir, active_filenames)
+
+    today_date = date.today()
+
+    # Retrofit de tarjetas en Kanban para asegurar fecha @{YYYY-MM-DD} (ordenar por fecha)
+    _retrofit_kanban_dates(kanban_path)
+
+    # Actualizar fichas existentes (días transcurridos, expectativa numérica, campo notas)
+    summary["cards_updated"] = _update_existing_cards(jobs_dir, today_date)
 
     # ─── 3. Ventana temporal incremental ─────────────────────────────────────
     last_sync = get_obsidian_last_sync()
@@ -227,7 +324,6 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
         ).all()
 
         summary["total_jobs"] = len(results)
-        today_date = date.today()
 
         for job, match in results:
             if job.id in deleted_job_ids:
@@ -272,12 +368,9 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
             if min_sal and max_sal:
                 sal_str = f"{min_sal:,.0f} {currency}" if min_sal == max_sal else f"{min_sal:,.0f} - {max_sal:,.0f} {currency}"
 
-            post_date_str = snapshot.created_at.strftime("%Y-%m-%d") if (snapshot and snapshot.created_at) else ""
-            if snapshot and snapshot.created_at:
-                snap_date = snapshot.created_at.date() if hasattr(snapshot.created_at, "date") else snapshot.created_at
-                dias_postulado = (today_date - snap_date).days
-            else:
-                dias_postulado = 0
+            dias_pub = (today_date - pub_date).days
+            post_date_str = ""  # El usuario completa este campo en Obsidian al postular
+            dias_post_str = "null"
 
             if snapshot and snapshot.pdf_path and os.path.exists(snapshot.pdf_path):
                 pdf_path_obj = Path(snapshot.pdf_path)
@@ -344,10 +437,12 @@ pais: "{country}"
 origen_tipo: "{origin_type}"
 fecha_publicacion: "{pub_date_str}"
 fecha_postulacion: "{post_date_str}"
-dias_desde_postulacion: {dias_postulado}
+dias_desde_publicacion: {dias_pub}
+dias_desde_postulacion: {dias_post_str}
 score_fit: {match.score:.1f}
 tier: {match.tier}
-expectativa_salarial: ""
+notas: ""
+expectativa_salarial: null
 oferta_rango: "{sal_str}"
 moneda: "{currency or 'CLP'}"
 contacto_reclutador: ""
@@ -361,7 +456,7 @@ tags:
 # {job.title} @ {job.company}
 
 > **{loc_icon} {job.location}** · **{modality}** · {score_badge} (Tier {match.tier}) · [{job.source.upper()}]({job.url})
-> 💵 Sueldo oferta: **{sal_str}** · 📅 Publicado: {pub_date_str}
+> 💵 Sueldo oferta: **{sal_str}** · 📅 Publicado: {pub_date_str} ({dias_pub} días)
 
 ---
 
@@ -396,7 +491,7 @@ tags:
 """
             card_path.write_text(md_content, encoding="utf-8")
             summary["cards_created"] += 1
-            card_ref = f"[[jobs/{file_name}|{score_badge} | {job.company} - {job.title}]]"
+            card_ref = f"[[jobs/{file_name}|{score_badge} | {job.company} - {job.title}]] @{{{pub_date_str}}}"
             new_card_refs.append(card_ref)
 
     # ─── 5. Insertar solo las tarjetas nuevas en el Kanban ────────────────────
