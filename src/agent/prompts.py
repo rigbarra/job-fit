@@ -104,10 +104,11 @@ Tu tarea es realizar una evaluación de compatibilidad estructurada (Job Fit Eva
   - **MEDIO (50–79):** {ca_mid}
   - **BAJO (0–49):** {ca_low}
 
-### REGLAS PARA `missing_keywords`:
-- Verificar SIEMPRE la sección `skills` y `experience` del perfil YAML antes de declarar una herramienta ausente.
-- Si la herramienta aparece en `skills` o experiencia laboral → NUNCA incluirla en `missing_keywords`.
-- Solo incluir herramientas requeridas por la oferta que estén completamente ausentes en el perfil.
+### REGLAS PARA `missing_keywords` Y EVALUACIÓN DE HABILIDADES:
+- Toda herramienta, tecnología o librería listada en la sección `skills` del perfil YAML representa competencia técnica real adquirida (ya sea por producción corporativa, autoaprendizaje continuo o proyectos personales/laboratorio).
+- Si la oferta solicita "familiaridad", "conocimientos en", "deseable", "plus", o nivel intermedio/básico en una herramienta listada en `skills` (ej: Databricks, PySpark, RAG, Vector Search, BigQuery, Docker, DuckDB, etc.), el candidato es APTO. NUNCA penalices el score a Tier 3 ni la declares como brecha crítica.
+- Si una herramienta aparece en `skills` o en `experience` → NUNCA incluirla en `missing_keywords`.
+- Solo incluir en `missing_keywords` aquellas herramientas y tecnologías estrictamente obligatorias que estén 100% ausentes tanto de `skills` como de `experience`.
 
 ### UMBRALES Y CLASIFICACIÓN DE TIER:
 - **>= 85.0 pts (Tier 1):** Match excelente directo. Alta afinidad en stack y experiencia.

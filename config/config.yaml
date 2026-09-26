@@ -9,10 +9,15 @@ search_filters:
     - "Analytics Engineer"
     - "Data Engineer"
     - "Ingeniero de Datos"
+    - "Analista de Datos Senior"
+    - "Especialista de Datos"
+    - "Especialista BI"
     - "Data Platform Engineer"
     - "Senior Data Analyst"
     - "BI Engineer"
     - "Ingeniero BI"
+    - "Arquitecto de Datos"
+    - "Data Architect"
     - "AI Engineer"
   locations:
     - "Chile"
@@ -61,6 +66,8 @@ algorithmic_filter:
   # (Se eliminaron 'analista' y 'analyst' solitarios para evitar falsos amigos operacionales/PMO/procesos).
   title_keywords_any:
     - "data"
+    - "datos"
+    - "dato"
     - "analytics"
     - "analitica"
     - "analítica"
@@ -71,6 +78,14 @@ algorithmic_filter:
     - "ingeniero bi"
     - "ingeniero de datos"
     - "ingeniera de datos"
+    - "especialista de datos"
+    - "especialista data"
+    - "especialista bi"
+    - "arquitecto de datos"
+    - "arquitecta de datos"
+    - "data architect"
+    - "modelador de datos"
+    - "modeladora de datos"
     - "dbt"
     - "etl"
     - "pipeline"
@@ -235,17 +250,23 @@ evaluation:
   # Roles que parecen fuera del dominio pero SÍ se evalúan normalmente.
   role_gate_pass_exceptions:
     - "Data Analyst"
+    - "Senior Data Analyst"
     - "Analista de Datos"
+    - "Analista de Datos Senior"
     - "Analista BI"
     - "Analista de Inteligencia de Negocios"
+    - "Especialista de Datos"
+    - "Especialista BI"
+    - "Arquitecto de Datos"
+    - "Data Architect"
     - "Revenue Analyst con SQL"
     - "CRM Analyst con SQL"
 
   # Definición de career_alignment alto (Tier 1 / score alto en esa dimensión)
-  career_alignment_high: "Rol técnico de datos con stack explícito (pipelines, modelos, arquitectura cloud, BI). Título es Data/Analytics/Platform/BI Engineer o equivalente directo."
+  career_alignment_high: "Rol técnico de datos o analítica avanzada con stack explícito (pipelines, modelos Kimball, arquitectura cloud, dbt, SQL, Python, BI analítico o IA). Título es Data/Analytics/Platform/BI Engineer, Senior Data Analyst, Especialista de Datos, Data Architect o AI Engineer."
 
   # Definición de career_alignment medio
-  career_alignment_mid: "Componente de datos relevante pero stack parcial o foco más analítico que de ingeniería (Data Analyst con SQL+Python, BI Analyst con Power BI)."
+  career_alignment_mid: "Rol de datos con requerimientos analíticos básicos o soporte de reportería tradicional, sin ingeniería moderna ni transformaciones complejas."
 
   # Definición de career_alignment bajo (Tier 3 en esa dimensión)
   career_alignment_low: "Rol que menciona datos periféricamente (reportes Excel, dashboards básicos) sin stack de ingeniería, o rol de gestión/procesos/PMO."

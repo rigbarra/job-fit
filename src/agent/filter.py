@@ -252,13 +252,15 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
     title_keywords = filter_config.get("title_keywords_any", [])
     if title_keywords:
         matches_any = False
+        clean_title = re.sub(r"[/()_-]", " ", title)
+        title_variants = [title, clean_title]
         for kw in title_keywords:
             kw_clean = kw.lower()
             if len(kw_clean) <= 2:
-                if re.search(r"\b" + re.escape(kw_clean) + r"\b", title):
+                if any(re.search(r"\b" + re.escape(kw_clean) + r"\b", t) for t in title_variants):
                     matches_any = True
                     break
-            elif kw_clean in title:
+            elif any(kw_clean in t for t in title_variants):
                 matches_any = True
                 break
 
@@ -417,6 +419,11 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
                 "remoto latam",
                 "remoto latinoamerica",
                 "remoto en latam",
+                "hispanoamerica",
+                "latinoamerica",
+                "remoto hispanoamerica",
+                "remoto en cualquier parte",
+                "cualquier parte de latam",
             ]
         )
 

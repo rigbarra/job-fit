@@ -27,12 +27,13 @@ class IndeedScraper:
                     break
 
                 try:
+                    query_term = f'"{keyword}"' if " " in keyword and not keyword.startswith('"') else keyword
                     logger.info(
-                        f"Indeed (JobSpy): Buscando '{keyword}' en '{location}' (país: {country_param})..."
+                        f"Indeed (JobSpy): Buscando '{query_term}' en '{location}' (país: {country_param})..."
                     )
                     results = scrape_jobs(
                         site_name=["indeed"],
-                        search_term=keyword,
+                        search_term=query_term,
                         location=location,
                         results_wanted=limit,
                         hours_old=self.max_job_age_days * 24,
