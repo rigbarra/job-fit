@@ -82,28 +82,18 @@ def is_duplicate(
     location: str | None = None,
 ) -> bool:
     """
-    Verifica si la vacante ya existe en la base de datos por:
-    1. Hash de la URL exacta.
-    2. O huella digital de (Empresa + Título) para evitar reposts.
+    Verifica si la vacante ya existe en la base de datos por el hash SHA-256 de su URL limpia.
+    Garantiza que vacantes de la misma empresa con diferente URL (nuevas búsquedas o distintos squads)
+    no sean bloqueadas erróneamente.
     """
     url_hash = get_hash(url)
     with Session(engine) as session:
-        # 1. Check por URL hash
-        if session.exec(select(Job).where(Job.hash_url == url_hash)).first() is not None:
-            return True
-
-        # 2. Check por huella Empresa + Título si están provistos
-        if company and title:
-            fp = get_job_fingerprint(company, title, location or "")
-            if session.exec(select(Job).where(Job.fingerprint == fp)).first() is not None:
-                return True
-
-    return False
+        return session.exec(select(Job).where(Job.hash_url == url_hash)).first() is not None
 
 
 def save_job(job: Job) -> tuple[Job, bool]:
     """
-    Guarda una vacante si no existe previamente (deduplicación integrada por URL y Empresa+Título)
+    Guarda una vacante si no existe previamente (deduplicación por hash SHA-256 de URL limpia)
     y enriquece sus metadatos.
 
     Returns:
@@ -133,11 +123,9 @@ def save_job(job: Job) -> tuple[Job, bool]:
         job.salary_currency = curr
 
     with Session(engine) as session:
-        # Verificar duplicados por URL o por Huella (Empresa + Título)
+        # Verificar duplicados exclusivamente por hash de URL única
         existing = session.exec(
-            select(Job).where(
-                (Job.hash_url == job.hash_url) | (Job.fingerprint == job.fingerprint)
-            )
+            select(Job).where(Job.hash_url == job.hash_url)
         ).first()
         if existing:
             return existing, False

@@ -130,10 +130,10 @@ class WebScraper(ABC):
                             )
                             return jobs_found
 
-                        # 1. Deduplicación previa: Si ya está en BD (por URL o por Empresa+Título), no gastamos peticiones de red
-                        if is_duplicate(card.url, title=card.title, company=card.company, location=card.location):
+                        # 1. Deduplicación previa: Si ya está en BD (por hash de URL única), no gastamos peticiones de red
+                        if is_duplicate(card.url):
                             logger.info(
-                                f"{self.name}: Omitiendo repost/duplicado de '{card.title}' @ '{card.company}'"
+                                f"{self.name}: Omitiendo vacante ya registrada: '{card.title}' @ '{card.company}'"
                             )
                             continue
 

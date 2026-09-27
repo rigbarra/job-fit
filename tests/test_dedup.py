@@ -133,35 +133,36 @@ def test_save_job_sanitizes_nan_company():
     assert saved_job.company == "Empresa Confidencial"
 
 
-def test_job_save_and_duplicate_by_fingerprint_repost():
-    """Valida que ofertas reposteadas con diferente URL pero misma empresa y título sean detectadas como duplicados."""
-    original_url = "https://cl.linkedin.com/jobs/view/analytics-engineer-at-acme-111111"
-    repost_url = "https://cl.linkedin.com/jobs/view/analytics-engineer-at-acme-999999"
+def test_job_save_distinct_urls_same_company_allowed():
+    """Valida que vacantes con URLs distintas (incluso misma empresa y título) no se bloqueen entre sí."""
+    url1 = "https://cl.linkedin.com/jobs/view/analytics-engineer-at-acme-111111"
+    url2 = "https://cl.linkedin.com/jobs/view/analytics-engineer-at-acme-999999"
 
     job1 = Job(
         title="Analytics Engineer",
         company="Acme Corp Chile",
         location="Santiago, Chile",
-        description="Buscamos Analytics Engineer con dbt y SQL.",
-        url=original_url,
+        description="Buscamos Analytics Engineer con dbt y SQL (Squad A).",
+        url=url1,
         source="linkedin",
     )
     saved1, is_new1 = save_job(job1)
     assert is_new1 is True
 
-    # Comprobar que is_duplicate detecta el repost antes de descargar descripción
-    assert is_duplicate(repost_url, title="Analytics Engineer", company="Acme Corp Chile")
+    # Comprobar que la URL diferente NO es detectada como duplicado
+    assert not is_duplicate(url2)
 
-    # Intentar guardar el repost con URL diferente
+    # Guardar la segunda vacante con URL diferente (Squad B u otra búsqueda legítima)
     job2 = Job(
         title="Analytics Engineer",
         company="Acme Corp Chile",
         location="Santiago, Chile",
-        description="Buscamos Analytics Engineer con dbt y SQL (repost).",
-        url=repost_url,
+        description="Buscamos Analytics Engineer con dbt y SQL (Squad B).",
+        url=url2,
         source="linkedin",
     )
     saved2, is_new2 = save_job(job2)
-    assert is_new2 is False
-    assert saved2.id == saved1.id
+    assert is_new2 is True
+    assert saved2.id != saved1.id
+    assert saved2.hash_url != saved1.hash_url
 
