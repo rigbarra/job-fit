@@ -140,11 +140,6 @@ def main():
 
     # 4. Iniciar ejecución secuencial por grupos prioritarios
     for source_name, is_local in execution_groups:
-        if quota_exhausted:
-            logger.warning(
-                f"Saltando grupo ({source_name.upper()}, Local={is_local}) porque la cuota diaria o límite de tasa fue alcanzado."
-            )
-            continue
 
         # Filtrar grupos según search_scope ('chile', 'international', 'all')
         if search_scope == "chile" and not is_local:
@@ -289,7 +284,11 @@ def main():
         if filtered_pending_jobs:
             if not api_key_configured:
                 logger.warning(
-                    f"OpenRouter: Hay {len(filtered_pending_jobs)} vacantes pre-filtradas con alto potencial, pero se salta la fase LLM porque OPENROUTER_API_KEY no está configurada."
+                    f"LLM: Hay {len(filtered_pending_jobs)} vacantes pre-filtradas con alto potencial, pero se salta la fase LLM porque la API Key no está configurada."
+                )
+            elif quota_exhausted:
+                logger.warning(
+                    f"LLM: Evaluación pausada por límite de cuota/tasa. Conservando {len(filtered_pending_jobs)} vacantes pre-filtradas para la próxima corrida."
                 )
             else:
                 for job in filtered_pending_jobs:
@@ -309,7 +308,7 @@ def main():
                         break
                     except RateLimitError as rle:
                         logger.warning(
-                            f"OpenRouter: El modelo está saturado temporalmente (429). Pausando evaluación para proteger cuota. {rle}"
+                            f"LLM: Modelo saturado temporalmente (429). Pausando evaluación para proteger cuota. {rle}"
                         )
                         quota_exhausted = True
                         break

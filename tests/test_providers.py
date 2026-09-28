@@ -55,10 +55,11 @@ def test_get_llm_provider_deepseek_or_openai(mocker):
 
 def test_gemini_adaptive_failover(mocker):
     """Verifica que GeminiProvider conmute en caliente al siguiente modelo si el primero falla con 503/429."""
+    mocker.patch("time.sleep")
     provider = GeminiProvider(api_key="AIzaSy_fake", model="gemini-3.8-flash")
     assert provider.current_model == "gemini-3.8-flash"
 
-    # Simular: primera llamada a gemini-3.8-flash falla con 503, segunda llamada (gemini-3.6-flash) triunfa
+    # Simular: primera llamada a gemini-3.8-flash falla con 503, segunda llamada (gemini-flash-lite-latest) triunfa
     mock_post = mocker.patch("src.agent.providers._http_post_json")
     mock_post.side_effect = [
         RuntimeError("Error HTTP 503: Service Unavailable"),
@@ -67,15 +68,15 @@ def test_gemini_adaptive_failover(mocker):
 
     res = provider.generate("System", "User")
     assert res == '{"score": 90}'
-    # Debe haber conmutado el modelo activo a gemini-3.6-flash
-    assert provider.current_model == "gemini-3.6-flash"
+    # Debe haber conmutado el modelo activo a gemini-flash-lite-latest
+    assert provider.current_model == "gemini-flash-lite-latest"
     assert mock_post.call_count == 2
 
-    # Siguiente llamada: debe usar directamente el modelo activo conmutado (gemini-3.6-flash)
+    # Siguiente llamada: debe usar directamente el modelo activo conmutado (gemini-flash-lite-latest)
     mock_post.side_effect = [
         {"candidates": [{"content": {"parts": [{"text": "{\"score\": 85}"}]}}]},
     ]
     res2 = provider.generate("System", "User 2")
     assert res2 == '{"score": 85}'
-    assert provider.current_model == "gemini-3.6-flash"
+    assert provider.current_model == "gemini-flash-lite-latest"
     assert mock_post.call_count == 3

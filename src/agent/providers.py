@@ -94,9 +94,10 @@ class GeminiProvider(BaseLLMProvider):
     """
 
     DEFAULT_FALLBACK_MODELS = [
-        "gemini-3.8-flash",
+        "gemini-flash-lite-latest",
         "gemini-3.6-flash",
         "gemini-3.7-flash",
+        "gemini-3.8-flash",
         "gemini-flash-latest",
     ]
 
@@ -135,9 +136,10 @@ class GeminiProvider(BaseLLMProvider):
             },
         }
 
+        start_idx = self.active_idx
         last_error = None
         for i in range(len(self.models)):
-            idx = (self.active_idx + i) % len(self.models)
+            idx = (start_idx + i) % len(self.models)
             model = self.models[idx]
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
             try:
@@ -163,16 +165,19 @@ class GeminiProvider(BaseLLMProvider):
                     for code in ["429", "503", "500", "502", "504", "UNAVAILABLE", "RESOURCE_EXHAUSTED"]
                 )
                 if is_transient and len(self.models) > 1:
-                    next_idx = (idx + 1) % len(self.models)
+                    next_idx = (start_idx + i + 1) % len(self.models)
                     next_model = self.models[next_idx]
                     logger.warning(
                         f"LLM Provider: Modelo '{model}' temporalmente no disponible ({err_str[:80]}...). "
                         f"Conmutando en caliente a '{next_model}'..."
                     )
+                    time.sleep(1.0)
                     last_error = ex
                     continue
                 raise ex
 
+        # Si todos fallaron, avanzar active_idx para que el próximo reintento general no arranque con el modelo fallido
+        self.active_idx = (start_idx + 1) % len(self.models)
         if last_error:
             raise last_error
         raise RuntimeError("No se pudo obtener respuesta de ningún modelo en el pool de Gemini.")
