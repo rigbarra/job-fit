@@ -32,6 +32,9 @@ def normalize_llm_json(raw_json_str: str) -> dict[str, Any]:
     elif "```" in clean_str:
         clean_str = clean_str.split("```")[1].split("```")[0].strip()
 
+    # Eliminar comas finales (trailing commas) que violan JSON estándar
+    clean_str = re.sub(r",\s*([\]}])", r"\1", clean_str)
+
     data = json.loads(clean_str)
 
     if not isinstance(data, dict):
