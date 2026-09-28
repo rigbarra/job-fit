@@ -86,17 +86,31 @@ class OpenRouterProvider(BaseLLMProvider):
 
 
 class GeminiProvider(BaseLLMProvider):
-    """Proveedor nativo para Google Gemini API (Gemini 3.6 Flash / 2.5 Pro)."""
+    """
+    Proveedor nativo para Google Gemini API con pool resiliente y conmutación
+    inteligente en caliente (Adaptive Failover). Si el modelo principal experimenta
+    saturación (503) o límite de cuota (429), conmuta automáticamente al siguiente
+    modelo y recuerda cuál está operativo para las siguientes llamadas.
+    """
+
+    DEFAULT_FALLBACK_MODELS = [
+        "gemini-3.8-flash",
+        "gemini-3.6-flash",
+        "gemini-3.7-flash",
+        "gemini-flash-latest",
+    ]
 
     def __init__(self, api_key: str, model: str):
         self.api_key = api_key
-        if model and ("gemini-2.0" in model or "gemini-1.5" in model):
-            self.model = "gemini-3.6-flash"
-        elif model and "gemini" in model:
-            self.model = model
-        else:
-            self.model = "gemini-3.6-flash"
-        self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+        # Construir lista ordenada de modelos candidatos sin duplicados
+        candidates = [model] + self.DEFAULT_FALLBACK_MODELS
+        seen = set()
+        self.models = [m for m in candidates if m and not (m in seen or seen.add(m))]
+        self.active_idx = 0
+
+    @property
+    def current_model(self) -> str:
+        return self.models[self.active_idx]
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
         if not self.api_key:
@@ -121,16 +135,47 @@ class GeminiProvider(BaseLLMProvider):
             },
         }
 
-        data = _http_post_json(self.url, headers, payload, timeout=60)
-        candidates = data.get("candidates", [])
-        if not candidates:
-            raise RuntimeError("Respuesta vacía recibida de Google Gemini API")
+        last_error = None
+        for i in range(len(self.models)):
+            idx = (self.active_idx + i) % len(self.models)
+            model = self.models[idx]
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
+            try:
+                data = _http_post_json(url, headers, payload, timeout=45, retries=1)
+                candidates = data.get("candidates", [])
+                if not candidates:
+                    raise RuntimeError("Respuesta vacía recibida de Google Gemini API")
 
-        parts = candidates[0].get("content", {}).get("parts", [])
-        if not parts:
-            raise RuntimeError("No se encontraron partes de texto en la respuesta de Gemini API")
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if not parts:
+                    raise RuntimeError("No se encontraron partes de texto en la respuesta de Gemini API")
 
-        return parts[0].get("text", "")
+                # Si conmutamos con éxito a otro modelo, recordarlo como activo para llamadas futuras
+                if idx != self.active_idx:
+                    logger.info(f"LLM Failover: Conmutado con éxito a '{model}' como modelo activo.")
+                    self.active_idx = idx
+
+                return parts[0].get("text", "")
+            except (RateLimitError, RuntimeError) as ex:
+                err_str = str(ex)
+                is_transient = any(
+                    code in err_str
+                    for code in ["429", "503", "500", "502", "504", "UNAVAILABLE", "RESOURCE_EXHAUSTED"]
+                )
+                if is_transient and len(self.models) > 1:
+                    next_idx = (idx + 1) % len(self.models)
+                    next_model = self.models[next_idx]
+                    logger.warning(
+                        f"LLM Provider: Modelo '{model}' temporalmente no disponible ({err_str[:80]}...). "
+                        f"Conmutando en caliente a '{next_model}'..."
+                    )
+                    last_error = ex
+                    continue
+                raise ex
+
+        if last_error:
+            raise last_error
+        raise RuntimeError("No se pudo obtener respuesta de ningún modelo en el pool de Gemini.")
 
 
 class OpenAIProvider(BaseLLMProvider):
