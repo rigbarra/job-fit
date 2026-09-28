@@ -205,6 +205,9 @@ PYTHONPATH=. .venv/bin/python -m src.cli market-study
 
 # 7. Recompilar manualmente un CV (.tex modificado a .pdf en 1 segundo)
 pdflatex -output-directory=data/generated_cvs data/generated_cvs/NOMBRE_DEL_ARCHIVO.tex
+
+# 8. Calibración interactiva de fit y diagnóstico de filtros (falsos negativos)
+PYTHONPATH=. .venv/bin/python -m src.cli calibrate --limit 15 --days 7
 ```
 
 ---

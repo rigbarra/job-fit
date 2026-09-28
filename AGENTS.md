@@ -25,3 +25,4 @@ Puedes invocar las siguientes habilidades directamente usando Antigravity CLI:
 - **`/market-study`**: Genera el estudio analítico de mercado con estadísticas salariales, herramientas más cotizadas y recomendaciones de negociación.
 - **`/linkedin`**: Genera la estrategia y 4 borradores de publicaciones de alto impacto técnico y SEO para LinkedIn en Obsidian (`Ideas_LinkedIn.md`).
 - **`/clean`**: Purga de forma segura los archivos temporales (PDFs, TeX, guías .md, tmp) y registros en base de datos con más de 30 días de antigüedad.
+- **`/calibrate`**: Calibra interactivamente el pipeline etiquetando ofertas dudosas o descartadas, diagnosticando barreras de filtrado y recomendando ajustes técnicos.

@@ -65,6 +65,16 @@ pdflatex -output-directory=data/generated_cvs data/generated_cvs/NOMBRE_DEL_ARCH
 
 ---
 
+### F. Calibración Interactiva de Fit y Diagnóstico de Filtros
+Revisa interactivamente las vacantes descartadas o en zona gris, visualiza los requisitos clave formateados (con opción `d` para descripción completa) y genera un diagnóstico de falsos negativos:
+```bash
+PYTHONPATH=. .venv/bin/python -m src.cli calibrate
+# O especificando límite y días hacia atrás:
+PYTHONPATH=. .venv/bin/python -m src.cli calibrate --limit 15 --days 7
+```
+
+---
+
 ## 2. Ingesta, Scraping y Estudio de Mercado
 
 ### Iniciar Pipeline Completo de Scraping Manual

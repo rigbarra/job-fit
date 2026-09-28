@@ -16,13 +16,25 @@ search_filters:
     - "Senior Data Analyst"
     - "BI Engineer"
     - "Ingeniero BI"
+    - "BI Developer"
+    - "Desarrollador BI"
+    - "Power BI"
+    - "Desarrollador Power BI"
+    - "Power BI Developer"
+    - "Consultor BI"
+    - "Big Data Engineer"
+    - "Ingeniero Big Data"
+    - "ETL Developer"
+    - "Desarrollador ETL"
+    - "DataOps Engineer"
+    - "Cloud Data Engineer"
     - "AI Engineer"
   locations:
     - "Chile"
   international_locations:
     - "Latin America"
     - "Worldwide"
-  max_job_age_days: 1 # Ventana móvil estricta de 1 día (24 horas) para avisos nuevos
+  max_job_age_days: 1 # Ventana móvil estricta de 1 día (24 horas)
   experience_level: "" # Vacío para capturar todas las ofertas (el filtro algorítmico local descarta juniors y jefaturas)
   limit_per_source: 100
   excluded_companies:
@@ -88,6 +100,14 @@ algorithmic_filter:
     - "ai engineer"
     - "genai"
     - "llm"
+    - "bi"
+    - "power bi"
+    - "powerbi"
+    - "power-bi"
+    - "big data"
+    - "dataops"
+    - "data ops"
+    - "database"
   # La descripción debe contener AL MENOS UNA de estas palabras (OR, no AND).
   # Antes era AND (sql Y python) lo que rechazaba avisos legítimos con descripciones cortas.
   description_keywords_any:

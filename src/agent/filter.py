@@ -327,7 +327,10 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
                 )
 
     # 7. Validar modalidad Híbrida / Presencial / Remota
-    is_chile_location = any(term in location_lower for term in CHILE_TERMS)
+    country_lower = normalize_text(job.country or "")
+    is_chile_location = any(term in location_lower for term in CHILE_TERMS) or any(
+        term in country_lower for term in CHILE_TERMS
+    )
 
     # A) Oferta Internacional: DEBE ser 100% remota y abierta a talento global
     if not is_chile_location:

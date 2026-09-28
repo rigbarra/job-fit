@@ -27,7 +27,7 @@ class IndeedScraper:
                     break
 
                 try:
-                    query_term = f'"{keyword}"' if " " in keyword and not keyword.startswith('"') else keyword
+                    query_term = keyword
                     logger.info(
                         f"Indeed (JobSpy): Buscando '{query_term}' en '{location}' (país: {country_param})..."
                     )

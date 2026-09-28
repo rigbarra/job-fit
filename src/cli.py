@@ -203,6 +203,13 @@ def handle_linkedin(args):
     print(f"📄 Guardado en: {file_path}\n")
 
 
+def handle_calibrate(args):
+    """Ejecuta la calibración interactiva de ofertas y diagnóstico de filtros."""
+    init_db()
+    from src.agent.calibration import run_interactive_calibration
+    run_interactive_calibration(limit=args.limit, days=args.days)
+
+
 def _get_or_create_job(target: str) -> Job | None:
     if target.isdigit():
         return get_job_by_id(int(target))
@@ -274,6 +281,12 @@ def main():
     p_cv = subparsers.add_parser("cv", aliases=["base-cv"], help="Genera el CV estándar/base (Español e Inglés)")
     p_cv.add_argument("--lang", choices=["es", "en", "all"], default="all", help="Idioma del CV base (default: all)")
     p_cv.set_defaults(func=handle_base_cv)
+
+    # Comando: calibrate
+    p_calibrate = subparsers.add_parser("calibrate", help="Calibra interactivamente el pipeline etiquetando ofertas y diagnosticando filtros")
+    p_calibrate.add_argument("--limit", type=int, default=15, help="Número máximo de vacantes a revisar (default: 15)")
+    p_calibrate.add_argument("--days", type=int, default=7, help="Días hacia atrás para buscar vacantes (default: 7)")
+    p_calibrate.set_defaults(func=handle_calibrate)
 
     args = parser.parse_args()
     try:

@@ -71,3 +71,14 @@ class SyncState(SQLModel, table=True):
     Solo existe una fila (key='obsidian_last_sync'). Se actualiza al final de cada sync exitosa."""
     key: str = Field(primary_key=True)
     last_sync: datetime
+
+
+class CalibrationFeedback(SQLModel, table=True):
+    """Registro de retroalimentación del usuario para calibrar filtros y prompts."""
+    __tablename__ = "calibration_feedback"
+    id: int | None = Field(default=None, primary_key=True)
+    job_id: int = Field(foreign_key="job.id", index=True)
+    decision: str = Field(description="'INTERESTED' o 'DISCARDED'")
+    filter_phase: str | None = Field(default=None)  # 'AGE', 'TITLE', 'DESCRIPTION', 'LOCATION', 'LLM'
+    user_comment: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=UTC).replace(tzinfo=None))

@@ -7,7 +7,7 @@ from sqlalchemy import func, text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from config.settings import settings
-from src.database.models import CVSnapshot, Job, MatchResult, SyncState
+from src.database.models import CVSnapshot, CalibrationFeedback, Job, MatchResult, SyncState
 
 # Crear motor de base de datos SQLite
 engine = create_engine(settings.database_url, echo=False)
@@ -219,3 +219,43 @@ def set_obsidian_last_sync(ts: datetime) -> None:
             row = SyncState(key=_OBSIDIAN_SYNC_KEY, last_sync=ts)
             session.add(row)
         session.commit()
+
+
+def save_calibration_feedback(
+    job_id: int,
+    decision: str,
+    filter_phase: str | None = None,
+    user_comment: str | None = None,
+) -> CalibrationFeedback:
+    """Guarda o actualiza la retroalimentación de calibración para una vacante."""
+    with Session(engine) as session:
+        existing = session.exec(
+            select(CalibrationFeedback).where(CalibrationFeedback.job_id == job_id)
+        ).first()
+        if existing:
+            existing.decision = decision
+            existing.filter_phase = filter_phase
+            existing.user_comment = user_comment
+            existing.created_at = datetime.now(tz=UTC).replace(tzinfo=None)
+            session.add(existing)
+            session.commit()
+            session.refresh(existing)
+            return existing
+
+        fb = CalibrationFeedback(
+            job_id=job_id,
+            decision=decision,
+            filter_phase=filter_phase,
+            user_comment=user_comment,
+        )
+        session.add(fb)
+        session.commit()
+        session.refresh(fb)
+        return fb
+
+
+def get_reviewed_calibration_job_ids() -> set[int]:
+    """Devuelve los IDs de vacantes que ya han sido revisadas en calibración."""
+    with Session(engine) as session:
+        ids = session.exec(select(CalibrationFeedback.job_id)).all()
+        return set(ids)
