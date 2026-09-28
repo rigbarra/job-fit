@@ -94,7 +94,7 @@ def test_update_existing_cards(tmp_path):
     assert updated == 1
 
     text = card_file.read_text(encoding="utf-8")
-    assert "dias_desde_publicacion: 6" in text
+    assert "dias_desde_publicacion" not in text
     assert "dias_desde_postulacion: 4" in text
     assert "expectativa_salarial: 2800000" in text
     assert 'notas: ""' in text

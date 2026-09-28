@@ -1,7 +1,8 @@
+import json
+import logging
 import os
 import re
-import logging
-from datetime import UTC, datetime, date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from sqlmodel import Session, select
 
@@ -187,17 +188,31 @@ def _retrofit_kanban_dates(kanban_path: Path) -> int:
     return 0
 
 
-def _update_existing_cards(jobs_dir: Path, today_date: date) -> int:
+def _update_existing_cards(jobs_dir: Path, today_date: date, kanban_path: Path | None = None) -> int:
     """
     Actualiza campos calculados y nuevos en las fichas existentes sin tocar notas ni contenido del usuario:
-    - dias_desde_publicacion = (today - fecha_publicacion)
-    - dias_desde_postulacion = (today - fecha_postulacion) si está definida, o null
+    - Sincroniza fecha_postulacion cuando la tarjeta está en Aplicado si no estaba seteada
+    - Elimina dias_desde_publicacion para dejar SOLO un campo de días (dias_desde_postulacion)
+    - dias_desde_postulacion = (today_date - fecha_postulacion).days si está definida, o null
     - notas = campo de texto en propiedades inicializado si no existe
     - expectativa_salarial = normalizado a numérico (int o null)
     """
     updated_count = 0
     if not jobs_dir.exists():
         return updated_count
+
+    # Leer carril del Kanban para cada tarjeta
+    card_lanes: dict[str, str] = {}
+    if kanban_path and kanban_path.exists():
+        current_lane = None
+        for line in kanban_path.read_text(encoding="utf-8").splitlines():
+            s = line.strip()
+            if s.startswith("## "):
+                current_lane = s.lstrip("#").strip()
+            elif s.startswith("- [ ]") and current_lane:
+                m_ref = re.search(r'\[\[jobs/([^\|\]]+\.md)', s)
+                if m_ref:
+                    card_lanes[m_ref.group(1)] = current_lane
 
     for md_file in jobs_dir.glob("*.md"):
         try:
@@ -208,37 +223,56 @@ def _update_existing_cards(jobs_dir: Path, today_date: date) -> int:
             pre, fm, post = m.groups()
             orig_fm = fm
 
-            # fecha_publicacion & dias_desde_publicacion
+            # 1. Eliminar dias_desde_publicacion (evita duplicidad de campos)
+            fm = re.sub(r"^dias_desde_publicacion:.*$\n?", "", fm, flags=re.M)
+
+            # 2. fecha_publicacion
             pub_m = re.search(r'^fecha_publicacion:\s*["\']?(\d{4}-\d{2}-\d{2})', fm, re.M)
             pub_date = date.fromisoformat(pub_m.group(1)) if pub_m else None
-            dias_pub = (today_date - pub_date).days if pub_date else 0
 
-            if re.search(r"^dias_desde_publicacion:", fm, re.M):
-                fm = re.sub(r"^dias_desde_publicacion:.*$", f"dias_desde_publicacion: {dias_pub}", fm, flags=re.M)
-            else:
-                fm = re.sub(r"^(fecha_publicacion:.*?)$", f"\\1\ndias_desde_publicacion: {dias_pub}", fm, flags=re.M)
+            # 3. Detectar carril en Kanban y sincronizar etapa
+            etapa_m = re.search(r'^etapa:\s*["\']?([^"\'\r\n]*)', fm, re.M)
+            etapa_str = etapa_m.group(1).strip() if etapa_m else ""
+            kanban_lane = card_lanes.get(md_file.name)
+            if kanban_lane and kanban_lane != etapa_str:
+                fm = re.sub(r"^etapa:.*$", f'etapa: "{kanban_lane}"', fm, flags=re.M)
+                etapa_str = kanban_lane
 
-            # fecha_postulacion
+            # 4. fecha_postulacion
             post_m = re.search(r'^fecha_postulacion:\s*["\']?([^"\'\r\n]*)', fm, re.M)
             post_str = post_m.group(1).strip() if post_m else ""
 
-            # Si estaba en bandeja y era idéntica a fecha_publicacion, limpiar para que el usuario la complete
-            etapa_m = re.search(r'^etapa:\s*["\']?([^"\'\r\n]*)', fm, re.M)
-            etapa_str = etapa_m.group(1).strip() if etapa_m else ""
-            if pub_date and post_str == pub_date.isoformat() and _BANDEJA_COL in etapa_str:
+            # Si la caja está en Aplicado (o posterior) y fecha_postulacion está vacía, registrar today
+            if etapa_str and etapa_str != _BANDEJA_COL and not post_str:
+                post_str = today_date.isoformat()
+            elif _BANDEJA_COL in etapa_str and (not kanban_lane or kanban_lane == _BANDEJA_COL):
                 post_str = ""
-                fm = re.sub(r"^fecha_postulacion:.*$", 'fecha_postulacion: ""', fm, flags=re.M)
+
+            if not re.search(r"^fecha_postulacion:", fm, re.M):
+                if re.search(r"^fecha_publicacion:.*$", fm, re.M):
+                    fm = re.sub(r"^(fecha_publicacion:.*?)$", f'\\1\nfecha_postulacion: "{post_str}"', fm, flags=re.M)
+                else:
+                    fm += f'fecha_postulacion: "{post_str}"\n'
+            else:
+                fm = re.sub(r"^fecha_postulacion:.*$", f'fecha_postulacion: "{post_str}"', fm, flags=re.M)
 
             try:
                 post_date = date.fromisoformat(post_str) if post_str else None
             except ValueError:
                 post_date = None
 
-            dias_post = (today_date - post_date).days if post_date else "null"
-            if re.search(r"^dias_desde_postulacion:", fm, re.M):
-                fm = re.sub(r"^dias_desde_postulacion:.*$", f"dias_desde_postulacion: {dias_post}", fm, flags=re.M)
+            # 5. dias_desde_postulacion = (today_date - fecha_postulacion).days
+            if post_date:
+                dias_diff = max(0, (today_date - post_date).days)
             else:
-                fm = re.sub(r"^(fecha_postulacion:.*?)$", f"\\1\ndias_desde_postulacion: {dias_post}", fm, flags=re.M)
+                dias_diff = "null"
+
+            if re.search(r"^dias_desde_postulacion:", fm, re.M):
+                fm = re.sub(r"^dias_desde_postulacion:.*$", f"dias_desde_postulacion: {dias_diff}", fm, flags=re.M)
+            elif re.search(r"^fecha_postulacion:.*$", fm, re.M):
+                fm = re.sub(r"^(fecha_postulacion:.*?)$", f"\\1\ndias_desde_postulacion: {dias_diff}", fm, flags=re.M)
+            else:
+                fm += f"dias_desde_postulacion: {dias_diff}\n"
 
             # notas
             if not re.search(r"^notas:", fm, re.M):
@@ -385,7 +419,18 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
     )
 
     # Actualizar fichas existentes (días transcurridos, expectativa numérica, campo notas)
-    summary["cards_updated"] = _update_existing_cards(jobs_dir, today_date)
+    summary["cards_updated"] = _update_existing_cards(jobs_dir, today_date, kanban_path=kanban_path)
+
+    # Limpiar dias_desde_publicacion de tipos en Obsidian si existe
+    obsidian_types_file = target_dir / ".obsidian" / "types.json"
+    if obsidian_types_file.exists():
+        try:
+            types_data = json.loads(obsidian_types_file.read_text(encoding="utf-8"))
+            if "types" in types_data and "dias_desde_publicacion" in types_data["types"]:
+                del types_data["types"]["dias_desde_publicacion"]
+                obsidian_types_file.write_text(json.dumps(types_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        except Exception as ex:
+            logger.warning(f"Error actualizando types.json: {ex}")
 
     # ─── 3. Ventana temporal incremental ─────────────────────────────────────
     last_sync = get_obsidian_last_sync()
@@ -459,7 +504,6 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
             if min_sal and max_sal:
                 sal_str = f"{min_sal:,.0f} {currency}" if min_sal == max_sal else f"{min_sal:,.0f} - {max_sal:,.0f} {currency}"
 
-            dias_pub = (today_date - pub_date).days
             post_date_str = ""  # El usuario completa este campo en Obsidian al postular
             dias_post_str = "null"
 
@@ -528,7 +572,6 @@ pais: "{country}"
 origen_tipo: "{origin_type}"
 fecha_publicacion: "{pub_date_str}"
 fecha_postulacion: "{post_date_str}"
-dias_desde_publicacion: {dias_pub}
 dias_desde_postulacion: {dias_post_str}
 score_fit: {match.score:.1f}
 tier: {match.tier}
@@ -547,7 +590,7 @@ tags:
 # {job.title} @ {job.company}
 
 > **{loc_icon} {job.location}** · **{modality}** · {score_badge} (Tier {match.tier}) · [{job.source.upper()}]({job.url})
-> 💵 Sueldo oferta: **{sal_str}** · 📅 Publicado: {pub_date_str} ({dias_pub} días)
+> 💵 Sueldo oferta: **{sal_str}** · 📅 Publicado: {pub_date_str}
 
 ---
 
