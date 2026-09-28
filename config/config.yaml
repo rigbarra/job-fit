@@ -29,8 +29,18 @@ search_filters:
     - "DataOps Engineer"
     - "Cloud Data Engineer"
     - "AI Engineer"
+    - "Analista BI"
+    - "Data Analyst"
+    - "Analista de Datos"
+    - "Business Analyst"
+    - "Senior Business Analyst"
+    - "Business Intelligence"
   locations:
     - "Chile"
+    - "Santiago, Chile"
+    - "Viña del Mar, Chile"
+    - "Valparaíso, Chile"
+    - "Concón, Chile"
   international_locations:
     - "Latin America"
     - "Worldwide"
@@ -108,6 +118,12 @@ algorithmic_filter:
     - "dataops"
     - "data ops"
     - "database"
+    - "business analyst"
+    - "data analyst"
+    - "business intelligence"
+    - "bi analyst"
+    - "analista analitica"
+    - "analista analítica"
   # La descripción debe contener AL MENOS UNA de estas palabras (OR, no AND).
   # Antes era AND (sql Y python) lo que rechazaba avisos legítimos con descripciones cortas.
   description_keywords_any:

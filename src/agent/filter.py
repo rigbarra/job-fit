@@ -22,7 +22,14 @@ CHILE_TERMS = [
     "chile",
     "santiago",
     "vina",
+    "vina del mar",
     "valparaiso",
+    "concon",
+    "con con",
+    "renaca",
+    "quilpue",
+    "villa alemana",
+    "quillota",
     "concepcion",
     "las condes",
     "providencia",
@@ -193,7 +200,9 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
     title = normalize_text(job.title)
     description = normalize_text(job.description)
     location_lower = normalize_text(job.location)
-    text_combined = f"{title} {location_lower} {description}"
+    modality_lower = normalize_text(job.modality or "")
+    job_type_lower = normalize_text(job.job_type or "")
+    text_combined = f"{title} {location_lower} {modality_lower} {job_type_lower} {description}"
 
     # 1. Lista Negra de Títulos Excluidos (Control de Gestión tradicional, Ciencia de Datos pura, Jr, etc.)
     title_blacklist = [
@@ -493,7 +502,10 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
         
         has_remote_or_hybrid = any(term in text_combined for term in [
             "100% remoto", "100% remota", "remoto", "remota", "teletrabajo", 
-            "home office", "wfh", "work from home", "hibrido", "hibrida", "hybrid"
+            "home office", "wfh", "work from home", "hibrido", "hibrida", "hybrid",
+            "semipresencial", "semi presencial", "semi-presencial", "modalidad mixta",
+            "esquema flexible", "trabajo flexible", "dias de oficina", "dias presencial",
+            "dias en oficina", "dias remotos", "dias de home office", "flexible"
         ])
 
         if is_santiago and not has_remote_or_hybrid:
