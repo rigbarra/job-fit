@@ -92,7 +92,10 @@ El modelo utiliza **SQLModel** (híbrido entre SQLAlchemy 2.0 y Pydantic):
   * Detecta el idioma de la oferta (Español o Inglés).
   * Carga el perfil relevante (`profile.yaml`).
   * Inyecta metadatos territoriales (cargo, empresa, ubicación, modalidad) en el prompt de la IA.
-  * `normalize_llm_json(raw_json)`: Función de limpieza que elimina bloques `<think>...</think>`, extrae bloques ````json ... ```` y valida contra `MatchEvaluation`.
+  * `normalize_llm_json(raw_json)`: Función de limpieza que elimina bloques `<think>...</think>`, extrae bloques ````json ... ````, sanitiza comas finales flotantes (*trailing commas*) y valida contra `MatchEvaluation`.
+* **`providers.py`:**
+  * Implementa `GeminiProvider`, `OpenRouterProvider` y `OpenAIProvider`.
+  * `GeminiProvider` cuenta con **Pool de Failover Adaptativo**: conmuta en caliente entre modelos (`gemini-flash-lite-latest`, `gemini-3.6-flash`, `gemini-3.7-flash`, etc.) ante errores 503 o 429, con memoria de salud (*sticky index*) para llamadas subsiguientes.
 * **`quota.py`:**
   * `check_daily_quota()`: Consulta la BD para asegurar que no se supere `LLM_MAX_CALLS_PER_DAY`.
   * `enforce_rpm()`: Registra marcas de tiempo en los últimos 60 segundos para evitar sobrepasar `LLM_MAX_CALLS_PER_MINUTE`.
@@ -129,18 +132,20 @@ Une todos los componentes en un flujo secuencial robusto:
 2. Lectura de `config.yaml` y reglas `notification_rules` + `excluded_companies`.
 3. Iteración sobre `execution_groups`.
 4. Extracción $\rightarrow$ Deduplicación $\rightarrow$ Filtrado $\rightarrow$ Evaluación LLM $\rightarrow$ Generación PDF $\rightarrow$ Notificación Discord.
-5. Captura de excepciones `DailyQuotaExhaustedError` y `RateLimitError` para pausar la corrida sin perder datos.
+5. **Desacoplamiento de Ingesta:** La extracción y almacenamiento en SQLite corren siempre de forma ininterrumpida. Si la API del LLM alcanza su límite diario o de tasa, solo la fase de evaluación se pausa, conservando todas las vacantes pendientes en BD para la próxima corrida sin perder oportunidades laborales.
 
 ---
 
 ## 4. Decisiones Críticas de Ingeniería y Resiliencia
 
 1. **Defensa ante Cambios de Esquema en Modelos LLM Gratuitos:**
-   Los modelos gratuitos en OpenRouter sufren variaciones de formato con frecuencia. La función `normalize_llm_json()` en `evaluator.py` actúa como una capa defensiva que garantiza que la salida siempre se convierta correctamente al modelo estricto de Pydantic.
+   Los modelos de IA sufren variaciones de formato con frecuencia. La función `normalize_llm_json()` en `evaluator.py` actúa como una capa defensiva que sanitiza comas finales (*trailing commas*) y garantiza que la salida siempre se convierta correctamente al modelo estricto de Pydantic.
 2. **Priorización de Grupos para Protección de Cuota:**
-   El orquestador procesa primero las búsquedas locales en Chile antes de consumir cuota en búsquedas internacionales. Si la cuota de 150 llamadas/día se agota a mitad del barrido, los empleos de mayor prioridad para el usuario ya fueron procesados.
+   El orquestador procesa primero las búsquedas locales en Chile antes de consumir cuota en búsquedas internacionales. Si la cuota de llamadas/día se agota a mitad del barrido, los empleos de mayor prioridad para el usuario ya fueron procesados.
 3. **Escapado Dinámico TeX:**
    LaTeX es extremadamente estricto. La función `escape_latex()` en `builder.py` previene que viñetas reescritas por el LLM rompan la compilación tipográfica con el comando `pdflatex`.
+4. **Desacoplamiento de Ingesta y Pool de Fallover Adaptativo:**
+   El scraping jamás se aborta por incidencias del LLM. Además, si un modelo de IA sufre sobrecarga (503) o cuota (429), el pool (`GeminiProvider`) conmuta automáticamente al siguiente modelo sano (`gemini-flash-lite-latest`, `gemini-3.6-flash`, etc.) y recuerda el índice activo (*sticky index*) para las siguientes evaluaciones.
 
 ---
 
@@ -156,7 +161,7 @@ Une todos los componentes en un flujo secuencial robusto:
 4. Agregar el scraper al array `execution_groups` en `src/main.py`.
 
 ### Ejecutar y Extender las Pruebas Unitarias
-Para correr la suite de 24 tests unitarios:
+Para correr la suite completa de 69 tests unitarios:
 ```bash
 .venv/bin/python -m pytest -v
 ```

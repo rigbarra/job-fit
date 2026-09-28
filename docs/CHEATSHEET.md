@@ -129,12 +129,12 @@ search_scope: "chile"    # "chile" (solo nacional), "international" (solo USD/re
 ### Cambiar el Modelo de IA / LLM (`.env`)
 Para cambiar el modelo o proveedor sin tocar código, edita tu archivo `.env`:
 ```bash
-# Opción 1: Google Gemini (Recomendado - Gratuito, Rápido y Alto Razonamiento)
-LLM_MODEL="gemini-3.8-flash"
-LLM_API_KEY="AIzaSy..."
+# Opción 1: Google Gemini (Recomendado - Gratuito, Rápido y con Pool Resiliente)
+LLM_MODEL="gemini-flash-lite-latest"
+LLM_API_KEY="AIzaSy... o AQ...."
 
-# Opción 2: Google Gemini alternativo (Gemini 3.6 Flash)
-LLM_MODEL="gemini-3.6-flash"
+# Opción 2: Google Gemini alternativos (Fallback automático activo a 3.6 / 3.7 / 3.8)
+# LLM_MODEL="gemini-3.6-flash"
 
 # Opción 3: OpenRouter
 LLM_MODEL="meta-llama/llama-3-70b-instruct"

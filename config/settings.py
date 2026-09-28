@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # Configuración Universal y Agnóstica de LLM
     llm_api_key: str | None = Field(None, validation_alias="LLM_API_KEY")
-    llm_model: str = Field("gemini-3.8-flash", validation_alias="LLM_MODEL")
+    llm_model: str = Field("gemini-flash-lite-latest", validation_alias="LLM_MODEL")
     llm_base_url: str | None = Field(None, validation_alias="LLM_BASE_URL")
     llm_provider: str | None = Field(None, validation_alias="LLM_PROVIDER")
 

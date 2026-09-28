@@ -69,7 +69,7 @@ Es gratuito y la configuración es mínima. Límite: ~1.500 requests/día con Ge
 En tu `.env` usarás:
 ```env
 LLM_API_KEY=AIzaSy...tu_clave_aqui
-LLM_MODEL=gemini-3.8-flash
+LLM_MODEL=gemini-flash-lite-latest
 ```
 
 #### Opción B — OpenRouter · Para acceder a otros modelos (Claude, DeepSeek, GPT-4o...)
@@ -132,7 +132,7 @@ Reemplaza los valores de ejemplo con los tuyos:
 ```env
 LLM_API_KEY="pega-aqui-tu-api-key-de-google-ai-studio"
 DISCORD_WEBHOOK_URL="pega-aqui-tu-webhook-url-o-deja-vacio"
-LLM_MODEL="gemini-3.8-flash"
+LLM_MODEL="gemini-flash-lite-latest"
 ```
 Guarda con `Ctrl+O`, `Enter`, `Ctrl+X`.
 
@@ -249,7 +249,7 @@ flowchart TD
 * **Filtro Estricto de Modalidad:** Descarta vacantes 100% presenciales o con 3+ días en oficina en Chile.
 
 ### 3. Fábrica Universal y Agnóstica de LLM (`src/agent/providers.py`)
-* **Google Gemini API:** Integración nativa con `gemini-3.8-flash`, `gemini-3.6-flash` o `gemini-2.5-pro` usando tu API Key oficial.
+* **Google Gemini API:** Integración nativa con `gemini-flash-lite-latest` y pool de failover adaptativo inteligente (`gemini-3.6-flash`, `gemini-3.7-flash`, `gemini-3.8-flash`) con conmutación en caliente ante saturaciones o límites de tasa.
 * **OpenRouter:** Soporte para modelos libres o pagados (`google/gemma-3-27b-it:free`, `anthropic/claude-3.5-sonnet`, `deepseek/deepseek-r1`).
 * **OpenAI / DeepSeek / Groq / Ollama Local:** Soporte para endpoints compatibles (`LLM_BASE_URL`).
 
