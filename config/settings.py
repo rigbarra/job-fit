@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # Rutas
     output_pdf_dir: str = Field("./data/generated_cvs", validation_alias="OUTPUT_PDF_DIR")
     templates_dir: str = Field("./templates/cv", validation_alias="TEMPLATES_DIR")
+    obsidian_vault_path: str | None = Field(None, validation_alias="OBSIDIAN_VAULT_PATH")
 
     # Project Root
     project_root: Path = Path(__file__).resolve().parent.parent

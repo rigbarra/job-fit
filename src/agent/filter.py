@@ -63,7 +63,8 @@ def parse_salary_details(salary_str: str) -> tuple[float | None, float | None, s
 
     s_lower = salary_str.lower()
 
-    # Rechazar explícitamente si el número corresponde a métricas operacionales (clientes, usuarios, etc.)
+    # Rechazar explícitamente si el número corresponde a métricas operacionales no salariales
+    is_hourly_rate = any(h in s_lower for h in ["por hora", "la hora", "/hora", "/hr", "per hour"])
     non_monetary_metrics = [
         "cliente",
         "usuario",
@@ -73,17 +74,18 @@ def parse_salary_details(salary_str: str) -> tuple[float | None, float | None, s
         "llamada",
         "habitante",
         "consulta",
-        "hora",
-        "dia",
-        "semana",
         "visita",
         "descarga",
     ]
+    if not is_hourly_rate:
+        non_monetary_metrics.extend(["hora", "dia", "semana"])
+
     if any(m in s_lower for m in non_monetary_metrics):
         return None, None, None
 
-    # Normalizar centavos estadounidenses (.00 o ,00)
-    s = re.sub(r"\.00\b", "", salary_str)
+    # Normalizar centavos estadounidenses (.00 o ,00) y corregir erratas de tipeo como ,00. -> ,000
+    s = re.sub(r",00\.$", ",000", salary_str)
+    s = re.sub(r"\.00\b", "", s)
     s = re.sub(r",00\b", "", s)
 
     clean_str = s.replace(".", "").replace(",", "")
@@ -91,7 +93,19 @@ def parse_salary_details(salary_str: str) -> tuple[float | None, float | None, s
     if not nums:
         return None, None, None
 
-    is_usd = "usd" in s_lower or max(nums) < 100000
+    # Si hay una disparidad extrema por errata de tipeo (ej: 100 vs 90000), descartar el mínimo erróneo
+    if len(nums) >= 2 and min(nums) < 1000 and max(nums) >= 20000:
+        nums = [max(nums)]
+
+    # Determinar moneda: si está entre 20.000 y 500.000 sin mención explícita de CLP, es USD anual
+    if 20000 <= max(nums) <= 500000 and "clp" not in s_lower:
+        is_usd = True
+    else:
+        is_usd = "usd" in s_lower or max(nums) < 100000
+
+    if is_hourly_rate and "clp" in s_lower:
+        is_usd = False
+
     currency = "USD" if is_usd else "CLP"
 
     if len(nums) >= 2:

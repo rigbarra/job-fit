@@ -43,6 +43,27 @@ def get_windows_downloads_dir() -> Path | None:
     return None
 
 
+def get_windows_documents_dir() -> Path | None:
+    """Detecta dinámicamente la carpeta Documentos del usuario activo en Windows sin quemar nombres."""
+    userprofile = os.environ.get("USERPROFILE")
+    if userprofile:
+        drive_letter = userprofile[0].lower()
+        subpath = userprofile[2:].replace("\\", "/")
+        p = Path(f"/mnt/{drive_letter}{subpath}/Documents")
+        if p.exists():
+            return p
+
+    c_users = Path("/mnt/c/Users")
+    if c_users.exists():
+        excluded = {"default", "default user", "public", "all users"}
+        for user_dir in c_users.iterdir():
+            if user_dir.is_dir() and user_dir.name.lower() not in excluded:
+                docs = user_dir / "Documents"
+                if docs.exists():
+                    return docs
+    return None
+
+
 def to_wsl_unc_path(linux_path: Path, distro: str = "Debian") -> str:
     r"""Convierte ruta Linux/WSL a file:// URI (file://///wsl$/Debian/...) para abrir desde Obsidian."""
     resolved = str(linux_path.resolve())
@@ -97,14 +118,26 @@ def is_job_notified(job: Job, match: MatchResult, notification_rules: dict, sear
 def _resolve_vault(base_dir: Path | None, obsidian_cfg: dict) -> Path:
     if base_dir:
         return base_dir
+
+    # 1. Variable de entorno explícita (OBSIDIAN_VAULT_PATH en .env)
+    env_vault = getattr(settings, "obsidian_vault_path", None)
+    if env_vault:
+        return Path(env_vault)
+
+    # 2. Configuración explícita en config.yaml (si no es 'auto')
     configured_vault = obsidian_cfg.get("vault_path")
-    if configured_vault:
+    if configured_vault and configured_vault != "auto":
         cfg_p = Path(configured_vault)
         if str(cfg_p).startswith("/mnt/") and not Path("/mnt/c").exists():
             return Path(settings.project_root) / "output" / "obsidian"
         return cfg_p
-    if Path("/mnt/c").exists():
-        return Path("/mnt/c/job-fit-obsidian")
+
+    # 3. Detección dinámica de Documentos en Windows para WSL
+    win_docs = get_windows_documents_dir()
+    if win_docs:
+        return win_docs / "Obsidian Vaults" / "job-fit"
+
+    # 4. Fallback estándar para Linux nativo, macOS o Docker
     return Path(settings.project_root) / "output" / "obsidian"
 
 

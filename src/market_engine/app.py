@@ -121,69 +121,37 @@ def load_data(scope_filter: str = "chile"):
     roles_counter = Counter([normalize_role(j.title) for j in valid_data_jobs])
     top_roles = [r for r, _ in roles_counter.most_common()]
 
-    # Procesar Salarios según Ámbito (CLP para Chile, USD para Internacional)
+    # Procesar Salarios usando la función centralizada y validada de analytics
+    from src.market_engine.analytics import extract_and_normalize_salary
+
     jobs_with_salary: list[dict] = []
     is_usd_mode = scope_filter == "international"
 
     for job in valid_data_jobs:
-        min_v = job.min_salary
-        max_v = job.max_salary
-        curr = (job.salary_currency or "CLP").upper()
+        sal = extract_and_normalize_salary(job)
+        if sal:
+            if is_usd_mode:
+                jobs_with_salary.append({
+                    "role": sal["role"],
+                    "min_val": sal["usd_min"],
+                    "avg_val": sal["usd_avg"],
+                    "max_val": sal["usd_max"],
+                    "equiv_clp": sal["clp_avg"],
+                    "currency": "USD",
+                })
+            else:
+                jobs_with_salary.append({
+                    "role": sal["role"],
+                    "min_val": sal["clp_min"],
+                    "avg_val": sal["clp_avg"],
+                    "max_val": sal["clp_max"],
+                    "currency": "CLP",
+                })
 
-        if not min_v and not max_v and job.salary:
-            min_v, max_v, parsed_curr = parse_salary_details(job.salary)
-            if parsed_curr:
-                curr = parsed_curr
-
-        if not min_v and not max_v and job.description:
-            sal_match = re.search(
-                r"(?:sueldo|salario|remuneraci[oó]n|renta|salary|compensaci[oó]n)[^\$\n\r0-9]{0,40}(\$?\s*[0-9][0-9\.\,]+(?:\s*(?:-|a|to)\s*\$?\s*[0-9][0-9\.\,]+)?)",
-                job.description,
-                re.IGNORECASE,
-            )
-            if sal_match:
-                min_v, max_v, parsed_curr = parse_salary_details(sal_match.group(1))
-                if parsed_curr:
-                    curr = parsed_curr
-
-        if min_v or max_v:
-            min_raw = min_v or max_v or 0
-            max_raw = max_v or min_v or 0
-            avg_v = (min_raw + max_raw) / 2.0
-            if avg_v > 0:
-                # Normalizar a mensualidad
-                if (curr == "USD" or avg_v < 100000) and avg_v >= 20000:
-                    avg_v /= 12.0; min_raw /= 12.0; max_raw /= 12.0
-                elif curr == "CLP" and avg_v >= 18000000:
-                    avg_v /= 12.0; min_raw /= 12.0; max_raw /= 12.0
-
-                if is_usd_mode:
-                    # Convertir todo a USD/mes
-                    usd_avg = avg_v / USD_TO_CLP if curr == "CLP" or avg_v > 100000 else avg_v
-                    usd_min = min_raw / USD_TO_CLP if curr == "CLP" or avg_v > 100000 else min_raw
-                    usd_max = max_raw / USD_TO_CLP if curr == "CLP" or avg_v > 100000 else max_raw
-                    if 1000 <= usd_avg <= 35000:
-                        jobs_with_salary.append({
-                            "role": normalize_role(job.title),
-                            "min_val": usd_min, "avg_val": usd_avg, "max_val": usd_max,
-                            "currency": "USD",
-                        })
-                else:
-                    # Convertir todo a CLP/mes
-                    clp_avg = avg_v * USD_TO_CLP if (curr == "USD" or avg_v < 100000) else avg_v
-                    clp_min = min_raw * USD_TO_CLP if (curr == "USD" or avg_v < 100000) else min_raw
-                    clp_max = max_raw * USD_TO_CLP if (curr == "USD" or avg_v < 100000) else max_raw
-                    if 600000 <= clp_avg <= 20000000:
-                        jobs_with_salary.append({
-                            "role": normalize_role(job.title),
-                            "min_val": clp_min, "avg_val": clp_avg, "max_val": clp_max,
-                            "currency": "CLP",
-                        })
-
-    salaries_by_role: dict[str, list[tuple[float, float, float]]] = {}
+    salaries_by_role: dict[str, list[dict]] = {}
     all_median_salaries = []
     for s in jobs_with_salary:
-        salaries_by_role.setdefault(s["role"], []).append((s["min_val"], s["avg_val"], s["max_val"]))
+        salaries_by_role.setdefault(s["role"], []).append(s)
         all_median_salaries.append(s["avg_val"])
 
     global_salary_median = sorted(all_median_salaries)[len(all_median_salaries)//2] if all_median_salaries else 0
@@ -209,34 +177,11 @@ def load_data(scope_filter: str = "chile"):
 
 
 def main():
-    # Sidebar: Selector de Ámbito de Mercado
-    st.sidebar.title("⚙️ Filtros de Mercado")
-    selected_scope_label = st.sidebar.radio(
-        "🌐 Ámbito de Publicación:",
-        ["Chile (Empresas Locales)", "Internacional / LATAM (Remoto)", "Todos (Vista Consolidada)"],
-        index=0,
-    )
+def render_scope_dashboard(data: dict, is_usd: bool = False):
+    """Renderiza el dashboard completo para un ámbito de mercado específico."""
+    curr_unit = "USD/mes" if is_usd else "CLP"
 
-    scope_map = {
-        "Chile (Empresas Locales)": "chile",
-        "Internacional / LATAM (Remoto)": "international",
-        "Todos (Vista Consolidada)": "all",
-    }
-    active_scope = scope_map[selected_scope_label]
-
-    data = load_data(scope_filter=active_scope)
-
-    if not data:
-        st.error("No se encontraron vacantes en la base de datos.")
-        return
-
-    # Título Principal
-    st.title("📊 Estudio de Mercado Laboral: Data & Analytics Chile")
-    st.caption(f"📅 **Periodo:** `{data['first_date']}` al `{data['now_str']}`  |  🏦 **Fuentes:** {', '.join(data['sources'])}")
-
-    st.markdown("---")
-
-    # KPIs Principales (Tarjetas de alto impacto)
+    # KPIs Principales
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(f"""
@@ -254,7 +199,6 @@ def main():
             </div>
         """, unsafe_allow_html=True)
     with c3:
-        # Calcular % Remoto
         tot_rem = sum(1 for j in data['valid_data_jobs'] if "remoto 100%" in extract_detailed_modality(j.location, j.description, j.job_type).lower())
         rem_pct = (tot_rem / data['n_base']) * 100
         st.markdown(f"""
@@ -264,14 +208,15 @@ def main():
             </div>
         """, unsafe_allow_html=True)
     with c4:
-        currency_unit = "USD/mes" if active_scope == "international" else "CLP"
-        sal_str = f"${data['global_salary_median']:,.0f} {currency_unit}" if data['global_salary_median'] else "N/D"
+        sal_str = f"${data['global_salary_median']:,.0f} {curr_unit}" if data['global_salary_median'] else "N/D"
         st.markdown(f"""
             <div class="metric-card">
                 <div class="metric-val" style="color:#f9e2af;">{sal_str}</div>
                 <div class="metric-lbl">Mediana Salarial Observada</div>
             </div>
         """, unsafe_allow_html=True)
+
+    st.caption("ℹ️ *Nota de referencia:* Las vacantes, tecnologías, modalidades y bandas salariales son 100% objetivas de mercado. La columna **Fit Personal** muestra cuántas de estas vacantes hacen match con tu CV.")
 
     # -------------------------------------------------------------
     # SECCIÓN 1: Demanda por Rol
@@ -298,7 +243,6 @@ def main():
         st.dataframe(df_roles, use_container_width=True, hide_index=True)
 
     with col_g1:
-        # Gráfico simple de barras horizontal (solo donde agrega valor)
         df_chart = pd.DataFrame({
             "Rol": [r["Rol / Perfil"] for r in role_rows],
             "Ofertas": [r["N° Vacantes Mercado"] for r in role_rows]
@@ -321,6 +265,7 @@ def main():
         "Data Analyst & BI Specialist",
         "Analytics Engineer",
         "Data Scientist",
+        "Data Governance & Quality",
         "Data Architect",
         "Other Data & Analytics",
     ]
@@ -394,7 +339,7 @@ def main():
         })
 
     mod_rows.append({
-        "Rol": "TOTAL MERCADO",
+        "Rol": "TOTAL SEGMENTO",
         "Remoto 100%": f"{tot_rem} ({tot_rem/data['n_base']*100:.0f}%)",
         "Híbrido": f"{tot_hib} ({tot_hib/data['n_base']*100:.0f}%)",
         "Presencial 100%": f"{tot_pre} ({tot_pre/data['n_base']*100:.0f}%)",
@@ -412,27 +357,33 @@ def main():
     # SECCIÓN 4: Salarios Reales Capturados
     # -------------------------------------------------------------
     st.subheader("4. Bandas Salariales Reales Capturadas")
-    curr_label = "USD" if active_scope == "international" else "CLP"
-    st.caption(f"Datos salariales 100% factuales extraídos desde avisos (Unidad: {curr_label}). Cobertura: {data['n_with_salary']} ofertas con salario de {data['n_data']} ({(data['n_with_salary']/data['n_base'])*100:.1f}%).")
+    st.caption(f"Datos salariales 100% factuales extraídos desde avisos (Unidad: {curr_unit}). Cobertura: {data['n_with_salary']} ofertas con salario de {data['n_data']} ({(data['n_with_salary']/data['n_base'])*100:.1f}%). Esta estadística incluye todas las ofertas que publicaron salario, sin filtrar por fit de CV.")
 
     if data['salaries_by_role']:
         sal_rows = []
         for role, samples in data['salaries_by_role'].items():
-            mins = [s[0] for s in samples]
-            avgs = sorted([s[1] for s in samples])
-            maxs = [s[2] for s in samples]
+            mins = [s["min_val"] for s in samples]
+            avgs = sorted([s["avg_val"] for s in samples])
+            maxs = [s["max_val"] for s in samples]
             n_samples = len(samples)
             med = avgs[n_samples // 2]
             p75 = avgs[int(n_samples * 0.75)] if n_samples >= 2 else med
-            sal_rows.append({
+            row_dict = {
                 "Perfil / Cargo": role,
                 "Muestras (n)": n_samples,
-                f"Mínimo {curr_label}": f"${min(mins):,.0f}",
-                f"Mediana (P50) {curr_label}": f"${med:,.0f}",
-                f"Target Senior (P75) {curr_label}": f"${p75:,.0f}",
-                f"Máximo {curr_label}": f"${max(maxs):,.0f}",
+                f"Mínimo {curr_unit}": f"${min(mins):,.0f}",
+                f"Mediana (P50) {curr_unit}": f"${med:,.0f}",
+                f"Target Senior (P75) {curr_unit}": f"${p75:,.0f}",
+                f"Máximo {curr_unit}": f"${max(maxs):,.0f}",
                 "_med_val": med
-            })
+            }
+            if is_usd:
+                clp_avgs = sorted([s["equiv_clp"] for s in samples])
+                med_clp = clp_avgs[n_samples // 2]
+                row_dict["Equiv. Mediana CLP"] = f"${med_clp:,.0f} CLP"
+
+            sal_rows.append(row_dict)
+
         sal_rows.sort(key=lambda x: x["_med_val"], reverse=True)
 
         # Tarjeta destacada para cargos de IA
@@ -443,7 +394,7 @@ def main():
                 f"""
                 <div style="background-color: #181825; border-left: 4px solid #89dceb; border-radius: 8px; padding: 14px 18px; margin: 15px 0 20px 0;">
                     <span style="font-size: 1.05rem;">🤖 <strong style="color: #89dceb;">Destacado Perfiles de IA:</strong></span>
-                    <span style="color: #cdd6f4;"> El cargo <strong style="color: #cba6f7;">{top_ai['Perfil / Cargo']}</strong> registra una Mediana (P50) de <strong style="color: #f9e2af;">{top_ai[f'Mediana (P50) {curr_label}']}</strong> y un Target Senior (P75) de <strong style="color: #a6e3a1;">{top_ai[f'Target Senior (P75) {curr_label}']}</strong>.</span>
+                    <span style="color: #cdd6f4;"> El cargo <strong style="color: #cba6f7;">{top_ai['Perfil / Cargo']}</strong> registra una Mediana (P50) de <strong style="color: #f9e2af;">{top_ai[f'Mediana (P50) {curr_unit}']}</strong> y un Target Senior (P75) de <strong style="color: #a6e3a1;">{top_ai[f'Target Senior (P75) {curr_unit}']}</strong>.</span>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -454,7 +405,7 @@ def main():
             df_sal = df_sal.drop(columns=["_med_val"])
         st.dataframe(df_sal, use_container_width=True, hide_index=True)
     else:
-        st.info("Sin datos salariales explícitos capturados en el periodo analizado.")
+        st.info("Sin datos salariales explícitos capturados en este segmento.")
 
     st.markdown("---")
 
@@ -463,13 +414,43 @@ def main():
     # -------------------------------------------------------------
     with st.expander("📌 Nota Metodológica y Fuentes"):
         st.markdown(f"""
-        - **Fuentes de datos:** {', '.join(data['sources'])} (scraping automatizado de portales chilenos e internacionales).
+        - **Fuentes de datos:** {', '.join(data['sources'])} (scraping automatizado de portales de empleo).
         - **Periodo cubierto:** {data['first_date']} al {data['now_str']}.
         - **Universo en BD:** {data['total_jobs_db']} registros brutos ({data['n_data']} Data & Analytics; {data['n_noise']} ruido no-TI descartado).
         - **Normalización:** Clasificación por patrones configurados dinámicamente en `config/config.yaml`.
-        - **Salarios:** Extraídos de campos estructurados o por regex en descripción. Rango de validación: $600.000–$12.000.000 CLP/mes.
+        - **Salarios:** Extraídos de campos estructurados o regex. Rango de validación: $600.000–$12.000.000 CLP/mes (o equivalente USD).
         - **Fit personal (Tier 1+2):** Evaluación LLM del perfil del candidato. Es un dato personal de referencia.
         """)
+
+
+def main():
+    st.title("📊 Estudio de Mercado Laboral: Data & Analytics")
+    st.caption("Inteligencia de mercado factual sobre ofertas de empleo capturadas.")
+
+    st.info(
+        "💡 **Estudio de Mercado Objetivo:** Este informe procesa todas las ofertas de empleo capturadas "
+        "de forma factual y 100% agnóstica a tu CV. La columna de **Fit Personal (Tier 1+2)** se incluye "
+        "como capa de referencia complementaria para mostrar qué porcentaje del mercado se alinea con tu perfil actual."
+    )
+
+    tab_chile, tab_intl = st.tabs([
+        "🇨🇱 Mercado Local Chile (Empresas Nacionales)",
+        "🌎 Mercado Internacional / LATAM (Remoto USD)",
+    ])
+
+    with tab_chile:
+        data_chile = load_data(scope_filter="chile")
+        if data_chile:
+            render_scope_dashboard(data_chile, is_usd=False)
+        else:
+            st.warning("No hay datos de vacantes para Chile.")
+
+    with tab_intl:
+        data_intl = load_data(scope_filter="international")
+        if data_intl:
+            render_scope_dashboard(data_intl, is_usd=True)
+        else:
+            st.warning("No hay datos de vacantes internacionales.")
 
 
 if __name__ == "__main__":

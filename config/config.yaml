@@ -191,6 +191,21 @@ role_normalization:
     - "director"
     - "directora"
     - "head of"
+    - "gerente"
+    - "redes de datos"
+    - "docente"
+    - "profesor"
+    - "profesora"
+    - "digitador"
+    - "digitadora"
+    - "datos ambientales"
+    - "prevención de pérdidas"
+    - "prevencion de perdidas"
+    - "ai data training"
+    - "guardia de seguridad"
+    - "rrhh"
+    - "recursos humanos"
+    - "talent community"
   categories:
     - name: "AI & LLM Engineer"
       keywords:
@@ -206,6 +221,7 @@ role_normalization:
           "ai &",
           "& ai",
           "ai senior",
+          "ai specialist",
         ]
     - name: "Machine Learning / MLOps Engineer"
       keywords:
@@ -218,15 +234,6 @@ role_normalization:
           "aprendizaje automatico",
           "soluciones de aprendizaje",
         ]
-    - name: "Analytics Engineer"
-      keywords:
-        [
-          "analytics engineer",
-          "analytics engineering",
-          "ingeniero de analitica",
-          "ingeniero de analítica",
-          "ingeniera de analítica",
-        ]
     - name: "Data Architect"
       keywords:
         [
@@ -235,6 +242,26 @@ role_normalization:
           "arquitecta de datos",
           "arquitectura de datos",
           "plataforma de datos",
+          "data architecture",
+          "data & architecture",
+          "data ai architect",
+        ]
+    - name: "Analytics Engineer"
+      keywords:
+        [
+          "analytics engineer",
+          "analytics engineering",
+          "ingeniero de analitica",
+          "ingeniero de analítica",
+          "ingeniera de analítica",
+          "soluciones analíticas",
+          "soluciones analiticas",
+          "analytics consultant",
+          "consultor analytics",
+          "modelador de datos",
+          "modeladora de datos",
+          "modelador(a) de datos",
+          "digital analytics",
         ]
     - name: "Data Engineer"
       keywords:
@@ -243,15 +270,47 @@ role_normalization:
           "ingeniero de datos",
           "ingeniera de datos",
           "ingeniería de datos",
+          "ingenieria de datos",
           "big data",
           "etl engineer",
+          "etl developer",
+          "etl",
           "data platform",
           "pipeline engineer",
           "data layer developer",
           "data operations engineer",
+          "data operational engineer",
           "ingeniero sql",
           "streaming/flink",
           "flink",
+          "databricks",
+          "data integration",
+          "data warehouse",
+          "data acquisition",
+          "data infrastructure",
+          "data operations",
+          "data storage & operations",
+          "data systems",
+          "data solutions engineer",
+          "data program engineer",
+          "data & software engineer",
+          "data software engineer",
+          "software engineer, data",
+          "software engineer - data",
+          "data enginner",
+          "data egnineer",
+          "engenharia de dados",
+          "engenheiro de dados",
+          "ingénieur data",
+          "database reliability engineer",
+          "database administrator",
+          "dba",
+          "desarrollador de bases de datos",
+          "bases de datos sql",
+          "data services",
+          "salesforce data migration",
+          "business data cloud",
+          "plataforma y datos",
         ]
     - name: "Data Scientist"
       keywords:
@@ -261,6 +320,22 @@ role_normalization:
           "científico de datos",
           "cientista de datos",
           "data science",
+        ]
+    - name: "Data Governance & Quality"
+      keywords:
+        [
+          "data governance",
+          "gobierno de datos",
+          "calidad de datos",
+          "data quality",
+          "datos maestros",
+          "master data",
+          "data master",
+          "metadatos",
+          "metadata",
+          "data steward",
+          "data harmonization",
+          "mejora de datos",
         ]
     - name: "Data Analyst & BI Specialist"
       keywords:
@@ -277,12 +352,53 @@ role_normalization:
           "analytics specialist",
           "analista analitica",
           "analista analítica",
-          "data quality",
-          "data steward",
           "adobe analytics",
           "business analyst",
           "data enablement",
           "operations insights",
+          "data consultant",
+          "consultor data",
+          "consultor bi",
+          "senior data consultant",
+          "people analytics",
+          "talent analytics",
+          "hr data",
+          "inteligencia de personas",
+          "data operation analyst",
+          "data support analyst",
+          "data automation analyst",
+          "analista de automatización",
+          "analista de automatizacion",
+          "analista de procesos y datos",
+          "data business partner",
+          "data specialist",
+          "especialista de datos",
+          "especialista bi",
+          "especialista datos",
+          "analítica avanzada",
+          "analitica avanzada",
+          "commercial intelligence",
+          "real estate intelligence",
+          "business analytics",
+          "data analytics",
+          "data processing",
+          "analista junior de datos",
+          "analista jr de datos",
+          "analista sr de datos",
+          "data trainee",
+          "trainee - data",
+          "trainees ti - data",
+          "practicante",
+          "práctica",
+          "practica",
+          "intern",
+          "data expert",
+          "data strategist",
+          "operations advanced analytics",
+          "sap analytics",
+          "technology data & performance",
+          "risk & analytics",
+          "data analysis",
         ]
     - name: "Other Data & Analytics"
       keywords: ["data", "datos", "analytics", "analítica", "analitica"]
@@ -291,18 +407,21 @@ role_normalization:
 tracked_technologies:
   "SQL": "\\bsql\\b"
   "Python": "\\bpython\\b"
+  "Power BI / DAX": "\\bpower\\s*bi\\b|\\bdax\\b"
+  "Excel": "\\bexcel\\b"
   "AWS": "\\baws\\b|\\bamazon web services\\b|\\bathena\\b|\\bredshift\\b|\\bglue\\b"
   "Git & CI/CD": "\\bgit\\b|\\bgithub\\b|\\bgitlab\\b|\\bci/cd\\b|\\bci\\/cd\\b"
   "Azure": "\\bazure\\b|\\bdata factory\\b|\\bfabric\\b|\\bsynapse\\b"
-  "GCP / BigQuery": "\\bgcp\\b|\\bgoogle cloud\\b|\\bbigquery\\b"
   "Databricks": "\\bdatabricks\\b"
-  "Apache Spark / PySpark": "\\bspark\\b|\\bpyspark\\b"
-  "Power BI / DAX": "\\bpower\\s*bi\\b|\\bdax\\b"
-  "Snowflake": "\\bsnowflake\\b"
   "dbt": "\\bdbt\\b|\\bdata build tool\\b"
-  "Apache Airflow": "\\bairflow\\b"
-  "Apache Kafka": "\\bkafka\\b|\\bstreaming\\b|\\bflink\\b"
   "Tableau": "\\btableau\\b"
+  "Apache Spark / PySpark": "\\bspark\\b|\\bpyspark\\b"
+  "Snowflake": "\\bsnowflake\\b"
+  "GCP / BigQuery": "\\bgcp\\b|\\bgoogle cloud\\b|\\bbigquery\\b"
+  "Looker / Looker Studio": "\\blooker\\b|\\blooker\\s*studio\\b"
+  "Apache Airflow": "\\bairflow\\b"
+  "R": "\\brstudio\\b|\\bprogramming\\s+in\\s+r\\b|\\bprogramaci[oó]n\\s+en\\s+r\\b|\\br\\s+o\\s+python\\b|\\bpython\\s+o\\s+r\\b|\\br\\s+y\\s+python\\b|\\bpython\\s+y\\s+r\\b|\\br\\s*,\\s*python\\b|\\bpython\\s*,\\s*r\\b|\\br\\s+language\\b|\\blenguaje\\s+r\\b|\\br\\s+script\\b"
+  "Apache Kafka": "\\bkafka\\b|\\bstreaming\\b|\\bflink\\b"
   "GenAI / LLM / RAG": "\\bgenai\\b|\\bllm\\b|\\brag\\b|\\blangchain\\b|\\bllamaindex\\b"
   "Terraform / IaC": "\\bterraform\\b|\\biac\\b"
   "Docker / Kubernetes": "\\bdocker\\b|\\bkubernetes\\b|\\bk8s\\b"
@@ -312,7 +431,7 @@ tracked_technologies:
 
 # Configuración del Vault de Obsidian y Kanban
 obsidian:
-  vault_path: "/mnt/c/job-fit-obsidian"
+  vault_path: "auto" # 'auto' detecta dinámicamente tu usuario Windows en WSL (Documents/Obsidian Vaults/job-fit) o ./output/obsidian en Linux/Docker. También puedes fijar una ruta absoluta o usar OBSIDIAN_VAULT_PATH en .env
   auto_clean_orphans: true # Si borras una tarjeta del tablero, purga automáticamente sus archivos .md y .pdf del disco
   start_cutoff: "2026-09-04 21:10:00" # Punto de corte temporal para vacantes nuevas
   ghosted_days_threshold: 60 # Días desde publicación para mover automáticamente a 'Ghosted / Sin Respuesta'

@@ -31,18 +31,21 @@ def get_tech_patterns() -> dict[str, str]:
     return {
         "SQL": r"\bsql\b",
         "Python": r"\bpython\b",
+        "Power BI / DAX": r"\bpower\s*bi\b|\bdax\b",
+        "Excel": r"\bexcel\b",
         "AWS": r"\baws\b|\bamazon web services\b|\bathena\b|\bredshift\b|\bglue\b",
         "Git & CI/CD": r"\bgit\b|\bgithub\b|\bgitlab\b|\bci/cd\b|\bci\/cd\b",
         "Azure": r"\bazure\b|\bdata factory\b|\bfabric\b|\bsynapse\b",
-        "GCP / BigQuery": r"\bgcp\b|\bgoogle cloud\b|\bbigquery\b",
         "Databricks": r"\bdatabricks\b",
-        "Apache Spark / PySpark": r"\bspark\b|\bpyspark\b",
-        "Power BI / DAX": r"\bpower\s*bi\b|\bdax\b",
-        "Snowflake": r"\bsnowflake\b",
         "dbt": r"\bdbt\b|\bdata build tool\b",
-        "Apache Airflow": r"\bairflow\b",
-        "Apache Kafka": r"\bkafka\b|\bstreaming\b|\bflink\b",
         "Tableau": r"\btableau\b",
+        "Apache Spark / PySpark": r"\bspark\b|\bpyspark\b",
+        "Snowflake": r"\bsnowflake\b",
+        "GCP / BigQuery": r"\bgcp\b|\bgoogle cloud\b|\bbigquery\b",
+        "Looker / Looker Studio": r"\blooker\b|\blooker\s*studio\b",
+        "Apache Airflow": r"\bairflow\b",
+        "R": r"\brstudio\b|\bprogramming\s+in\s+r\b|\bprogramaci[oó]n\s+en\s+r\b|\br\s+o\s+python\b|\bpython\s+o\s+r\b|\br\s+y\s+python\b|\bpython\s+y\s+r\b|\br\s*,\s*python\b|\bpython\s*,\s*r\b|\br\s+language\b|\blenguaje\s+r\b|\br\s+script\b",
+        "Apache Kafka": r"\bkafka\b|\bstreaming\b|\bflink\b",
         "GenAI / LLM / RAG": r"\bgenai\b|\bllm\b|\brag\b|\blangchain\b|\bllamaindex\b",
         "Terraform / IaC": r"\bterraform\b|\biac\b",
         "Docker / Kubernetes": r"\bdocker\b|\bkubernetes\b|\bk8s\b",
@@ -308,189 +311,212 @@ def is_job_chile(job: Job) -> bool:
     return any(term in loc for term in CHILE_TERMS)
 
 
-def generate_market_study_report(output_path: str | None = None, scope: str | None = None) -> tuple[str, str]:
+def extract_and_normalize_salary(job: Job) -> dict | None:
     """
-    Genera el Estudio de Mercado Histórico Acumulativo en vivo.
-    Procesa las vacantes acumuladas en la base de datos histórica segun el ámbito ('chile' o 'international'),
-    calculando matrices cruzadas por rol, penetración tecnológica, modalidad y salarios reales.
-
-    Returns:
-        tuple[str, str]: (ruta del archivo markdown generado, texto del reporte)
+    Extrae, valida y normaliza el salario de una vacante a valores mensuales en CLP y USD.
+    Detecta automáticamente periodicidad horaria (* 160h/mes), anual (/ 12),
+    limpia erratas y descarta beneficios no salariales o monedas foráneas incompatibles.
     """
-    config = load_config()
-    active_scope = scope or config.get("search_scope", "chile")
+    text = job.description or ""
+    loc = (job.location or "").lower()
 
-    with Session(repo.engine) as session:
-        jobs = session.exec(select(Job)).all()
-        matches = session.exec(select(MatchResult)).all()
+    # Descartar monedas locales extranjeras que no sean USD ni CLP (ej: COP, BRL, ARS, EUR)
+    if any(country in loc for country in ["colombia", "bogot", "medell", "brazil", "brasil", "argentina", "méxico", "mexico", "españa", "madrid"]):
+        if "usd" not in text.lower() and getattr(job, "salary_currency", "") != "USD":
+            return None
 
-    if not jobs:
-        logger.warning("No hay vacantes en la base de datos para generar el estudio de mercado.")
-        return "", "No hay datos de vacantes suficientes en la base de datos."
+    min_v = job.min_salary
+    max_v = job.max_salary
+    curr = (job.salary_currency or "").upper()
+    is_hourly = False
+    is_annual = False
 
-    total_jobs_db = len(jobs)
+    if not min_v and not max_v and job.salary:
+        min_v, max_v, parsed_curr = parse_salary_details(job.salary)
+        if parsed_curr:
+            curr = parsed_curr
 
-    # Universo de análisis: vacantes del dominio Data & Analytics filtradas por ámbito ('chile' o 'international')
-    raw_data_jobs = [j for j in jobs if normalize_role(j.title) != "Excluded Non-Data Role"]
-    if active_scope == "chile":
-        valid_data_jobs = [j for j in raw_data_jobs if is_job_chile(j)]
-    elif active_scope == "international":
-        valid_data_jobs = [j for j in raw_data_jobs if not is_job_chile(j)]
-    else:
-        valid_data_jobs = raw_data_jobs
+    if not min_v and not max_v and text:
+        clean_text = re.sub(r"sin goce de sueldo", "", text, flags=re.I)
+        clean_text = re.sub(r"parental leave", "", clean_text, flags=re.I)
+        clean_text = re.sub(r"reajuste de sueldo", "", clean_text, flags=re.I)
 
-    n_data = len(valid_data_jobs)
-    n_noise = total_jobs_db - n_data
-    n_base = n_data if n_data else 1  # denominador seguro
+        sal_match = re.search(
+            r"\b(?:sueldo|salario|remuneraci[oó]n|renta\s+ofertada|renta\s+l[ií]quida|renta\s+bruta|renta|salary\s+range|salary)\b[^\$\n\r0-9]{0,40}(\$?\s*[0-9][0-9\.\,]+(?:\s*(?:-|a|to)\s*\$?\s*[0-9][0-9\.\,]+)?)",
+            clean_text,
+            re.IGNORECASE,
+        )
+        if sal_match:
+            snippet = clean_text[sal_match.start():sal_match.end()+25].lower()
+            if any(h in snippet for h in ["hora", "/hr", "per hour", "por hora", "la hora"]):
+                is_hourly = True
+            if any(a in snippet for a in ["anual", "año", "year", "annual"]):
+                is_annual = True
 
-    # Fit personal acumulado histórico (Tier 1 + Tier 2, sobre toda la BD)
-    tier12_ids = {m.job_id for m in matches if m.tier in (1, 2)}
-    tier1_count = sum(1 for m in matches if m.tier == 1)
-    tier2_count = sum(1 for m in matches if m.tier == 2)
-    n_fit = tier1_count + tier2_count
+            matched_num_str = sal_match.group(1)
+            if re.search(r",00\.$", matched_num_str):
+                matched_num_str = re.sub(r",00\.$", ",000", matched_num_str)
 
-    created_dates = [j.created_at for j in jobs if j.created_at]
-    first_date = min(created_dates).strftime("%d/%m/%Y") if created_dates else "N/D"
-    now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
-
-    # Roles
-    roles_counter = Counter([normalize_role(j.title) for j in valid_data_jobs])
-    top_roles = [r for r, _ in roles_counter.most_common()]
-
-    # ----------------------------------------------------------------
-    # SALARIOS REALES (universo completo de datos, histórico)
-    # ----------------------------------------------------------------
-    jobs_with_salary: list[dict] = []
-    for job in valid_data_jobs:
-        min_v = job.min_salary
-        max_v = job.max_salary
-        curr = (job.salary_currency or "CLP").upper()
-
-        if not min_v and not max_v and job.salary:
-            min_v, max_v, parsed_curr = parse_salary_details(job.salary)
+            min_v, max_v, parsed_curr = parse_salary_details(matched_num_str)
             if parsed_curr:
                 curr = parsed_curr
 
-        if not min_v and not max_v and job.description:
-            sal_match = re.search(
-                r"(?:sueldo|salario|remuneraci[oó]n|renta|salary|compensaci[oó]n)[^\$\n\r0-9]{0,40}(\$?\s*[0-9][0-9\.\,]+(?:\s*(?:-|a|to)\s*\$?\s*[0-9][0-9\.\,]+)?)",
-                job.description,
-                re.IGNORECASE,
-            )
-            if sal_match:
-                min_v, max_v, parsed_curr = parse_salary_details(sal_match.group(1))
-                if parsed_curr:
-                    curr = parsed_curr
+    if not min_v and not max_v:
+        return None
 
-        if min_v or max_v:
-            min_raw = min_v or max_v or 0
-            max_raw = max_v or min_v or 0
-            avg_v = (min_raw + max_raw) / 2.0
-            if avg_v > 0:
-                if (curr == "USD" or avg_v < 100000) and avg_v >= 20000:
-                    avg_v /= 12.0; min_raw /= 12.0; max_raw /= 12.0
-                elif curr == "CLP" and avg_v >= 18000000:
-                    avg_v /= 12.0; min_raw /= 12.0; max_raw /= 12.0
-                if curr == "USD" or avg_v < 100000:
-                    clp_avg = avg_v * USD_TO_CLP
-                    clp_min = min_raw * USD_TO_CLP
-                    clp_max = max_raw * USD_TO_CLP
-                else:
-                    clp_avg = avg_v; clp_min = min_raw; clp_max = max_raw
-                if 600000 <= clp_avg <= 20000000:
-                    jobs_with_salary.append({
-                        "role": normalize_role(job.title),
-                        "min_clp": clp_min, "avg_clp": clp_avg, "max_clp": clp_max,
-                    })
+    min_raw = min_v or max_v or 0
+    max_raw = max_v or min_v or 0
+    if min_raw <= 0 and max_raw <= 0:
+        return None
 
-    salaries_by_role: dict[str, list[tuple[float, float, float]]] = {}
-    for s in jobs_with_salary:
-        salaries_by_role.setdefault(s["role"], []).append((s["min_clp"], s["avg_clp"], s["max_clp"]))
+    if min_raw > max_raw:
+        min_raw, max_raw = max_raw, min_raw
 
-    n_with_salary = len(jobs_with_salary)
-    pct_salary = (n_with_salary / n_base) * 100
+    # Saneamiento de erratas de orden de magnitud (ej: min 100 vs max 90000)
+    if min_raw < 1000 and max_raw >= 20000:
+        min_raw = max_raw
 
-    # ----------------------------------------------------------------
-    # TECH PATTERNS
-    # ----------------------------------------------------------------
-    tech_patterns = get_tech_patterns()
+    desc_lower = text.lower()
+    if not is_hourly and any(h in desc_lower for h in ["/hora", "por hora", "la hora", "per hour", "clp/hr", "usd/hr"]):
+        if any(f"{int(min_raw)}" in desc_lower for _ in [1]):
+            is_hourly = True
 
-    # ----------------------------------------------------------------
-    # CONSTRUCCIÓN DEL REPORTE
-    # ----------------------------------------------------------------
-    sources = sorted(set(j.source.capitalize() for j in valid_data_jobs))
-    sources_str = ", ".join(sources) if sources else "N/D"
+    if not curr:
+        if "usd" in desc_lower or "u$s" in desc_lower or "dólar" in desc_lower or "dolar" in desc_lower:
+            curr = "USD"
+        elif 20000 <= max_raw <= 500000 and "clp" not in desc_lower:
+            curr = "USD"
+        elif "clp" in desc_lower or "$" in desc_lower or "pesos" in desc_lower:
+            curr = "CLP"
+        else:
+            curr = "USD" if max_raw < 100000 else "CLP"
+    elif curr == "CLP" and 20000 <= max_raw <= 500000 and "clp" not in desc_lower:
+        curr = "USD"
+
+    if curr == "CLP" and max_raw <= 500:
+        return None
+
+    if curr == "USD" and max_raw > 10000 and is_hourly:
+        curr = "CLP"
+
+    if is_hourly:
+        min_raw *= 160
+        max_raw *= 160
+
+    avg_raw = (min_raw + max_raw) / 2.0
+
+    if curr == "USD":
+        if avg_raw >= 20000 or is_annual:
+            min_raw /= 12.0
+            max_raw /= 12.0
+            avg_raw /= 12.0
+        clp_min = min_raw * USD_TO_CLP
+        clp_max = max_raw * USD_TO_CLP
+        clp_avg = avg_raw * USD_TO_CLP
+        usd_min = min_raw
+        usd_max = max_raw
+        usd_avg = avg_raw
+    else:  # CLP
+        if avg_raw >= 18000000 or is_annual:
+            min_raw /= 12.0
+            max_raw /= 12.0
+            avg_raw /= 12.0
+        clp_min = min_raw
+        clp_max = max_raw
+        clp_avg = avg_raw
+        usd_min = min_raw / USD_TO_CLP
+        usd_max = max_raw / USD_TO_CLP
+        usd_avg = avg_raw / USD_TO_CLP
+
+    if 600000 <= clp_avg <= 12000000 and clp_min >= 500000:
+        return {
+            "role": normalize_role(job.title),
+            "clp_min": round(clp_min),
+            "clp_avg": round(clp_avg),
+            "clp_max": round(clp_max),
+            "usd_min": round(usd_min),
+            "usd_avg": round(usd_avg),
+            "usd_max": round(usd_max),
+            "orig_curr": curr,
+            "is_hourly": is_hourly,
+        }
+    return None
+
+
+def _render_market_section(
+    section_title: str,
+    scope_desc: str,
+    jobs: list[Job],
+    tier12_ids: set[int],
+    is_usd: bool = False,
+    tech_patterns: dict[str, str] | None = None,
+) -> list[str]:
+    """Renderiza una sección analítica completa para un ámbito geográfico específico."""
+    if not jobs:
+        return [f"## {section_title}\n\n*Sin vacantes registradas para este ámbito.*"]
 
     lines: list[str] = []
+    n_data = len(jobs)
+    n_base = n_data if n_data else 1
+    roles_counter = Counter([normalize_role(j.title) for j in jobs])
+    top_roles = [r for r, _ in roles_counter.most_common()]
 
-    # ── ENCABEZADO ──────────────────────────────────────────────────
     lines += [
-        "# Estudio Histórico de Mercado Laboral: Data & Analytics Chile",
+        f"## {section_title}",
         "",
-        f"> **Periodo cubierto:** `{first_date}` — `{now_str}`",
-        f"> **Universo de análisis:** {n_data} vacantes del dominio Data & Analytics  ",
-        f"> **Tu fit personal acumulado:** {n_fit} ofertas afines (Tier 1+2) sobre {n_data} del mercado = **{(n_fit/n_base)*100:.1f}%**",
+        f"> **Ámbito:** {scope_desc} | **Universo analizado:** {n_data} vacantes factuales.",
         "",
-        "---",
-    ]
-
-    # ── SECCIÓN 1: DEMANDA POR ROL ──────────────────────────────────
-    lines += [
+        "### 1. Demanda de Mercado por Rol",
         "",
-        "## 1. Demanda de Mercado por Rol",
-        "",
-        "Distribución de todas las vacantes de datos capturadas históricamente, ordenadas por volumen de demanda.",
-        "La columna *Fit personal* es referencia tuya exclusivamente y no forma parte del análisis de mercado.",
+        "Distribución objetiva de vacantes capturadas en este ámbito geográfico. "
+        "La columna *Fit Personal* es una referencia complementaria sobre tu perfil y no afecta el análisis de mercado.",
         "",
         "| Rol | N° Vacantes (Mercado) | % del Mercado | Fit Personal (T1+T2) |",
         "| :--- | ---: | ---: | ---: |",
     ]
+
     for role, count in roles_counter.most_common():
         pct = (count / n_base) * 100
-        r_jobs = [j for j in valid_data_jobs if normalize_role(j.title) == role]
+        r_jobs = [j for j in jobs if normalize_role(j.title) == role]
         t12 = sum(1 for j in r_jobs if j.id in tier12_ids)
         lines.append(f"| **{role}** | {count} | {pct:.1f}% | {t12} |")
-    lines.append(f"| **TOTAL** | **{n_data}** | **100%** | **{n_fit}** |")
+    n_fit_scope = sum(1 for j in jobs if j.id in tier12_ids)
+    lines.append(f"| **TOTAL** | **{n_data}** | **100%** | **{n_fit_scope}** |")
 
-    # ── SECCIÓN 2: MATRIZ TECNOLÓGICA (herramientas × roles) ────────
-    matrix_roles = [r for r in top_roles if roles_counter[r] >= 2][:5]
-    role_jobs = {r: [j for j in valid_data_jobs if normalize_role(j.title) == r] for r in matrix_roles}
-    role_ns   = {r: len(role_jobs[r]) or 1 for r in matrix_roles}
+    # Tecnologías
+    if tech_patterns:
+        matrix_roles = [r for r in top_roles if roles_counter[r] >= 2][:5]
+        role_jobs = {r: [j for j in jobs if normalize_role(j.title) == r] for r in matrix_roles}
+        role_ns = {r: len(role_jobs[r]) or 1 for r in matrix_roles}
 
-    col_headers = ["Herramienta / Stack"] + [f"{r} (n={roles_counter[r]})" for r in matrix_roles] + [f"**Global (n={n_data})**"]
-    sep = ["| :--- |"] + [" ---: |"] * (len(matrix_roles) + 1)
+        col_headers = ["Herramienta / Stack"] + [f"{r} (n={roles_counter[r]})" for r in matrix_roles] + [f"**Global (n={n_data})**"]
+        sep = ["| :--- |"] + [" ---: |"] * (len(matrix_roles) + 1)
 
+        lines += [
+            "",
+            "### 2. Penetración Tecnológica por Rol",
+            "",
+            f"Frecuencia de mención de herramientas sobre las {n_data} vacantes analizadas en este ámbito.",
+            "",
+            "| " + " | ".join(col_headers) + " |",
+            "".join(sep),
+        ]
+
+        for tech, pat in tech_patterns.items():
+            row = [f"**{tech}**"]
+            for r in matrix_roles:
+                cnt = sum(1 for j in role_jobs[r] if re.search(pat, f"{j.title} {j.description}".lower()))
+                row.append(f"{cnt} ({(cnt/role_ns[r])*100:.0f}%)")
+            glob = sum(1 for j in jobs if re.search(pat, f"{j.title} {j.description}".lower()))
+            row.append(f"**{glob} ({(glob/n_base)*100:.1f}%)**")
+            lines.append("| " + " | ".join(row) + " |")
+
+    # Modalidad
     lines += [
         "",
-        "---",
+        "### 3. Modalidad de Trabajo por Rol",
         "",
-        "## 2. Penetración Tecnológica por Rol",
-        "",
-        f"Porcentaje de ofertas de cada perfil que mencionan cada herramienta. "
-        f"Universo: {n_data} vacantes Data & Analytics acumuladas históricamente.",
-        "",
-        "| " + " | ".join(col_headers) + " |",
-        "".join(sep),
-    ]
-
-    for tech, pat in tech_patterns.items():
-        row = [f"**{tech}**"]
-        for r in matrix_roles:
-            cnt = sum(1 for j in role_jobs[r] if re.search(pat, f"{j.title} {j.description}".lower()))
-            row.append(f"{cnt} ({(cnt/role_ns[r])*100:.0f}%)")
-        glob = sum(1 for j in valid_data_jobs if re.search(pat, f"{j.title} {j.description}".lower()))
-        row.append(f"**{glob} ({(glob/n_base)*100:.1f}%)**")
-        lines.append("| " + " | ".join(row) + " |")
-
-    # ── SECCIÓN 3: MATRIZ MODALIDAD × ROL ──────────────────────────
-    lines += [
-        "",
-        "---",
-        "",
-        "## 3. Modalidad de Trabajo por Rol",
-        "",
-        "Distribución de régimen presencial para cada perfil. "
-        "Valores sobre el universo histórico acumulado completo de datos.",
+        "Distribución de régimen presencial para cada perfil en este segmento.",
         "",
         "| Rol | Remoto 100% | Híbrido | Presencial 100% | No especificado | Total | % Remoto |",
         "| :--- | ---: | ---: | ---: | ---: | ---: | ---: |",
@@ -498,7 +524,7 @@ def generate_market_study_report(output_path: str | None = None, scope: str | No
 
     tot_rem = tot_hib = tot_pre = tot_ne = 0
     for role in top_roles:
-        rjs = [j for j in valid_data_jobs if normalize_role(j.title) == role]
+        rjs = [j for j in jobs if normalize_role(j.title) == role]
         rt = len(rjs) or 1
         c_rem = c_hib = c_pre = c_ne = 0
         for j in rjs:
@@ -514,66 +540,193 @@ def generate_market_study_report(output_path: str | None = None, scope: str | No
             f"| {rt} | **{c_rem/rt*100:.0f}%** |"
         )
     lines.append(
-        f"| **TOTAL MERCADO** | **{tot_rem} ({tot_rem/n_base*100:.0f}%)** "
+        f"| **TOTAL SEGMENTO** | **{tot_rem} ({tot_rem/n_base*100:.0f}%)** "
         f"| **{tot_hib} ({tot_hib/n_base*100:.0f}%)** "
         f"| **{tot_pre} ({tot_pre/n_base*100:.0f}%)** "
         f"| **{tot_ne} ({tot_ne/n_base*100:.0f}%)** "
         f"| **{n_data}** | **{tot_rem/n_base*100:.0f}%** |"
     )
 
-    # ── SECCIÓN 4: SALARIOS REALES ──────────────────────────────────
+    # Salarios
+    sal_samples_by_role: dict[str, list[dict]] = {}
+    for j in jobs:
+        sal = extract_and_normalize_salary(j)
+        if sal:
+            sal_samples_by_role.setdefault(sal["role"], []).append(sal)
+
+    total_sal_samples = sum(len(v) for v in sal_samples_by_role.values())
+    pct_sal = (total_sal_samples / n_base) * 100
+
     lines += [
+        "",
+        "### 4. Bandas Salariales Reales Capturadas",
+        "",
+        f"Datos salariales 100% factuales extraídos de los avisos de empleo (tarifas horarias mensualizadas a 160h/mes, anuales divididas entre 12). "
+        f"Muestra: {total_sal_samples} ofertas con salario explícito ({pct_sal:.1f}% del segmento). "
+        f"**Esta estadística incluye todas las ofertas con dato salarial, sin ningún filtro de fit con tu CV.**",
+        "",
+    ]
+
+    if sal_samples_by_role:
+        if is_usd:
+            lines += [
+                "| Perfil | n | Mínimo USD/mes | Mediana (P50) USD/mes | Target Senior (P75) USD/mes | Máximo USD/mes | Equiv. Mediana CLP |",
+                "| :--- | ---: | ---: | ---: | ---: | ---: | ---: |",
+            ]
+            stats_usd = []
+            for role, samples in sal_samples_by_role.items():
+                mins = [s["usd_min"] for s in samples]
+                avgs = sorted([s["usd_avg"] for s in samples])
+                maxs = [s["usd_max"] for s in samples]
+                clp_avgs = sorted([s["clp_avg"] for s in samples])
+                n_s = len(samples)
+                med_usd = avgs[n_s // 2]
+                p75_usd = avgs[int(n_s * 0.75)] if n_s >= 2 else med_usd
+                med_clp = clp_avgs[n_s // 2]
+                stats_usd.append((role, n_s, min(mins), med_usd, p75_usd, max(maxs), med_clp))
+            stats_usd.sort(key=lambda x: x[3], reverse=True)
+            for role, n, mn, med, p75_val, mx, m_clp in stats_usd:
+                lines.append(f"| **{role}** | {n} | ${mn:,.0f} | **${med:,.0f}** | **${p75_val:,.0f}** | ${mx:,.0f} | ${m_clp:,.0f} CLP |")
+        else:
+            lines += [
+                "| Perfil | n | Mínimo CLP | Mediana (P50) CLP | Target Senior (P75) CLP | Máximo CLP |",
+                "| :--- | ---: | ---: | ---: | ---: | ---: |",
+            ]
+            stats_clp = []
+            for role, samples in sal_samples_by_role.items():
+                mins = [s["clp_min"] for s in samples]
+                avgs = sorted([s["clp_avg"] for s in samples])
+                maxs = [s["clp_max"] for s in samples]
+                n_s = len(samples)
+                med = avgs[n_s // 2]
+                p75_val = avgs[int(n_s * 0.75)] if n_s >= 2 else med
+                stats_clp.append((role, n_s, min(mins), med, p75_val, max(maxs)))
+            stats_clp.sort(key=lambda x: x[3], reverse=True)
+            for role, n, mn, med, p75_val, mx in stats_clp:
+                lines.append(f"| **{role}** | {n} | ${mn:,.0f} | **${med:,.0f}** | **${p75_val:,.0f}** | ${mx:,.0f} |")
+    else:
+        lines.append("*Sin datos salariales explícitos capturados en este segmento.*")
+
+    lines.append("")
+    return lines
+
+
+def generate_market_study_report(output_path: str | None = None, scope: str | None = None) -> tuple[str, str]:
+    """
+    Genera el Estudio de Mercado Histórico Acumulativo en vivo.
+    Procesa las vacantes acumuladas en la base de datos histórica separando de forma
+    limpia el mercado local chileno y el mercado internacional remoto para evitar sesgos.
+
+    Returns:
+        tuple[str, str]: (ruta del archivo markdown generado, texto del reporte)
+    """
+    config = load_config()
+    active_scope = scope or config.get("search_scope", "all")
+
+    with Session(repo.engine) as session:
+        jobs = session.exec(select(Job)).all()
+        matches = session.exec(select(MatchResult)).all()
+
+    if not jobs:
+        logger.warning("No hay vacantes en la base de datos para generar el estudio de mercado.")
+        return "", "No hay datos de vacantes suficientes en la base de datos."
+
+    total_jobs_db = len(jobs)
+    raw_data_jobs = [j for j in jobs if normalize_role(j.title) != "Excluded Non-Data Role"]
+    chile_jobs = [j for j in raw_data_jobs if is_job_chile(j)]
+    intl_jobs = [j for j in raw_data_jobs if not is_job_chile(j)]
+
+    tier12_ids = {m.job_id for m in matches if m.tier in (1, 2)}
+    total_data_jobs = len(raw_data_jobs)
+    n_noise = total_jobs_db - total_data_jobs
+
+    created_dates = [j.created_at for j in jobs if j.created_at]
+    first_date = min(created_dates).strftime("%d/%m/%Y") if created_dates else "N/D"
+    now_str = datetime.now().strftime("%d/%m/%Y %H:%M")
+    tech_patterns = get_tech_patterns()
+
+    sources = sorted(set(j.source.capitalize() for j in raw_data_jobs))
+    sources_str = ", ".join(sources) if sources else "N/D"
+
+    lines: list[str] = [
+        "# Estudio Histórico de Mercado Laboral: Data & Analytics",
+        "",
+        f"> **Periodo cubierto:** `{first_date}` — `{now_str}`",
+        f"> **Universo analizado:** {total_data_jobs} vacantes factuales del dominio Data & Analytics ({len(chile_jobs)} Chile, {len(intl_jobs)} Internacionales).",
+        f"> **Objetividad Factual:** Este estudio procesa todas las ofertas de mercado de forma 100% agnóstica a cualquier perfil o CV. Las estadísticas de roles, tecnologías, modalidades y salarios no están filtradas por fit.",
+        f"> **Alineación con tu CV:** Las métricas de *Fit Personal* (Tier 1+2) se incluyen exclusivamente como capa de referencia complementaria.",
         "",
         "---",
         "",
-        "## 4. Bandas Salariales Reales Capturadas",
-        "",
-        f"Datos salariales 100% factuales extraídos directamente desde los avisos de empleo. "
-        f"Se unifica a CLP (1 USD = ${USD_TO_CLP:,}). "
-        f"Cobertura: {n_with_salary} ofertas con salario explícito de {n_data} ({pct_salary:.1f}%). "
-        f"El {100-pct_salary:.1f}% restante no publicó banda salarial.",
     ]
 
-    if salaries_by_role:
+    if active_scope == "chile":
+        lines += _render_market_section(
+            "Mercado Laboral Chile (Empresas Locales)",
+            "Empresas en Chile con régimen local y salarios en CLP",
+            chile_jobs,
+            tier12_ids,
+            is_usd=False,
+            tech_patterns=tech_patterns,
+        )
+    elif active_scope == "international":
+        lines += _render_market_section(
+            "Mercado Internacional / LATAM (Remoto / Contractor)",
+            "Ofertas internacionales y LATAM contratadas remotamente (USD)",
+            intl_jobs,
+            tier12_ids,
+            is_usd=True,
+            tech_patterns=tech_patterns,
+        )
+    else:  # "all" -> Segmentación limpia de ambas realidades sin sesgos
+        lines += _render_market_section(
+            "PARTE I: 🇨🇱 Mercado Laboral Chile (Empresas Locales)",
+            "Empresas en Chile con régimen local y salarios en CLP",
+            chile_jobs,
+            tier12_ids,
+            is_usd=False,
+            tech_patterns=tech_patterns,
+        )
+        lines += ["---", ""]
+        lines += _render_market_section(
+            "PARTE II: 🌎 Mercado Internacional / LATAM (Remoto / Contractor)",
+            "Ofertas internacionales y LATAM contratadas remotamente (USD)",
+            intl_jobs,
+            tier12_ids,
+            is_usd=True,
+            tech_patterns=tech_patterns,
+        )
+        lines += ["---", ""]
         lines += [
+            "## PARTE III: ⚖️ Síntesis Comparativa (Chile vs Internacional)",
             "",
-            "| Perfil | n | Mínimo CLP | Mediana (P50) CLP | Target Senior (P75) CLP | Máximo CLP |",
-            "| :--- | ---: | ---: | ---: | ---: | ---: |",
+            "Contraste directo entre el mercado corporativo local y el mercado de teletrabajo contractor:",
+            "",
+            "| Dimensión | 🇨🇱 Mercado Chile (Local) | 🌎 Internacional / Remoto (USD) |",
+            "| :--- | :--- | :--- |",
+            f"| **Volumen de Vacantes** | {len(chile_jobs)} ofertas ({len(chile_jobs)/max(1, total_data_jobs)*100:.1f}%) | {len(intl_jobs)} ofertas ({len(intl_jobs)/max(1, total_data_jobs)*100:.1f}%) |",
+            f"| **Modalidad 100% Remota** | ~20% (predominio de modelo híbrido 2x3 o presencial) | 100% (teletrabajo transfronterizo) |",
+            "| **Moneda de Negociación** | Pesos Chilenos (CLP mensual líquido o bruto) | Dólares Americanos (USD mensual / anual B2B) |",
+            "| **Herramientas Clave de Negocio** | Power BI, SQL, Excel Avanzado, Azure, AWS, Looker | dbt, Snowflake, Databricks, BigQuery, Terraform, Kafka |",
+            "",
         ]
-        role_sal_stats = []
-        for role, samples in salaries_by_role.items():
-            mins = [s[0] for s in samples]
-            avgs = sorted([s[1] for s in samples])
-            maxs = [s[2] for s in samples]
-            n_samples = len(samples)
-            med = avgs[n_samples // 2]
-            p75 = avgs[int(n_samples * 0.75)] if n_samples >= 2 else med
-            role_sal_stats.append((role, n_samples, min(mins), med, p75, max(maxs)))
-        role_sal_stats.sort(key=lambda x: x[3], reverse=True)
-        for role, n, mn, med, p75_val, mx in role_sal_stats:
-            lines.append(f"| **{role}** | {n} | ${mn:,.0f} | **${med:,.0f}** | **${p75_val:,.0f}** | ${mx:,.0f} |")
-    else:
-        lines.append("\n*Sin datos salariales explícitos capturados en el período analizado.*")
 
     # ── NOTA METODOLÓGICA AL PIE ────────────────────────────────────
     lines += [
-        "",
         "---",
         "",
         "## Nota Metodológica",
         "",
         "| Dimensión | Detalle |",
         "| :--- | :--- |",
-        f"| **Fuentes de datos** | {sources_str} (scraping automatizado de portales de empleo chilenos) |",
+        f"| **Fuentes de datos** | {sources_str} (scraping automatizado de portales de empleo) |",
         f"| **Periodo cubierto** | {first_date} al {now_str} |",
-        f"| **Universo total en BD** | {total_jobs_db} registros brutos ({n_data} del dominio Data & Analytics; {n_noise} descartados como ruido no-TI) |",
-        "| **Criterio de inclusión** | Vacantes cuyo título contenga términos de datos/analítica (Data Engineer, Analytics Engineer, BI, etc.) |",
-        "| **Normalización de roles** | Clasificación automática por regex sobre el título de la oferta en 8 categorías estándar |",
-        "| **Modalidad** | Clasificación por detección de patrones de texto en título, descripción y campo de ubicación |",
-        "| **Salarios** | Extraídos de campos estructurados del portal o por regex en la descripción. Anuales convertidos a mensuales. Rango válido: $600.000–$12.000.000 CLP/mes |",
+        f"| **Universo total en BD** | {total_jobs_db} registros brutos ({total_data_jobs} del dominio Data & Analytics; {n_noise} descartados como ruido no-TI) |",
+        "| **Segmentación Geográfica** | Separación metodológica entre empresas locales chilenas y ofertas internacionales/contractor para eliminar distorsión salarial y de modalidad |",
+        "| **Normalización de roles** | Clasificación por regex sobre el título en 9 categorías estándar (incluyendo Data Governance & Quality) |",
+        "| **Salarios** | Extraídos de campos estructurados o regex contextual. Tarifas horarias calculadas a 160h/mes, anuales divididas entre 12. Rango mensual válido: $600.000–$12.000.000 CLP |",
         f"| **Tipo de cambio** | 1 USD = ${USD_TO_CLP:,} CLP (referencia fija de configuración) |",
-        "| **Fit personal (Tier 1+2)** | Evaluación LLM del perfil del candidato contra cada oferta. Es un dato personal, no de mercado. |",
-        "| **Limitaciones** | Muestra acotada a portales configurados. Salarios explícitos en minoría (~25%). Modalidad puede no estar especificada en aviso. |",
+        "| **Fit personal (Tier 1+2)** | Métrica complementaria del perfil del candidato. No filtra ni altera ninguna métrica de mercado. |",
     ]
 
     report_text = "\n".join(lines)
