@@ -218,58 +218,30 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
     job_type_lower = normalize_text(job.job_type or "")
     text_combined = f"{title} {location_lower} {modality_lower} {job_type_lower} {description}"
 
-    # 1. Lista Negra de Títulos Excluidos (Control de Gestión tradicional, Ciencia de Datos pura, Jr, etc.)
-    title_blacklist = [
-        "control de gestion",
-        "control de gestión",
-        "controller",
-        "analista de procesos",
-        "analista de operaciones",
-        "analista de calidad",
-        "analista contable",
-        "analista de gestion",
-        "analista de gestión",
-        "gestion y procesos",
-        "gestión y procesos",
-        "pmo",
-        "rrhh",
-        "recursos humanos",
-        "seleccion",
-        "selección",
-        "abastecimiento",
-        "adquisiciones",
-        "cientifico de datos",
-        "cientista de datos",
-        "data science",
-        "data scientist",
-        "machine learning",
-        "ml engineer",
-        "arquitecto datos",
-        "junior",
-        "jr",
-    ]
-    for term in title_blacklist:
-        if term in title:
-            return False, f"Descarte algorítmico: El título contiene término excluido '{term}'."
-
-    # 1.5. Exclusión Estricta de Cargos de Liderazgo / Gerencia (Manager, Lead, Jefe, Director, Head of)
-    leadership_terms = [
-        "manager",
-        "lead",
-        "lider",
-        "líder",
-        "jefe",
-        "jefa",
-        "director",
-        "directora",
-        "head of",
-    ]
-    for term in leadership_terms:
-        if term in title:
-            return (
-                False,
-                f"Descarte algorítmico: Título contiene rol de liderazgo excluido '{term}'.",
-            )
+    # 1. Descarte estricto por palabras clave excluidas en el Título (leídas de config.yaml)
+    title_keywords_exclude = filter_config.get(
+        "title_keywords_exclude",
+        [
+            "control de gestion", "control de gestión", "controller", "analista de procesos",
+            "analista de operaciones", "analista de calidad", "analista contable", "analista de gestion",
+            "analista de gestión", "gestion y procesos", "gestión y procesos", "pmo", "rrhh",
+            "recursos humanos", "seleccion", "selección", "abastecimiento", "adquisiciones",
+            "cientifico de datos", "cientista de datos", "data science", "data scientist",
+            "machine learning", "ml engineer", "arquitecto datos", "junior", "jr", "practicante",
+            "practica", "práctica", "intern", "internship", "trainee", "pasante", "pasantia",
+            "pasantía", "estudiante", "memorista", "tesista", "manager", "lead", "lider",
+            "líder", "jefe", "jefa", "director", "directora", "head of", "gerente",
+        ],
+    )
+    for term in title_keywords_exclude:
+        term_clean = term.lower().strip()
+        if len(term_clean) <= 3:
+            if re.search(r"\b" + re.escape(term_clean) + r"\b", title):
+                return False, f"Descarte algorítmico: El título contiene término excluido '{term_clean}'."
+        elif term_clean in title:
+            if term_clean in ["manager", "lead", "lider", "líder", "jefe", "jefa", "director", "directora", "head of", "gerente"]:
+                return False, f"Descarte algorítmico: Título contiene rol de liderazgo excluido '{term_clean}'."
+            return False, f"Descarte algorítmico: El título contiene término excluido '{term_clean}'."
 
     # 2. Validar palabras clave en el título (cualquiera de la lista permitida)
     title_keywords = filter_config.get("title_keywords_any", [])
@@ -505,14 +477,17 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
                 "Descarte algorítmico: Vacante en Chile exige 3 o más días presenciales por semana.",
             )
 
-        # Regla Innegociable para Santiago / Región Metropolitana:
-        # El candidato reside en Viña del Mar y rechaza traslados presenciales diarios a Santiago.
-        # Por ende, una vacante localizada en Santiago/RM DEBE ser Remota o Híbrida.
-        is_santiago = any(stgo in location_lower for stgo in [
-            "santiago", "region metropolitana", "región metropolitana", "las condes", 
-            "providencia", "huechuraba", "quilicura", "pudahuel", "san bernardo", 
-            "ciudad empresarial", "vitacura", "lo barnechea"
-        ])
+        # Regla Territorial Local:
+        # Si la vacante se ubica en una ciudad/comuna restringida por distancia geográfica, DEBE ser Remota o Híbrida.
+        strict_cities = config.get("local_modality_rules", {}).get(
+            "strict_remote_or_hybrid_cities",
+            [
+                "santiago", "region metropolitana", "región metropolitana", "las condes", 
+                "providencia", "huechuraba", "quilicura", "pudahuel", "san bernardo", 
+                "ciudad empresarial", "vitacura", "lo barnechea"
+            ]
+        )
+        is_strict_city = any(city in location_lower for city in strict_cities) if strict_cities else False
         
         has_remote_or_hybrid = any(term in text_combined for term in [
             "100% remoto", "100% remota", "remoto", "remota", "teletrabajo", 
@@ -522,10 +497,10 @@ def should_evaluate_job(job: Job) -> tuple[bool, str]:
             "dias en oficina", "dias remotos", "dias de home office", "flexible"
         ])
 
-        if is_santiago and not has_remote_or_hybrid:
+        if is_strict_city and not has_remote_or_hybrid:
             return (
                 False,
-                "Descarte algorítmico: Vacante en Santiago/RM descartada por no especificar modalidad Remota o Híbrida (presencial inviable desde Viña del Mar).",
+                "Descarte algorítmico: Vacante en zona restringida por desplazamiento descartada por no especificar modalidad Remota o Híbrida.",
             )
 
     # 8. Validar Similitud Semántica Vectorial Local (0 Tokens LLM)

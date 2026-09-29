@@ -34,11 +34,11 @@ def get_candidate_profile_text() -> str:
         with open(profile_path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
     except Exception:
-        return "Senior Data Engineer & Analytics Engineer specializing in Python, SQL, dbt, Dagster, Docker, AWS, GCP, Power BI."
+        return "Senior Professional specializing in technical architecture, engineering and strategic execution."
 
     es_data = data.get("es", {})
     summary = es_data.get("summary", "")
-    title = es_data.get("title", "Data Engineer | Analytics Engineer")
+    title = es_data.get("title", data.get("en", {}).get("title", "Technical Specialist"))
 
     # Extraer items de skills
     skills_raw = data.get("skills", {})

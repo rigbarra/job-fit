@@ -235,7 +235,7 @@ def _get_or_create_job(target: str) -> Job | None:
 
 
 def main():
-    parser = argparse.ArgumentParser(prog="job-fit", description="CLI de gestión de postulaciones laboral para Data Engineering")
+    parser = argparse.ArgumentParser(prog="job-fit", description="CLI autónomo de gestión de postulaciones laborales, evaluación ATS y compilación de CV")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Comando: scrape

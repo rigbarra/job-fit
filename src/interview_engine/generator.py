@@ -14,48 +14,44 @@ from src.database.models import Job
 
 logger = logging.getLogger(__name__)
 
-INTERVIEW_PREP_SYSTEM_PROMPT = """
-Eres un Principal Data Engineer y Lead Tech Interviewer con más de 15 años de experiencia entrevistando candidatos de Data Engineering, Analytics Engineering y Data Platform.
+def build_interview_prep_system_prompt(domain: str | None = None) -> str:
+    domain_str = domain or "Tecnología, Datos y Analítica"
+    return f"""
+Eres un Evaluador Técnico Sénior y Lead Interviewer con más de 15 años de experiencia entrevistando candidatos en el área de {domain_str}.
 
 Tu misión es crear una Guía Exhaustiva de Preparación para Entrevista Técnica y Conductual altamente personalizada para la vacante y empresa especificadas.
 
 ### ESTRUCTURA OBLIGATORIA DE LA GUÍA (MARKDOWN):
 
-# 🎯 Guía de Preparación de Entrevista Técnica: {title} en {company}
+# 🎯 Guía de Preparación de Entrevista Técnica: {{title}} en {{company}}
 
-## 1. 🏢 Análisis de la Empresa y Enfoque de Datos
-- **Qué busca la empresa:** Resumen de las necesidades clave de datos descritas en la oferta.
-- **Enfoque técnico principal:** Tecnologías y patrones de diseño requeridos (ej. Databricks, PySpark, dbt, Snowflake, Airflow, AWS).
+## 1. 🏢 Análisis de la Empresa y Enfoque Técnico
+- **Qué busca la empresa:** Resumen de las necesidades clave descritas en la oferta.
+- **Enfoque técnico principal:** Tecnologías, metodologías y patrones de diseño requeridos por la vacante.
 
 ## 2. 💻 Preguntas Técnicas y Respuestas Sugeridas (10 a 12 Preguntas)
-Genera entre 10 y 12 preguntas técnicas profundas clasificadas por categoría:
-- **SQL Avanzado & Performance Tuning** (2-3 preguntas con ejemplos de código SQL).
-- **Python & Distributed Computing (PySpark/Spark/Pandas)** (2-3 preguntas técnicas).
-- **Modelamiento de Datos & Arquitectura (Kimball, Medallion Architecture)** (2 preguntas).
-- **dbt, Orquestación & CI/CD de Datos (Airflow, dbt, Docker, GitHub Actions)** (2 preguntas).
-- **Cloud & Data Warehousing (AWS/GCP/Azure, Snowflake/BigQuery)** (2 preguntas).
+Genera entre 10 y 12 preguntas técnicas profundas clasificadas por los pilares técnicos clave exigidos en la oferta.
 
 *Para cada pregunta:*
 - **Pregunta:** Texto exacto de la pregunta.
 - **Respuesta Clave Sugerida:** Respuesta técnica limpia y concisa adaptada a la experiencia real del perfil del candidato.
 
 ## 3. 🗣️ Preguntas Conductuales (Metodología STAR)
-Genera 4 escenarios conductuales típicos en Data Engineering:
-1. *Manejo de incidentes de pipeline en producción o falla de datos en madrugada.*
-2. *Resolución de cuellos de botella de rendimiento o costos desbordados.*
-3. *Negociación con stakeholders / analistas por cambios en modelos de datos.*
-4. *Migración de sistemas legacy a arquitecturas modernas en la nube.*
+Genera 4 escenarios conductuales típicos en roles de {domain_str} alineados a los desafíos de la empresa.
 
 *Para cada escenario:* Proporcionar la estructura **Situación -> Tarea -> Acción -> Resultado**.
 
 ## 4. ❓ Preguntas Estratégicas para Hacerle al Entrevistador (3-5 Preguntas)
-Preguntas inteligentes sobre la madurez de los datos, deuda técnica, tamaño del equipo y cultura.
+Preguntas inteligentes sobre la madurez del equipo, deuda técnica, gobernanza, impacto del negocio y cultura.
 
 ### REGLAS DE IDIOMA Y FORMATO:
 - Si la vacante está en español -> Generar la guía 100% en ESPAÑOL.
 - Si la vacante está en inglés -> Generar la guía 100% en INGLÉS.
 - Usar formato Markdown limpio con bloques de código explícitos.
 """
+
+INTERVIEW_PREP_SYSTEM_PROMPT = build_interview_prep_system_prompt()
+
 
 
 def sanitize_filename(name: str) -> str:
@@ -96,10 +92,14 @@ def generate_interview_prep(
     {job.description}
     """
 
+    from config.settings import load_config
+    domain = load_config().get("evaluation", {}).get("domain")
+    system_prompt = build_interview_prep_system_prompt(domain)
+
     provider = get_llm_provider()
 
     def _call_llm():
-        return provider.generate(INTERVIEW_PREP_SYSTEM_PROMPT, prompt_user)
+        return provider.generate(system_prompt, prompt_user)
 
     logger.info(f"InterviewEngine: Generando Guía de Entrevista para '{job.title}' @ '{job.company}' [{lang_display}]...")
     markdown_content = call_with_retry(_call_llm)

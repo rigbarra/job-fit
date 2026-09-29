@@ -326,3 +326,28 @@ def test_should_evaluate_job_passes_foreign_city_with_contractor_b2b():
     passed, reason = should_evaluate_job(job)
     assert passed
     assert reason == ""
+
+
+def test_should_evaluate_job_custom_title_keywords_exclude(mocker):
+    """Valida que un usuario pueda personalizar title_keywords_exclude para permitir roles Lead/Manager."""
+    mock_filter_cfg = {
+        "enabled": True,
+        "min_semantic_score": 0.0,
+        "title_keywords_any": ["data", "lead"],
+        "title_keywords_exclude": ["junior", "practicante"],
+        "description_keywords_any": ["sql", "python"],
+    }
+    mocker.patch("src.agent.filter._get_filter_config", return_value=mock_filter_cfg)
+    job = Job(
+        title="Lead Data Engineer",
+        company="GlobalTech",
+        location="Remote",
+        description="Looking for a Lead Data Engineer. Required: Python, SQL, and AWS.",
+        url="https://example.com/job/lead-allowed",
+        source="test",
+        salary="USD $8000 / mes",
+    )
+    passed, reason = should_evaluate_job(job)
+    assert passed
+    assert reason == ""
+

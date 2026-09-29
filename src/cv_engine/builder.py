@@ -142,15 +142,11 @@ def prepare_skills_list(
             job_text += f" {match_result.rationale}".lower()
 
         for item in formatted_skills:
-            cid = item["id"]
-            if cid == "ai_engineering" and any(k in job_text for k in ["ai", "llm", "rag", "genai", "gpt", "inteligencia artificial", "agente"]):
-                item["priority"] = 1
-            elif cid == "bi_analytics" and any(k in job_text for k in ["bi", "power bi", "tableau", "looker", "visualization", "dashboard", "report"]):
-                item["priority"] = 2
-            elif cid == "data_engineering" and any(k in job_text for k in ["data engineer", "pipeline", "etl", "dbt", "sql", "pyspark", "databricks"]):
-                item["priority"] = 3
-            elif cid == "cloud_bigdata" and any(k in job_text for k in ["aws", "gcp", "azure", "cloud", "emr", "bigquery", "redshift", "databricks"]):
-                item["priority"] = 4
+            raw_details = item.get("details", "")
+            clean_details = raw_details.replace(r"\_", "_").replace(r"\&", "&").replace(r"\%", "%")
+            terms = [re.sub(r"[^\w\s-]", "", t).strip().lower() for t in clean_details.split(",") if len(t.strip()) > 1]
+            matches = sum(1 for term in terms if term and term in job_text)
+            item["priority"] = max(1, 10 - matches)
 
         formatted_skills.sort(key=lambda x: x["priority"])
 

@@ -48,13 +48,15 @@ def _maybe_notify(
     if any(ex.lower() in (job.company or "").lower() for ex in excluded_comps):
         should_notify = False
 
-    # Bloqueo de seguridad territorial: Nunca notificar vacantes presenciales en Santiago/RM
-    is_santiago = any(stgo in (job.location or "").lower() for stgo in [
-        "santiago", "metropolitana", "las condes", "providencia", "huechuraba", "ciudad empresarial"
-    ])
-    if is_santiago and getattr(job, "modality", None) == "Presencial":
+    # Bloqueo de seguridad territorial: Ciudades restringidas no permiten modalidad Presencial
+    strict_cities = load_config().get("local_modality_rules", {}).get(
+        "strict_remote_or_hybrid_cities",
+        ["santiago", "metropolitana", "las condes", "providencia", "huechuraba", "ciudad empresarial"]
+    )
+    is_strict_city = any(city in (job.location or "").lower() for city in strict_cities) if strict_cities else False
+    if is_strict_city and getattr(job, "modality", None) == "Presencial":
         logger.info(
-            f"Notificación omitida para vacante {job.id} ('{job.title}'): Modalidad Presencial en Santiago/RM."
+            f"Notificación omitida para vacante {job.id} ('{job.title}'): Modalidad Presencial en zona restringida por distancia."
         )
         should_notify = False
 

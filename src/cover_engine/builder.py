@@ -14,8 +14,10 @@ from src.database.models import Job
 
 logger = logging.getLogger(__name__)
 
-COVER_LETTER_SYSTEM_PROMPT = """
-Eres un especialista sénior en redacción de cartas de presentación (Cover Letters) para roles de Data Engineering, Analytics Engineering y Data Platform.
+def build_cover_letter_system_prompt(domain: str | None = None) -> str:
+    domain_str = domain or "Tecnología, Datos y Analítica"
+    return f"""
+Eres un especialista sénior en redacción de cartas de presentación (Cover Letters) para roles de {domain_str}.
 
 Tu tarea es redactar una Carta de Presentación persuasiva, profesional y personalizada de exactamente 1 página (aproximadamente 250 a 300 palabras).
 
@@ -24,28 +26,31 @@ Tu tarea es redactar una Carta de Presentación persuasiva, profesional y person
 2. **Estructura Impactante:**
    - **Saludo:** "Estimado Equipo de Reclutamiento de [Empresa]," o "Dear [Company] Hiring Team," según el idioma.
    - **Párrafo Inicial:** Nombrar el puesto, expresar entusiasmo y declarar la razón principal de encaje en 2-3 oraciones.
-   - **Párrafo de Experiencia y Logros:** Presentar 3 viñetas concretas con métricas o tecnologías del stack del puesto (SQL, Python, PySpark, dbt, Cloud).
-   - **Párrafo de Conexión:** Por qué esta empresa y este rol específico en datos generan interés genuino.
+   - **Párrafo de Experiencia y Logros:** Presentar 3 viñetas concretas con métricas o tecnologías del stack del puesto y del perfil del candidato.
+   - **Párrafo de Conexión:** Por qué esta empresa y este rol específico generan interés genuino.
    - **Párrafo de Cierre:** Expresar disposición para una entrevista.
 3. **Idioma:** Si la vacante está en español -> Redactar 100% en ESPAÑOL. Si está en inglés -> Redactar 100% en INGLÉS.
 
 ### FORMATO DE SALIDA (JSON ÚNICAMENTE):
 ```json
-{
-  "salutation": "Estimado Equipo de Reclutamiento de Accenture Chile,",
-  "opening_paragraph": "Me dirijo a ustedes con gran entusiasmo para presentar mi candidatura al puesto de Senior Data Engineer...",
-  "body_paragraph": "A lo largo de mi trayectoria en ingeniería de datos, he diseñado y optimizado pipelines de datos escalables...",
+{{
+  "salutation": "Estimado Equipo de Reclutamiento de [Empresa],",
+  "opening_paragraph": "Me dirijo a ustedes con gran entusiasmo para presentar mi candidatura al puesto de...",
+  "body_paragraph": "A lo largo de mi trayectoria profesional, he diseñado e implementado soluciones escalables...",
   "achievement_bullets": [
-    "Diseño e implementación de pipelines ETL/ELT con Python, PySpark y dbt reduciendo tiempos de procesamiento.",
-    "Modelamiento dimensional (Kimball) y optimización de consultas SQL en data warehouses en la nube.",
-    "Implementación de buenas prácticas de calidad de datos, orquestación con Airflow y CI/CD para arquitecturas de datos."
+    "Logro concreto 1 alineado a los requisitos técnicos clave de la vacante.",
+    "Logro concreto 2 destacando optimización, impacto y buenas prácticas.",
+    "Logro concreto 3 demostrando colaboración multidisciplinaria y entrega de valor."
   ],
-  "connection_paragraph": "Accenture Chile destaca por su liderazgo en transformación digital y cultura de excelencia en analytics...",
+  "connection_paragraph": "La empresa destaca por su cultura y desafíos...",
   "closing_paragraph": "Agradezco de antemano su tiempo y consideración. Quedo a su entera disposición para conversar sobre cómo mi experiencia puede aportar valor al equipo.",
   "closing_valediction": "Atentamente,"
-}
+}}
 ```
 """
+
+COVER_LETTER_SYSTEM_PROMPT = build_cover_letter_system_prompt()
+
 
 
 def build_cover_letter_tex(
@@ -82,10 +87,14 @@ def build_cover_letter_tex(
     {job.description[:2500]}
     """
 
+    from config.settings import load_config
+    domain = load_config().get("evaluation", {}).get("domain")
+    system_prompt = build_cover_letter_system_prompt(domain)
+
     provider = get_llm_provider()
 
     def _call_llm():
-        return provider.generate(COVER_LETTER_SYSTEM_PROMPT, prompt_user)
+        return provider.generate(system_prompt, prompt_user)
 
     logger.info(f"CoverEngine: Generando Carta de Presentación para '{job.title}' @ '{job.company}' [{lang_display}]...")
     raw_response = call_with_retry(_call_llm)

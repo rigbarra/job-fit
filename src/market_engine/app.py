@@ -14,16 +14,14 @@ import streamlit as st
 from sqlmodel import Session, select
 
 import src.database.repository as repo
-from config.settings import settings
 from src.database.models import Job, MatchResult
 from src.market_engine.analytics import (
-    USD_TO_CLP,
+    extract_and_normalize_salary,
     extract_detailed_modality,
     get_tech_patterns,
     is_job_chile,
     normalize_role,
 )
-from src.agent.filter import parse_salary_details
 
 # Configuración de página Streamlit
 st.set_page_config(
@@ -122,8 +120,6 @@ def load_data(scope_filter: str = "chile"):
     top_roles = [r for r, _ in roles_counter.most_common()]
 
     # Procesar Salarios usando la función centralizada y validada de analytics
-    from src.market_engine.analytics import extract_and_normalize_salary
-
     jobs_with_salary: list[dict] = []
     is_usd_mode = scope_filter == "international"
 
@@ -176,7 +172,6 @@ def load_data(scope_filter: str = "chile"):
     }
 
 
-def main():
 def render_scope_dashboard(data: dict, is_usd: bool = False):
     """Renderiza el dashboard completo para un ámbito de mercado específico."""
     curr_unit = "USD/mes" if is_usd else "CLP"
@@ -240,7 +235,7 @@ def render_scope_dashboard(data: dict, is_usd: bool = False):
     col_t1, col_g1 = st.columns([1.2, 1])
 
     with col_t1:
-        st.dataframe(df_roles, use_container_width=True, hide_index=True)
+        st.dataframe(df_roles, width="stretch", hide_index=True)
 
     with col_g1:
         df_chart = pd.DataFrame({
@@ -300,7 +295,7 @@ def render_scope_dashboard(data: dict, is_usd: bool = False):
         del r["_total_count"]
 
     df_tech = pd.DataFrame(tech_rows)
-    st.dataframe(df_tech, use_container_width=True, hide_index=True)
+    st.dataframe(df_tech, width="stretch", hide_index=True)
 
     st.markdown("---")
 
@@ -349,7 +344,7 @@ def render_scope_dashboard(data: dict, is_usd: bool = False):
     })
 
     df_mod = pd.DataFrame(mod_rows)
-    st.dataframe(df_mod, use_container_width=True, hide_index=True)
+    st.dataframe(df_mod, width="stretch", hide_index=True)
 
     st.markdown("---")
 
@@ -403,7 +398,7 @@ def render_scope_dashboard(data: dict, is_usd: bool = False):
         df_sal = pd.DataFrame(sal_rows)
         if "_med_val" in df_sal.columns:
             df_sal = df_sal.drop(columns=["_med_val"])
-        st.dataframe(df_sal, use_container_width=True, hide_index=True)
+        st.dataframe(df_sal, width="stretch", hide_index=True)
     else:
         st.info("Sin datos salariales explícitos capturados en este segmento.")
 

@@ -16,21 +16,26 @@ from src.obsidian_exporter import _resolve_vault
 
 logger = logging.getLogger(__name__)
 
-LINKEDIN_SYSTEM_PROMPT = """
-Eres un Staff Data Engineer, Arquitecto de Datos y Estratega de Contenido Técnico con más de 12 años de experiencia liderando plataformas de datos en empresas de alto crecimiento.
+def build_linkedin_system_prompt(domain: str | None = None) -> str:
+    domain_str = domain or "Tecnología, Datos y Analítica"
+    return f"""
+Eres un Profesional Técnico Sénior, Especialista y Estratega de Contenido Técnico con más de 12 años de experiencia liderando iniciativas en empresas de alto crecimiento en el área de {domain_str}.
 
-Tu misión es generar una guía de contenidos y 4 borradores de publicaciones para LinkedIn de ALTÍSIMO IMPACTO y CRITERIO TÉCNICO SENIOR, basadas en las demandas reales del mercado laboral actual (Data Engineering y Analytics Engineering en Chile y LATAM).
+Tu misión es generar una guía de contenidos y 4 borradores de publicaciones para LinkedIn de ALTÍSIMO IMPACTO y CRITERIO TÉCNICO SENIOR, basadas en las demandas reales del mercado laboral actual ({domain_str}).
 
 ### 🎯 PRINCIPIOS DE REDACCIÓN & SEO EN LINKEDIN:
-1. **Criterio Senior / Trade-offs:** No hagas tutoriales para principiantes ni listados genéricos. Enfócate en decisiones de arquitectura, costos ocultos (FinOps), qué problemas resuelve cada herramienta y cuándo NO usarla.
-2. **SEO & Palabras Clave:** Incorpora de manera natural términos técnicos de alta búsqueda (ej. *dbt, Apache Iceberg, Snowflake, Databricks, PySpark, Data Contracts, Medallion Architecture, CI/CD, Kafka, Polars, DuckDB*).
+1. **Criterio Senior / Trade-offs:** No hagas tutoriales para principiantes ni listados genéricos. Enfócate en decisiones de arquitectura/diseño, costos ocultos, qué problemas resuelve cada herramienta y cuándo NO usarla.
+2. **SEO & Palabras Clave:** Incorpora de manera natural términos técnicos de alta búsqueda demandados en el mercado.
 3. **Estructura de Alto Engagement:**
    - **Hook inicial (1-2 líneas):** Provocativo, que rompa mitos o plantee una pregunta difícil.
    - **Cuerpo con formato limpio:** Párrafos cortos, viñetas claras y ejemplos concretos.
-   - **Llamada a la acción (CTA):** Pregunta final abierta para abrir debate entre otros ingenieros senior y leads.
+   - **Llamada a la acción (CTA):** Pregunta final abierta para abrir debate entre otros especialistas senior.
    - **Hashtags:** 4 a 5 hashtags técnicos estratégicos.
 4. **Idioma:** Español fluido profesional con la terminología técnica estándar en inglés.
 """
+
+LINKEDIN_SYSTEM_PROMPT = build_linkedin_system_prompt()
+
 
 LINKEDIN_USER_PROMPT_TEMPLATE = """
 A partir de la siguiente información del mercado laboral actual y del perfil del candidato, genera la guía completa de publicaciones de LinkedIn en formato Markdown:
@@ -201,11 +206,15 @@ def generate_linkedin_content(custom_topic: str | None = None) -> tuple[Path, st
         candidate_experience=candidate_exp,
     )
 
+    from config.settings import load_config
+    domain = load_config().get("evaluation", {}).get("domain")
+    system_prompt = build_linkedin_system_prompt(domain)
+
     provider = get_llm_provider()
 
     def _call():
         return provider.generate(
-            system_prompt=LINKEDIN_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             user_prompt=user_prompt,
         )
 
