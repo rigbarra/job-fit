@@ -373,6 +373,63 @@ def _archive_ghosted_cards(kanban_path: Path, jobs_dir: Path, today_date: date, 
     return len(cards_to_move)
 
 
+def _clean_kanban_duplicates(kanban_path: Path) -> int:
+    """
+    Elimina tarjetas duplicadas que apunten al mismo archivo .md en el Kanban.
+    Si una tarjeta existe en columnas activas (Aplicado, Entrevista, etc.),
+    se preserva en esa columna y se eliminan las copias en Bandeja o duplicados en la misma columna.
+    """
+    if not kanban_path.exists():
+        return 0
+
+    lines = kanban_path.read_text(encoding="utf-8").splitlines()
+
+    # 1. Primera pasada: identificar el carril preferente para cada archivo .md
+    # Prioridad: cualquier carril distinto de Bandeja tiene preferencia sobre Bandeja
+    best_lane_for_card: dict[str, str] = {}
+    current_lane = None
+    for line in lines:
+        s = line.strip()
+        if s.startswith("## "):
+            current_lane = s.lstrip("#").strip()
+        elif s.startswith("- [ ]") and current_lane:
+            m = re.search(r'\[\[jobs/([^\|\]]+\.md)', s)
+            if m:
+                fn = m.group(1)
+                if fn not in best_lane_for_card or (current_lane != _BANDEJA_COL and best_lane_for_card[fn] == _BANDEJA_COL):
+                    best_lane_for_card[fn] = current_lane
+
+    # 2. Segunda pasada: reconstruir el Kanban eliminando duplicados
+    seen_in_best_lane: set[str] = set()
+    new_lines: list[str] = []
+    removed_count = 0
+    current_lane = None
+
+    for line in lines:
+        s = line.strip()
+        if s.startswith("## "):
+            current_lane = s.lstrip("#").strip()
+            new_lines.append(line)
+            continue
+
+        if s.startswith("- [ ]") and current_lane:
+            m = re.search(r'\[\[jobs/([^\|\]]+\.md)', s)
+            if m:
+                fn = m.group(1)
+                if current_lane != best_lane_for_card.get(fn) or fn in seen_in_best_lane:
+                    removed_count += 1
+                    continue
+                seen_in_best_lane.add(fn)
+
+        new_lines.append(line)
+
+    if removed_count > 0:
+        kanban_path.write_text("\n".join(new_lines), encoding="utf-8")
+        logger.info(f"Kanban dedup: eliminadas {removed_count} tarjetas duplicadas.")
+
+    return removed_count
+
+
 def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
     """
     Sincronización incremental con Obsidian.
@@ -398,6 +455,9 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
         "cards_ghosted": 0,
         "kanban_file": str(kanban_path),
     }
+
+    # ─── 0. Deduplicar tarjetas en el Kanban si existieran duplicados ──────────
+    _clean_kanban_duplicates(kanban_path)
 
     # ─── 1. Leer filenames activos en el Kanban ───────────────────────────────
     active_filenames = _read_kanban_filenames(kanban_path)
@@ -458,6 +518,16 @@ def sync_obsidian_vault(base_dir: Path | None = None) -> dict:
                 ((MatchResult.score >= 75.0) & (MatchResult.created_at >= last_sync))
             )
         ).all()
+
+        # Priorizar para agrupar clones multiciudad: 1. Con snapshot, 2. Local (Chile), 3. Mayor fit
+        results.sort(
+            key=lambda item: (
+                1 if session.exec(select(CVSnapshot.id).where(CVSnapshot.job_id == item[0].id)).first() else 0,
+                1 if is_local_location(item[0].location or "") else 0,
+                item[1].score if item[1] else 0.0,
+            ),
+            reverse=True,
+        )
 
         summary["total_jobs"] = len(results)
 
@@ -627,6 +697,7 @@ tags:
             summary["cards_created"] += 1
             card_ref = f"[[jobs/{file_name}|{score_badge} | {job.company} - {job.title}]] @{{{pub_date_str}}}"
             new_card_refs.append(card_ref)
+            active_filenames.add(file_name)
 
     # ─── 5. Insertar solo las tarjetas nuevas en el Kanban ────────────────────
     # El Kanban existente NO se toca. Solo se agregan refs nuevas a la Bandeja.

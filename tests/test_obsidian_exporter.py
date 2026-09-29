@@ -158,3 +158,36 @@ def test_archive_ghosted_cards(tmp_path):
     assert f'etapa: "{_GHOSTED_COL}"' in old_applied_md.read_text(encoding="utf-8")
 
 
+def test_clean_kanban_duplicates(tmp_path):
+    """Valida que _clean_kanban_duplicates elimine tarjetas duplicadas priorizando carriles activos."""
+    from src.obsidian_exporter import _clean_kanban_duplicates
+
+    kanban_file = tmp_path / "Tablero_Postulaciones.md"
+    content = (
+        "---\nkanban-plugin: basic\n---\n\n"
+        "## 📥 Bandeja Notificados (Discord)\n\n"
+        "- [ ] [[jobs/2026-09-28_KPaz.md|KPaz]] @{2026-09-28}\n"
+        "- [ ] [[jobs/2026-09-29_FullStack.md|88% Fit]] @{2026-09-29}\n"
+        "- [ ] [[jobs/2026-09-29_FullStack.md|86% Fit]] @{2026-09-29}\n\n"
+        "## 📤 Aplicado\n\n"
+        "- [ ] [[jobs/2026-09-29_FullStack.md|90% Fit]] @{2026-09-29}\n"
+        "- [ ] [[jobs/2026-09-25_Itaú.md|Itaú]] @{2026-09-25}\n"
+    )
+    kanban_file.write_text(content, encoding="utf-8")
+
+    removed = _clean_kanban_duplicates(kanban_file)
+    assert removed == 2
+
+    text = kanban_file.read_text(encoding="utf-8")
+    bandeja_text = text.split("## 📥 Bandeja Notificados (Discord)")[1].split("## 📤 Aplicado")[0]
+    aplicado_text = text.split("## 📤 Aplicado")[1]
+
+    # FullStack no debe estar en Bandeja, solo en Aplicado
+    assert "2026-09-29_FullStack.md" not in bandeja_text
+    assert "2026-09-29_FullStack.md" in aplicado_text
+    assert "90% Fit" in aplicado_text
+    assert text.count("2026-09-29_FullStack.md") == 1
+    assert "2026-09-28_KPaz.md" in bandeja_text
+
+
+
